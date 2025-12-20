@@ -4,11 +4,8 @@ import Domain
 /// The main menu content view showing all monitored providers.
 /// Directly binds to the QuotaMonitor domain service.
 struct MenuContentView: View {
-    @State private var snapshots: [AIProvider: UsageSnapshot] = [:]
-    @State private var isRefreshing = false
-    @State private var lastError: String?
-
     let monitor: QuotaMonitor
+    let appState: AppState
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,7 +15,7 @@ struct MenuContentView: View {
             Divider()
 
             // Provider sections
-            if snapshots.isEmpty && !isRefreshing {
+            if appState.snapshots.isEmpty && !appState.isRefreshing {
                 emptyStateView
             } else {
                 providerListView
@@ -48,12 +45,12 @@ struct MenuContentView: View {
 
             Spacer()
 
-            if isRefreshing {
+            if appState.isRefreshing {
                 ProgressView()
                     .scaleEffect(0.7)
             } else {
                 Circle()
-                    .fill(overallStatusColor)
+                    .fill(appState.overallStatus.displayColor)
                     .frame(width: 10, height: 10)
 
                 Text(overallStatusText)
@@ -70,7 +67,7 @@ struct MenuContentView: View {
         ScrollView {
             LazyVStack(spacing: 0) {
                 ForEach(sortedProviders, id: \.self) { provider in
-                    if let snapshot = snapshots[provider] {
+                    if let snapshot = appState.snapshots[provider] {
                         ProviderSectionView(snapshot: snapshot)
 
                         if provider != sortedProviders.last {
@@ -129,17 +126,11 @@ struct MenuContentView: View {
     // MARK: - Helpers
 
     private var sortedProviders: [AIProvider] {
-        AIProvider.allCases.filter { snapshots[$0] != nil }
-    }
-
-    private var overallStatusColor: Color {
-        let status = snapshots.values.map(\.overallStatus).max() ?? .healthy
-        return status.displayColor
+        AIProvider.allCases.filter { appState.snapshots[$0] != nil }
     }
 
     private var overallStatusText: String {
-        let status = snapshots.values.map(\.overallStatus).max() ?? .healthy
-        switch status {
+        switch appState.overallStatus {
         case .healthy: return "Healthy"
         case .warning: return "Warning"
         case .critical: return "Critical"
@@ -148,14 +139,14 @@ struct MenuContentView: View {
     }
 
     private func refresh() async {
-        isRefreshing = true
-        defer { isRefreshing = false }
+        appState.isRefreshing = true
+        defer { appState.isRefreshing = false }
 
         do {
-            snapshots = try await monitor.refreshAll()
-            lastError = nil
+            appState.snapshots = try await monitor.refreshAll()
+            appState.lastError = nil
         } catch {
-            lastError = error.localizedDescription
+            appState.lastError = error.localizedDescription
         }
     }
 }

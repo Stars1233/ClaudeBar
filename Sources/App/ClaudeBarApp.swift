@@ -2,29 +2,61 @@ import SwiftUI
 import Domain
 import Infrastructure
 
+/// Shared app state observable by all views
+@Observable
+final class AppState {
+    /// Current snapshots by provider
+    var snapshots: [AIProvider: UsageSnapshot] = [:]
+
+    /// The overall status across all providers
+    var overallStatus: QuotaStatus {
+        snapshots.values.map(\.overallStatus).max() ?? .healthy
+    }
+
+    /// Whether a refresh is in progress
+    var isRefreshing: Bool = false
+
+    /// Last error message, if any
+    var lastError: String?
+}
+
 @main
 struct ClaudeBarApp: App {
     /// The main domain service - monitors all AI providers
     @State private var monitor: QuotaMonitor
 
+    /// Shared app state
+    @State private var appState = AppState()
+
+    /// Notification observer
+    private let notificationObserver = NotificationQuotaObserver()
+
     init() {
         // Create probes for each provider
         let probes: [any UsageProbePort] = [
             ClaudeUsageProbe(),
-            // Add more probes here as needed:
-            // CodexUsageProbe(),
-            // GeminiUsageProbe(),
+            CodexUsageProbe(),
+            GeminiUsageProbe(),
         ]
 
-        // Initialize the domain service
-        _monitor = State(initialValue: QuotaMonitor(probes: probes))
+        // Initialize the domain service with notification observer
+        _monitor = State(initialValue: QuotaMonitor(
+            probes: probes,
+            observer: notificationObserver
+        ))
+
+        // Request notification permission
+        let observer = notificationObserver
+        Task {
+            _ = await observer.requestPermission()
+        }
     }
 
     var body: some Scene {
         MenuBarExtra {
-            MenuContentView(monitor: monitor)
+            MenuContentView(monitor: monitor, appState: appState)
         } label: {
-            StatusBarIcon(monitor: monitor)
+            StatusBarIcon(status: appState.overallStatus)
         }
         .menuBarExtraStyle(.window)
     }
@@ -32,31 +64,23 @@ struct ClaudeBarApp: App {
 
 /// The menu bar icon that reflects the overall quota status
 struct StatusBarIcon: View {
-    let monitor: QuotaMonitor
-    @State private var lowestPercent: Double = 100
+    let status: QuotaStatus
 
     var body: some View {
         Image(systemName: iconName)
-            .task {
-                await updateIcon()
-            }
+            .foregroundStyle(status.displayColor)
     }
 
     private var iconName: String {
-        if lowestPercent <= 0 {
+        switch status {
+        case .depleted:
             return "chart.bar.xaxis"
-        } else if lowestPercent < 20 {
+        case .critical:
+            return "exclamationmark.triangle.fill"
+        case .warning:
             return "chart.bar.fill"
-        } else if lowestPercent < 50 {
+        case .healthy:
             return "chart.bar.fill"
-        } else {
-            return "chart.bar.fill"
-        }
-    }
-
-    private func updateIcon() async {
-        if let lowest = await monitor.lowestQuota() {
-            lowestPercent = lowest.percentRemaining
         }
     }
 }
