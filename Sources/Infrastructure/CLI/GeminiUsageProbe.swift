@@ -1,8 +1,11 @@
 import Foundation
 import Domain
+import os.log
+
+private let logger = Logger(subsystem: "com.claudebar", category: "GeminiProbe")
 
 /// Infrastructure adapter that probes the Gemini API to fetch usage quotas.
-/// Uses OAuth credentials stored by the Gemini CLI.
+/// Uses OAuth credentials stored by the Gemini CLI, with CLI fallback.
 public struct GeminiUsageProbe: UsageProbePort {
     public let provider: AIProvider = .gemini
 
@@ -12,7 +15,6 @@ public struct GeminiUsageProbe: UsageProbePort {
 
     private static let quotaEndpoint = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota"
     private static let credentialsPath = "/.gemini/oauth_creds.json"
-    private static let settingsPath = "/.gemini/settings.json"
 
     public init(
         homeDirectory: String = NSHomeDirectory(),
@@ -32,9 +34,25 @@ public struct GeminiUsageProbe: UsageProbePort {
     }
 
     public func probe() async throws -> UsageSnapshot {
+        logger.info("Starting Gemini probe...")
+
+        // Try CLI first from home directory, fall back to API
+        do {
+            return try await probeViaCLI()
+        } catch {
+            logger.warning("Gemini CLI failed: \(error.localizedDescription), trying API fallback...")
+            return try await probeViaAPI()
+        }
+    }
+
+    // MARK: - API Approach
+
+    private func probeViaAPI() async throws -> UsageSnapshot {
         let creds = try loadCredentials()
+        logger.debug("Gemini credentials loaded, expiry: \(String(describing: creds.expiryDate))")
 
         guard let accessToken = creds.accessToken, !accessToken.isEmpty else {
+            logger.error("Gemini: No access token found")
             throw ProbeError.authenticationRequired
         }
 
@@ -55,20 +73,73 @@ public struct GeminiUsageProbe: UsageProbePort {
             throw ProbeError.executionFailed("Invalid response")
         }
 
+        logger.debug("Gemini API response status: \(httpResponse.statusCode)")
+
         if httpResponse.statusCode == 401 {
+            logger.error("Gemini: Authentication required (401)")
             throw ProbeError.authenticationRequired
         }
 
         guard httpResponse.statusCode == 200 else {
+            logger.error("Gemini: HTTP error \(httpResponse.statusCode)")
             throw ProbeError.executionFailed("HTTP \(httpResponse.statusCode)")
         }
 
-        return try Self.parseAPIResponse(data)
+        // Log raw response
+        if let jsonString = String(data: data, encoding: .utf8) {
+            logger.debug("Gemini API response:\n\(jsonString)")
+        }
+
+        let snapshot = try parseAPIResponse(data)
+        logger.info("Gemini API probe success: \(snapshot.quotas.count) quotas found")
+        for quota in snapshot.quotas {
+            logger.info("  - \(quota.quotaType.displayName): \(Int(quota.percentRemaining))% remaining")
+        }
+
+        return snapshot
     }
 
-    // MARK: - Parsing
+    // MARK: - CLI Approach
 
-    public static func parseAPIResponse(_ data: Data) throws -> UsageSnapshot {
+    private func probeViaCLI() async throws -> UsageSnapshot {
+        guard PTYCommandRunner.which("gemini") != nil else {
+            throw ProbeError.cliNotFound("gemini")
+        }
+
+        logger.info("Starting Gemini CLI probe...")
+
+        let runner = PTYCommandRunner()
+        let options = PTYCommandRunner.Options(
+            timeout: 10.0,  // Gemini CLI needs time to authenticate
+            workingDirectory: URL(fileURLWithPath: homeDirectory),  // Run from home dir
+            extraArgs: [],
+            // Wait for the prompt to be ready, send /stats, then exit after seeing results
+            sendOnSubstrings: [
+                "Type your message": "/stats\n",
+                "Usage limits span": "/exit\n",  // Exit after stats shown
+                "Resets in": "/exit\n"  // Alternative exit trigger
+            ]
+        )
+
+        let result: PTYCommandRunner.Result
+        do {
+            // Don't send anything initially - wait for prompt via sendOnSubstrings
+            result = try runner.run(binary: "gemini", send: "", options: options)
+        } catch let error as PTYCommandRunner.RunError {
+            logger.error("Gemini CLI failed: \(error.localizedDescription)")
+            throw mapRunError(error)
+        }
+
+        logger.debug("Gemini CLI raw output:\n\(result.text)")
+
+        let snapshot = try Self.parse(result.text)
+        logger.info("Gemini CLI probe success: \(snapshot.quotas.count) quotas found")
+        return snapshot
+    }
+
+    // MARK: - API Parsing
+
+    private func parseAPIResponse(_ data: Data) throws -> UsageSnapshot {
         let decoder = JSONDecoder()
         let response = try decoder.decode(QuotaResponse.self, from: data)
 
@@ -76,29 +147,29 @@ public struct GeminiUsageProbe: UsageProbePort {
             throw ProbeError.parseFailed("No quota buckets in response")
         }
 
-        // Group quotas by model, keeping lowest per model (usually input tokens)
-        var modelQuotaMap: [String: Double] = [:]
+        // Group quotas by model, keeping lowest per model
+        var modelQuotaMap: [String: (fraction: Double, resetTime: String?)] = [:]
 
         for bucket in buckets {
             guard let modelId = bucket.modelId, let fraction = bucket.remainingFraction else { continue }
 
             if let existing = modelQuotaMap[modelId] {
-                if fraction < existing {
-                    modelQuotaMap[modelId] = fraction
+                if fraction < existing.fraction {
+                    modelQuotaMap[modelId] = (fraction, bucket.resetTime)
                 }
             } else {
-                modelQuotaMap[modelId] = fraction
+                modelQuotaMap[modelId] = (fraction, bucket.resetTime)
             }
         }
 
-        // Convert to quotas
         let quotas: [UsageQuota] = modelQuotaMap
             .sorted { $0.key < $1.key }
-            .map { modelId, fraction in
+            .map { modelId, data in
                 UsageQuota(
-                    percentRemaining: fraction * 100,
+                    percentRemaining: data.fraction * 100,
                     quotaType: .modelSpecific(modelId),
-                    provider: .gemini
+                    provider: .gemini,
+                    resetText: data.resetTime.map { "Resets \($0)" }
                 )
             }
 
@@ -113,12 +184,15 @@ public struct GeminiUsageProbe: UsageProbePort {
         )
     }
 
-    public static func parseCLIOutput(_ text: String) throws -> UsageSnapshot {
+    // MARK: - CLI Parsing
+
+    public static func parse(_ text: String) throws -> UsageSnapshot {
         let clean = stripANSICodes(text)
 
         // Check for login errors
         let lower = clean.lowercased()
-        if lower.contains("login with google") || lower.contains("use gemini api key") {
+        if lower.contains("login with google") || lower.contains("use gemini api key") ||
+           lower.contains("waiting for auth") {
             throw ProbeError.authenticationRequired
         }
 
@@ -134,6 +208,52 @@ public struct GeminiUsageProbe: UsageProbePort {
             quotas: quotas,
             capturedAt: Date()
         )
+    }
+
+    // MARK: - Text Parsing Helpers
+
+    private static func stripANSICodes(_ text: String) -> String {
+        let pattern = #"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])"#
+        return text.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
+    }
+
+    private static func parseModelUsageTable(_ text: String) -> [UsageQuota] {
+        let lines = text.components(separatedBy: .newlines)
+        var quotas: [UsageQuota] = []
+
+        // Pattern matches: "gemini-2.5-pro   -   100.0% (Resets in 24h)"
+        let pattern = #"(gemini[-\w.]+)\s+.*?([0-9]+(?:\.[0-9]+)?)\s*%\s*\(([^)]+)\)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+            return []
+        }
+
+        for line in lines {
+            let cleanLine = line.replacingOccurrences(of: "│", with: " ")
+            let range = NSRange(cleanLine.startIndex..<cleanLine.endIndex, in: cleanLine)
+            guard let match = regex.firstMatch(in: cleanLine, options: [], range: range),
+                  match.numberOfRanges >= 4 else { continue }
+
+            guard let modelRange = Range(match.range(at: 1), in: cleanLine),
+                  let pctRange = Range(match.range(at: 2), in: cleanLine),
+                  let pct = Double(cleanLine[pctRange])
+            else { continue }
+
+            let modelId = String(cleanLine[modelRange])
+
+            var resetText: String?
+            if let resetRange = Range(match.range(at: 3), in: cleanLine) {
+                resetText = String(cleanLine[resetRange]).trimmingCharacters(in: .whitespaces)
+            }
+
+            quotas.append(UsageQuota(
+                percentRemaining: pct,
+                quotaType: .modelSpecific(modelId),
+                provider: .gemini,
+                resetText: resetText
+            ))
+        }
+
+        return quotas
     }
 
     // MARK: - Credentials
@@ -171,43 +291,15 @@ public struct GeminiUsageProbe: UsageProbePort {
         )
     }
 
-    // MARK: - Text Parsing Helpers
-
-    private static func stripANSICodes(_ text: String) -> String {
-        let pattern = #"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])"#
-        return text.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
-    }
-
-    private static func parseModelUsageTable(_ text: String) -> [UsageQuota] {
-        let lines = text.components(separatedBy: .newlines)
-        var quotas: [UsageQuota] = []
-
-        let pattern = #"(gemini[-\w.]+)\s+.*?([0-9]+(?:\.[0-9]+)?)\s*%"#
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
-            return []
+    private func mapRunError(_ error: PTYCommandRunner.RunError) -> ProbeError {
+        switch error {
+        case .binaryNotFound(let bin):
+            .cliNotFound(bin)
+        case .timedOut:
+            .timeout
+        case .launchFailed(let msg):
+            .executionFailed(msg)
         }
-
-        for line in lines {
-            let cleanLine = line.replacingOccurrences(of: "│", with: " ")
-            let range = NSRange(cleanLine.startIndex..<cleanLine.endIndex, in: cleanLine)
-            guard let match = regex.firstMatch(in: cleanLine, options: [], range: range),
-                  match.numberOfRanges >= 3 else { continue }
-
-            guard let modelRange = Range(match.range(at: 1), in: cleanLine),
-                  let pctRange = Range(match.range(at: 2), in: cleanLine),
-                  let pct = Double(cleanLine[pctRange])
-            else { continue }
-
-            let modelId = String(cleanLine[modelRange])
-
-            quotas.append(UsageQuota(
-                percentRemaining: pct,
-                quotaType: .modelSpecific(modelId),
-                provider: .gemini
-            ))
-        }
-
-        return quotas
     }
 
     // MARK: - Response Types

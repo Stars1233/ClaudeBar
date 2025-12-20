@@ -1,5 +1,8 @@
 import Foundation
 import Domain
+import os.log
+
+private let logger = Logger(subsystem: "com.claudebar", category: "ClaudeProbe")
 
 /// Infrastructure adapter that probes the Claude CLI to fetch usage quotas.
 /// Implements the UsageProbePort from the domain layer.
@@ -19,6 +22,8 @@ public struct ClaudeUsageProbe: UsageProbePort {
     }
 
     public func probe() async throws -> UsageSnapshot {
+        logger.info("Starting Claude probe...")
+
         let runner = PTYCommandRunner()
         let options = PTYCommandRunner.Options(
             timeout: timeout,
@@ -35,10 +40,19 @@ public struct ClaudeUsageProbe: UsageProbePort {
         do {
             result = try runner.run(binary: claudeBinary, send: "", options: options)
         } catch let error as PTYCommandRunner.RunError {
+            logger.error("Claude probe failed: \(error.localizedDescription)")
             throw mapRunError(error)
         }
 
-        return try parseClaudeOutput(result.text)
+        logger.debug("Claude raw output:\n\(result.text)")
+
+        let snapshot = try parseClaudeOutput(result.text)
+        logger.info("Claude probe success: \(snapshot.quotas.count) quotas found")
+        for quota in snapshot.quotas {
+            logger.info("  - \(quota.quotaType.displayName): \(Int(quota.percentRemaining))% remaining")
+        }
+
+        return snapshot
     }
 
     // MARK: - Parsing
