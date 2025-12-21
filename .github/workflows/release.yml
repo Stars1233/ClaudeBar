@@ -61,8 +61,22 @@ jobs:
       - name: Resolve Dependencies
         run: swift package resolve
 
-      - name: Build Release
-        run: swift build -c release --arch arm64 --arch x86_64
+      - name: Build Release (arm64)
+        run: swift build -c release --arch arm64
+
+      - name: Build Release (x86_64)
+        run: swift build -c release --arch x86_64
+
+      - name: Create Universal Binary
+        run: |
+          ARM64_BIN=$(swift build -c release --arch arm64 --show-bin-path)/$APP_NAME
+          X86_BIN=$(swift build -c release --arch x86_64 --show-bin-path)/$APP_NAME
+
+          mkdir -p .build/universal
+          lipo -create -output .build/universal/$APP_NAME "$ARM64_BIN" "$X86_BIN"
+
+          echo "Created universal binary:"
+          file .build/universal/$APP_NAME
 
       - name: Create App Bundle
         run: |
@@ -74,9 +88,8 @@ jobs:
 
           mkdir -p "$MACOS" "$RESOURCES" "$FRAMEWORKS"
 
-          # Copy universal binary (use same arch flags as build step)
-          BIN_PATH=$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)
-          cp "$BIN_PATH/$APP_NAME" "$MACOS/"
+          # Copy universal binary
+          cp .build/universal/$APP_NAME "$MACOS/"
 
           # Copy Info.plist
           cp Sources/App/Info.plist "$CONTENTS/"
