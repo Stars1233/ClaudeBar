@@ -14,7 +14,7 @@ struct MenuContentView: View {
     var body: some View {
         ZStack {
             // Gradient background
-            WrappedTheme.backgroundGradient
+            AppTheme.backgroundGradient
                 .ignoresSafeArea()
 
             // Subtle animated orbs in background
@@ -68,7 +68,7 @@ struct MenuContentView: View {
                     .fill(
                         RadialGradient(
                             colors: [
-                                WrappedTheme.violetElectric.opacity(0.4),
+                                AppTheme.violetElectric.opacity(0.4),
                                 Color.clear
                             ],
                             center: .center,
@@ -85,7 +85,7 @@ struct MenuContentView: View {
                     .fill(
                         RadialGradient(
                             colors: [
-                                WrappedTheme.pinkHot.opacity(0.35),
+                                AppTheme.pinkHot.opacity(0.35),
                                 Color.clear
                             ],
                             center: .center,
@@ -105,16 +105,16 @@ struct MenuContentView: View {
     private var headerView: some View {
         HStack(spacing: 12) {
             // Custom Provider Icon - changes based on selected provider
-            ProviderIconView(provider: selectedProvider, size: 24)
+            ProviderIconView(provider: selectedProvider, size: 38)
                 .animation(.spring(response: 0.4, dampingFraction: 0.7), value: selectedProvider)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("ClaudeBar")
-                    .font(WrappedTheme.titleFont(size: 18))
+                    .font(AppTheme.titleFont(size: 18))
                     .foregroundStyle(.white)
 
                 Text("AI Usage Monitor")
-                    .font(WrappedTheme.captionFont(size: 11))
+                    .font(AppTheme.captionFont(size: 11))
                     .foregroundStyle(.white.opacity(0.7))
             }
 
@@ -149,7 +149,7 @@ struct MenuContentView: View {
             }
 
             Text(statusText)
-                .font(WrappedTheme.captionFont(size: 11))
+                .font(AppTheme.captionFont(size: 11))
                 .foregroundStyle(.white)
         }
         .padding(.horizontal, 12)
@@ -222,18 +222,18 @@ struct MenuContentView: View {
                     .frame(width: 32, height: 32)
 
                 Text(String(email.prefix(1)).uppercased())
-                    .font(WrappedTheme.titleFont(size: 14))
+                    .font(AppTheme.titleFont(size: 14))
                     .foregroundStyle(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(email)
-                    .font(WrappedTheme.bodyFont(size: 12))
+                    .font(AppTheme.bodyFont(size: 12))
                     .foregroundStyle(.white)
                     .lineLimit(1)
 
                 Text("Updated \(snapshot.ageDescription)")
-                    .font(WrappedTheme.captionFont(size: 10))
+                    .font(AppTheme.captionFont(size: 10))
                     .foregroundStyle(.white.opacity(0.6))
             }
 
@@ -243,7 +243,7 @@ struct MenuContentView: View {
             if snapshot.isStale {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 12))
-                    .foregroundStyle(WrappedTheme.statusWarning)
+                    .foregroundStyle(AppTheme.statusWarning)
             }
         }
         .glassCard(cornerRadius: 12, padding: 10)
@@ -272,20 +272,20 @@ struct MenuContentView: View {
         VStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(WrappedTheme.statusWarning.opacity(0.2))
+                    .fill(AppTheme.statusWarning.opacity(0.2))
                     .frame(width: 60, height: 60)
 
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 28))
-                    .foregroundStyle(WrappedTheme.statusWarning)
+                    .foregroundStyle(AppTheme.statusWarning)
             }
 
             Text("\(selectedProvider.name) Unavailable")
-                .font(WrappedTheme.titleFont(size: 14))
+                .font(AppTheme.titleFont(size: 14))
                 .foregroundStyle(.white)
 
             Text("Install CLI or check configuration")
-                .font(WrappedTheme.captionFont(size: 11))
+                .font(AppTheme.captionFont(size: 11))
                 .foregroundStyle(.white.opacity(0.6))
         }
         .frame(height: 140)
@@ -313,7 +313,7 @@ struct MenuContentView: View {
             WrappedActionButton(
                 icon: appState.isRefreshing ? "arrow.trianglehead.2.counterclockwise.rotate.90" : "arrow.clockwise",
                 label: appState.isRefreshing ? "Syncing" : "Refresh",
-                gradient: WrappedTheme.accentGradient,
+                gradient: AppTheme.accentGradient,
                 isLoading: appState.isRefreshing
             ) {
                 Task { await refresh() }
@@ -383,7 +383,7 @@ struct WrappedProviderPill: View {
                     .font(.system(size: 12, weight: .semibold))
 
                 Text(provider.name)
-                    .font(WrappedTheme.bodyFont(size: 12))
+                    .font(AppTheme.bodyFont(size: 12))
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
@@ -410,7 +410,7 @@ struct WrappedProviderPill: View {
                 // Data indicator
                 if hasData && !isSelected {
                     Circle()
-                        .fill(WrappedTheme.statusHealthy)
+                        .fill(AppTheme.statusHealthy)
                         .frame(width: 6, height: 6)
                         .offset(x: -4, y: 2)
                 }
@@ -449,7 +449,7 @@ struct WrappedStatCard: View {
                         .foregroundStyle(quota.status.themeColor)
 
                     Text(quota.quotaType.displayName.uppercased())
-                        .font(WrappedTheme.captionFont(size: 8))
+                        .font(AppTheme.captionFont(size: 8))
                         .foregroundStyle(.white.opacity(0.7))
                         .tracking(0.3)
                 }
@@ -464,12 +464,12 @@ struct WrappedStatCard: View {
             // Large percentage number
             HStack(alignment: .firstTextBaseline, spacing: 1) {
                 Text("\(Int(quota.percentRemaining))")
-                    .font(WrappedTheme.statFont(size: 32))
+                    .font(AppTheme.statFont(size: 32))
                     .foregroundStyle(.white)
                     .contentTransition(.numericText())
 
                 Text("%")
-                    .font(WrappedTheme.titleFont(size: 16))
+                    .font(AppTheme.titleFont(size: 16))
                     .foregroundStyle(.white.opacity(0.6))
             }
 
@@ -482,7 +482,7 @@ struct WrappedStatCard: View {
 
                     // Fill
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(WrappedTheme.progressGradient(for: quota.percentRemaining))
+                        .fill(AppTheme.progressGradient(for: quota.percentRemaining))
                         .frame(width: animateProgress ? geo.size.width * quota.percentRemaining / 100 : 0)
                         .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(delay + 0.2), value: animateProgress)
                 }
@@ -496,7 +496,7 @@ struct WrappedStatCard: View {
                         .font(.system(size: 7))
 
                     Text(resetText)
-                        .font(WrappedTheme.captionFont(size: 8))
+                        .font(AppTheme.captionFont(size: 8))
                 }
                 .foregroundStyle(.white.opacity(0.5))
                 .lineLimit(1)
@@ -506,7 +506,7 @@ struct WrappedStatCard: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(WrappedTheme.cardGradient)
+                    .fill(AppTheme.cardGradient)
 
                 RoundedRectangle(cornerRadius: 14)
                     .stroke(
@@ -554,7 +554,7 @@ struct LoadingSpinnerView: View {
                 Circle()
                     .trim(from: 0, to: 0.3)
                     .stroke(
-                        WrappedTheme.accentGradient,
+                        AppTheme.accentGradient,
                         style: StrokeStyle(lineWidth: 3, lineCap: .round)
                     )
                     .frame(width: 50, height: 50)
@@ -566,7 +566,7 @@ struct LoadingSpinnerView: View {
             }
 
             Text("Fetching usage data...")
-                .font(WrappedTheme.bodyFont(size: 13))
+                .font(AppTheme.bodyFont(size: 13))
                 .foregroundStyle(.white.opacity(0.8))
         }
         .frame(height: 140)
@@ -603,7 +603,7 @@ struct WrappedActionButton: View {
                 }
 
                 Text(label)
-                    .font(WrappedTheme.bodyFont(size: 12))
+                    .font(AppTheme.bodyFont(size: 12))
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
