@@ -111,7 +111,7 @@ ClaudeBar follows Clean Architecture with hexagonal/ports-and-adapters patterns:
 ┌─────────────────────────────────────────────────┐
 │              Infrastructure Layer               │
 │  CLI Probes: Claude, Codex, Gemini              │
-│  PTYCommandRunner, NotificationObserver         │
+│  Adapters: PTY, Process, Notifications          │
 └─────────────────────────────────────────────────┘
 ```
 

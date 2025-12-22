@@ -143,4 +143,115 @@ struct NotificationQuotaObserverTests {
         // When status is unchanged, no notification is sent
         #expect(QuotaStatus.healthy == QuotaStatus.healthy)
     }
+
+    // MARK: - onStatusChanged Integration Tests
+
+    @Test
+    func `onStatusChanged sends notification when status degrades to warning`() async {
+        // Given
+        let mockService = MockNotificationService()
+        given(mockService).send(title: .any, body: .any, categoryIdentifier: .any).willReturn(())
+        let observer = NotificationQuotaObserver(notificationService: mockService)
+
+        // When
+        await observer.onStatusChanged(providerId: "claude", oldStatus: .healthy, newStatus: .warning)
+
+        // Then
+        verify(mockService).send(
+            title: .matching { $0.contains("Quota Alert") },
+            body: .matching { $0.contains("running low") },
+            categoryIdentifier: .value("QUOTA_ALERT")
+        ).called(1)
+    }
+
+    @Test
+    func `onStatusChanged sends notification when status degrades to critical`() async {
+        // Given
+        let mockService = MockNotificationService()
+        given(mockService).send(title: .any, body: .any, categoryIdentifier: .any).willReturn(())
+        let observer = NotificationQuotaObserver(notificationService: mockService)
+
+        // When
+        await observer.onStatusChanged(providerId: "codex", oldStatus: .warning, newStatus: .critical)
+
+        // Then
+        verify(mockService).send(
+            title: .matching { $0.contains("Quota Alert") },
+            body: .matching { $0.contains("critically low") },
+            categoryIdentifier: .value("QUOTA_ALERT")
+        ).called(1)
+    }
+
+    @Test
+    func `onStatusChanged sends notification when status degrades to depleted`() async {
+        // Given
+        let mockService = MockNotificationService()
+        given(mockService).send(title: .any, body: .any, categoryIdentifier: .any).willReturn(())
+        let observer = NotificationQuotaObserver(notificationService: mockService)
+
+        // When
+        await observer.onStatusChanged(providerId: "gemini", oldStatus: .critical, newStatus: .depleted)
+
+        // Then
+        verify(mockService).send(
+            title: .matching { $0.contains("Quota Alert") },
+            body: .matching { $0.contains("depleted") },
+            categoryIdentifier: .value("QUOTA_ALERT")
+        ).called(1)
+    }
+
+    @Test
+    func `onStatusChanged does not send notification when status improves`() async {
+        // Given
+        let mockService = MockNotificationService()
+        let observer = NotificationQuotaObserver(notificationService: mockService)
+
+        // When - status improves from warning to healthy
+        await observer.onStatusChanged(providerId: "claude", oldStatus: .warning, newStatus: .healthy)
+
+        // Then - no notification sent
+        verify(mockService).send(title: .any, body: .any, categoryIdentifier: .any).called(0)
+    }
+
+    @Test
+    func `onStatusChanged does not send notification when status stays the same`() async {
+        // Given
+        let mockService = MockNotificationService()
+        let observer = NotificationQuotaObserver(notificationService: mockService)
+
+        // When - status stays the same
+        await observer.onStatusChanged(providerId: "claude", oldStatus: .warning, newStatus: .warning)
+
+        // Then - no notification sent
+        verify(mockService).send(title: .any, body: .any, categoryIdentifier: .any).called(0)
+    }
+
+    @Test
+    func `onStatusChanged silently handles notification errors`() async {
+        // Given - service throws an error
+        let mockService = MockNotificationService()
+        given(mockService).send(title: .any, body: .any, categoryIdentifier: .any).willThrow(NSError(domain: "test", code: 1))
+        let observer = NotificationQuotaObserver(notificationService: mockService)
+
+        // When & Then - should not throw
+        await observer.onStatusChanged(providerId: "claude", oldStatus: .healthy, newStatus: .warning)
+
+        // Verify notification was attempted
+        verify(mockService).send(title: .any, body: .any, categoryIdentifier: .any).called(1)
+    }
+
+    @Test
+    func `requestPermission delegates to notification service`() async {
+        // Given
+        let mockService = MockNotificationService()
+        given(mockService).requestPermission().willReturn(true)
+        let observer = NotificationQuotaObserver(notificationService: mockService)
+
+        // When
+        let result = await observer.requestPermission()
+
+        // Then
+        #expect(result == true)
+        verify(mockService).requestPermission().called(1)
+    }
 }

@@ -36,12 +36,19 @@ The project follows a clean architecture with hexagonal/ports-and-adapters patte
   - Monitor (`Monitor/`): `QuotaMonitor` actor and `StatusChangeObserver` protocol
 
 - **Infrastructure** (`Sources/Infrastructure/`): Technical implementations
-  - CLI (`CLI/`):
-    - `ClaudeUsageProbe` - parses Claude CLI output
-    - `CodexUsageProbe` - uses JSON-RPC via `CodexRPCClient`, falls back to TTY
-    - `GeminiUsageProbe` - coordinates `GeminiCLIProbe` and `GeminiAPIProbe` strategies
+  - CLI (`CLI/`): Probes and protocols for CLI interaction
+    - `ClaudeUsageProbe` - probes Claude CLI, uses `CLIExecutor` for testability
+    - `CodexUsageProbe` - delegates to `CodexRPCClient` (single dependency)
+    - `CodexRPCClient` protocol - "Is it available?" and "Get my stats"
+    - `DefaultCodexRPCClient` - RPC via `RPCTransport`, falls back to TTY via `CLIExecutor`
+    - `CLIExecutor` protocol - abstracts CLI interaction (locate binary, execute commands)
+    - `RPCTransport` protocol - abstracts JSON-RPC communication
+    - `GeminiUsageProbe` - coordinates `GeminiAPIProbe` with network client
     - `GeminiProjectRepository` - discovers Gemini projects for quota lookup
+  - Adapters (`Adapters/`): Pure adapters for 3rd party interaction (excluded from coverage)
     - `PTYCommandRunner` - runs CLI commands with PTY for interactive prompts
+    - `ProcessRPCTransport` - JSON-RPC over Process stdin/stdout pipes
+    - `DefaultCLIExecutor` - real CLI execution using PTYCommandRunner
   - Network (`Network/`): `NetworkClient` protocol for HTTP abstraction
   - Notifications (`Notifications/`): `NotificationQuotaObserver` - macOS notification center
 
@@ -56,6 +63,15 @@ The project follows a clean architecture with hexagonal/ports-and-adapters patte
 - **Actor-based concurrency**: `QuotaMonitor` is an actor for thread-safe state management
 - **Mockable protocol mocks**: Uses `@Mockable` macro from Mockable package for test doubles
 - **Swift Testing framework**: Tests use `@Test` and `@Suite` attributes, not XCTest
+- **Dependency Injection for Testability**: Probes accept injected dependencies (e.g., `CLIExecutor`, `RPCTransport`) to enable unit testing without real CLI/network calls
+
+### Testability Design
+
+The codebase separates testable logic from external system interaction:
+
+- **Protocols with `@Mockable`**: `CLIExecutor`, `RPCTransport`, `CodexRPCClient`, `NetworkClient` - all mockable for unit tests
+- **Adapters folder**: Pure adapters (`PTYCommandRunner`, `ProcessRPCTransport`) are excluded from code coverage since they only wrap system APIs
+- **Parsing logic**: Kept as static/internal methods for direct testing without mocks
 
 ### Adding a New AI Provider
 

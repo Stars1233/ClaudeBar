@@ -24,8 +24,8 @@ ClaudeBar is a macOS 15+ menu bar application for monitoring AI coding assistant
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                  Infrastructure Layer                        │
-│  CLI: Claude, Codex (RPC), Gemini (CLI+API), PTYCommandRunner│
-│  Network: NetworkClient | Notifications: QuotaObserver       │
+│  CLI: Claude, Codex (RPC), Gemini (CLI+API)                  │
+│  Adapters: PTY, Process, URLSession | Notifications          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -48,13 +48,21 @@ ClaudeBar/
 │   │       ├── ProbeError.swift          # Error types
 │   │       └── ... (Concrete Providers like ClaudeProvider.swift)
 │   │
-│   ├── Infrastructure/            # Technical implementations
-│   │   ├── CLI/
-│   │   │   ├── PTYCommandRunner.swift      # PTY execution
-│   │   │   ├── ClaudeUsageProbe.swift      # Claude CLI adapter
-│   │   │   ├── CodexUsageProbe.swift       # Codex RPC + TTY fallback
-│   │   │   ├── GeminiUsageProbe.swift      # CLI + API strategy coordinator
-│   │   │   └── GeminiProjectRepository.swift # Project discovery for quotas
+    ├── Infrastructure/            # Technical implementations
+│   │   ├── Adapters/              # Low-level system adapters (excluded from coverage)
+│   │   │   ├── PTYCommandRunner.swift      # PTY execution wrapper
+│   │   │   ├── ProcessRPCTransport.swift   # JSON-RPC over stdin/stdout
+│   │   │   └── ...
+│   │   ├── CLI/                   # CLI Probes and Logic
+│   │   │   ├── ClaudeUsageProbe.swift      # Claude probe
+│   │   │   ├── CodexUsageProbe.swift       # Codex probe (uses RPCClient)
+│   │   │   ├── DefaultCodexRPCClient.swift # RPC client logic
+│   │   │   ├── CLIExecutor.swift           # Protocol for CLI execution
+│   │   │   ├── RPCTransport.swift          # Protocol for RPC communication
+│   │   │   ├── GeminiUsageProbe.swift      # Gemini probe coordinator
+│   │   │   ├── GeminiCLIProbe.swift        # Gemini CLI probe
+│   │   │   ├── GeminiAPIProbe.swift        # Gemini API probe
+│   │   │   └── GeminiProjectRepository.swift # Project discovery
 │   │   ├── Network/
 │   │   │   └── NetworkClient.swift         # @Mockable HTTP abstraction
 │   │   └── Notifications/
@@ -229,6 +237,18 @@ public protocol UsageProbe: Sendable {
 let mockProbe = MockUsageProbe()
 given(mockProbe).probe().willReturn(snapshot)
 verify(mockProbe).probe().called(.once)
+```
+
+### Singleton Isolation
+
+When testing components that interact with the global `AIProviderRegistry`, ensure you reset it at the start of the test to prevent state leakage between tests running in parallel:
+
+```swift
+@Test
+func `test registry interaction`() {
+    AIProviderRegistry.shared.reset()
+    // ...
+}
 ```
 
 ## Status Thresholds
