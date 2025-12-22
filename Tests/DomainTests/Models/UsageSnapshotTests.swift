@@ -10,13 +10,13 @@ struct UsageSnapshotTests {
     @Test
     func `snapshot captures quotas for a provider`() {
         // Given
-        let quota = UsageQuota(percentRemaining: 65, quotaType: .session, provider: .claude)
+        let quota = UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")
 
         // When
-        let snapshot = UsageSnapshot(provider: .claude, quotas: [quota], capturedAt: Date())
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: [quota], capturedAt: Date())
 
         // Then
-        #expect(snapshot.provider == .claude)
+        #expect(snapshot.providerId == "claude")
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas.first?.percentRemaining == 65)
     }
@@ -24,13 +24,13 @@ struct UsageSnapshotTests {
     @Test
     func `snapshot can hold multiple quota types`() {
         // Given
-        let sessionQuota = UsageQuota(percentRemaining: 65, quotaType: .session, provider: .claude)
-        let weeklyQuota = UsageQuota(percentRemaining: 35, quotaType: .weekly, provider: .claude)
-        let opusQuota = UsageQuota(percentRemaining: 80, quotaType: .modelSpecific("opus"), provider: .claude)
+        let sessionQuota = UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")
+        let weeklyQuota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude")
+        let opusQuota = UsageQuota(percentRemaining: 80, quotaType: .modelSpecific("opus"), providerId: "claude")
 
         // When
         let snapshot = UsageSnapshot(
-            provider: .claude,
+            providerId: "claude",
             quotas: [sessionQuota, weeklyQuota, opusQuota],
             capturedAt: Date()
         )
@@ -44,9 +44,9 @@ struct UsageSnapshotTests {
     @Test
     func `snapshot can find session quota by type`() {
         // Given
-        let sessionQuota = UsageQuota(percentRemaining: 65, quotaType: .session, provider: .claude)
-        let weeklyQuota = UsageQuota(percentRemaining: 35, quotaType: .weekly, provider: .claude)
-        let snapshot = UsageSnapshot(provider: .claude, quotas: [sessionQuota, weeklyQuota], capturedAt: Date())
+        let sessionQuota = UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")
+        let weeklyQuota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude")
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: [sessionQuota, weeklyQuota], capturedAt: Date())
 
         // When
         let found = snapshot.quota(for: .session)
@@ -58,9 +58,9 @@ struct UsageSnapshotTests {
     @Test
     func `snapshot can find weekly quota by type`() {
         // Given
-        let sessionQuota = UsageQuota(percentRemaining: 65, quotaType: .session, provider: .claude)
-        let weeklyQuota = UsageQuota(percentRemaining: 35, quotaType: .weekly, provider: .claude)
-        let snapshot = UsageSnapshot(provider: .claude, quotas: [sessionQuota, weeklyQuota], capturedAt: Date())
+        let sessionQuota = UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")
+        let weeklyQuota = UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude")
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: [sessionQuota, weeklyQuota], capturedAt: Date())
 
         // When
         let found = snapshot.quota(for: .weekly)
@@ -72,8 +72,8 @@ struct UsageSnapshotTests {
     @Test
     func `snapshot returns nil when quota type not found`() {
         // Given
-        let sessionQuota = UsageQuota(percentRemaining: 65, quotaType: .session, provider: .claude)
-        let snapshot = UsageSnapshot(provider: .claude, quotas: [sessionQuota], capturedAt: Date())
+        let sessionQuota = UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: [sessionQuota], capturedAt: Date())
 
         // When
         let found = snapshot.quota(for: .weekly)
@@ -88,10 +88,10 @@ struct UsageSnapshotTests {
     func `overall status is healthy when all quotas are healthy`() {
         // Given
         let quotas = [
-            UsageQuota(percentRemaining: 80, quotaType: .session, provider: .claude),
-            UsageQuota(percentRemaining: 70, quotaType: .weekly, provider: .claude),
+            UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
+            UsageQuota(percentRemaining: 70, quotaType: .weekly, providerId: "claude"),
         ]
-        let snapshot = UsageSnapshot(provider: .claude, quotas: quotas, capturedAt: Date())
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: quotas, capturedAt: Date())
 
         // When & Then
         #expect(snapshot.overallStatus == .healthy)
@@ -101,10 +101,10 @@ struct UsageSnapshotTests {
     func `overall status reflects worst quota when one is warning`() {
         // Given
         let quotas = [
-            UsageQuota(percentRemaining: 80, quotaType: .session, provider: .claude),
-            UsageQuota(percentRemaining: 35, quotaType: .weekly, provider: .claude),
+            UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
+            UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude"),
         ]
-        let snapshot = UsageSnapshot(provider: .claude, quotas: quotas, capturedAt: Date())
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: quotas, capturedAt: Date())
 
         // When & Then
         #expect(snapshot.overallStatus == .warning)
@@ -114,10 +114,10 @@ struct UsageSnapshotTests {
     func `overall status reflects worst quota when one is critical`() {
         // Given
         let quotas = [
-            UsageQuota(percentRemaining: 80, quotaType: .session, provider: .claude),
-            UsageQuota(percentRemaining: 15, quotaType: .weekly, provider: .claude),
+            UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
+            UsageQuota(percentRemaining: 15, quotaType: .weekly, providerId: "claude"),
         ]
-        let snapshot = UsageSnapshot(provider: .claude, quotas: quotas, capturedAt: Date())
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: quotas, capturedAt: Date())
 
         // When & Then
         #expect(snapshot.overallStatus == .critical)
@@ -127,10 +127,10 @@ struct UsageSnapshotTests {
     func `overall status is depleted when any quota is depleted`() {
         // Given
         let quotas = [
-            UsageQuota(percentRemaining: 80, quotaType: .session, provider: .claude),
-            UsageQuota(percentRemaining: 0, quotaType: .weekly, provider: .claude),
+            UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
+            UsageQuota(percentRemaining: 0, quotaType: .weekly, providerId: "claude"),
         ]
-        let snapshot = UsageSnapshot(provider: .claude, quotas: quotas, capturedAt: Date())
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: quotas, capturedAt: Date())
 
         // When & Then
         #expect(snapshot.overallStatus == .depleted)
@@ -142,7 +142,7 @@ struct UsageSnapshotTests {
     func `snapshot knows how old it is`() {
         // Given
         let capturedAt = Date().addingTimeInterval(-120) // 2 minutes ago
-        let snapshot = UsageSnapshot(provider: .claude, quotas: [], capturedAt: capturedAt)
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: [], capturedAt: capturedAt)
 
         // When
         let ageInSeconds = snapshot.age
@@ -155,7 +155,7 @@ struct UsageSnapshotTests {
     func `snapshot is stale after 5 minutes`() {
         // Given
         let capturedAt = Date().addingTimeInterval(-360) // 6 minutes ago
-        let snapshot = UsageSnapshot(provider: .claude, quotas: [], capturedAt: capturedAt)
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: [], capturedAt: capturedAt)
 
         // When & Then
         #expect(snapshot.isStale == true)
@@ -165,7 +165,7 @@ struct UsageSnapshotTests {
     func `snapshot is fresh within 5 minutes`() {
         // Given
         let capturedAt = Date().addingTimeInterval(-60) // 1 minute ago
-        let snapshot = UsageSnapshot(provider: .claude, quotas: [], capturedAt: capturedAt)
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: [], capturedAt: capturedAt)
 
         // When & Then
         #expect(snapshot.isStale == false)
@@ -177,11 +177,11 @@ struct UsageSnapshotTests {
     func `snapshot finds the quota with lowest percentage`() {
         // Given
         let quotas = [
-            UsageQuota(percentRemaining: 80, quotaType: .session, provider: .claude),
-            UsageQuota(percentRemaining: 25, quotaType: .weekly, provider: .claude),
-            UsageQuota(percentRemaining: 60, quotaType: .modelSpecific("opus"), provider: .claude),
+            UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
+            UsageQuota(percentRemaining: 25, quotaType: .weekly, providerId: "claude"),
+            UsageQuota(percentRemaining: 60, quotaType: .modelSpecific("opus"), providerId: "claude"),
         ]
-        let snapshot = UsageSnapshot(provider: .claude, quotas: quotas, capturedAt: Date())
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: quotas, capturedAt: Date())
 
         // When
         let lowest = snapshot.lowestQuota

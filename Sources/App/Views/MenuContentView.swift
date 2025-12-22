@@ -8,10 +8,15 @@ struct MenuContentView: View {
     let appState: AppState
 
     @Environment(\.colorScheme) private var colorScheme
-    @State private var selectedProvider: AIProvider = .claude
+    @State private var selectedProviderId: String = "claude"
     @State private var isHoveringRefresh = false
     @State private var animateIn = false
-    @State private var refreshingProviders: Set<AIProvider> = []
+    @State private var refreshingProviders: Set<String> = []
+
+    /// The currently selected provider
+    private var selectedProvider: (any AIProvider)? {
+        appState.providers.first { $0.id == selectedProviderId }
+    }
 
     var body: some View {
         ZStack {
@@ -54,15 +59,15 @@ struct MenuContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .task {
             // Auto-refresh active provider when menu opens
-            await refresh(provider: selectedProvider)
+            await refresh(providerId: selectedProviderId)
             withAnimation(.easeOut(duration: 0.6)) {
                 animateIn = true
             }
         }
-        .onChange(of: selectedProvider) { _, newProvider in
+        .onChange(of: selectedProviderId) { _, newProviderId in
             // Refresh when user switches provider
             Task {
-                await refresh(provider: newProvider)
+                await refresh(providerId: newProviderId)
             }
         }
     }
@@ -114,8 +119,8 @@ struct MenuContentView: View {
     private var headerView: some View {
         HStack(spacing: 12) {
             // Custom Provider Icon - changes based on selected provider
-            ProviderIconView(provider: selectedProvider, size: 38)
-                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: selectedProvider)
+            ProviderIconView(providerId: selectedProviderId, size: 38)
+                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: selectedProviderId)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("ClaudeBar")
@@ -182,14 +187,15 @@ struct MenuContentView: View {
 
     private var providerPills: some View {
         HStack(spacing: 8) {
-            ForEach(AIProvider.allCases, id: \.self) { provider in
+            ForEach(appState.providers, id: \.id) { provider in
                 ProviderPill(
-                    provider: provider,
-                    isSelected: provider == selectedProvider,
-                    hasData: appState.snapshots[provider] != nil
+                    providerId: provider.id,
+                    providerName: provider.name,
+                    isSelected: provider.id == selectedProviderId,
+                    hasData: provider.snapshot != nil
                 ) {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                        selectedProvider = provider
+                        selectedProviderId = provider.id
                     }
                 }
             }
@@ -203,7 +209,7 @@ struct MenuContentView: View {
 
     @ViewBuilder
     private var metricsContent: some View {
-        if let snapshot = appState.snapshots[selectedProvider] {
+        if let provider = selectedProvider, let snapshot = provider.snapshot {
             VStack(spacing: 12) {
                 // Account info card
                 if let email = snapshot.accountEmail {
@@ -215,7 +221,7 @@ struct MenuContentView: View {
             }
             .opacity(animateIn ? 1 : 0)
             .animation(.easeOut(duration: 0.5).delay(0.2), value: animateIn)
-        } else if appState.isRefreshing {
+        } else if selectedProvider?.isSyncing == true {
             loadingState
         } else {
             emptyState
@@ -227,7 +233,7 @@ struct MenuContentView: View {
             // Avatar circle
             ZStack {
                 Circle()
-                    .fill(selectedProvider.themeGradient(for: colorScheme))
+                    .fill(AppTheme.providerGradient(for: selectedProviderId, scheme: colorScheme))
                     .frame(width: 32, height: 32)
 
                 Text(String(email.prefix(1)).uppercased())
@@ -289,7 +295,7 @@ struct MenuContentView: View {
                     .foregroundStyle(AppTheme.statusWarning(for: colorScheme))
             }
 
-            Text("\(selectedProvider.name) Unavailable")
+            Text("\(selectedProvider?.name ?? selectedProviderId) Unavailable")
                 .font(AppTheme.titleFont(size: 14))
                 .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
 
@@ -310,20 +316,21 @@ struct MenuContentView: View {
             WrappedActionButton(
                 icon: "safari.fill",
                 label: "Dashboard",
-                gradient: selectedProvider.themeGradient(for: colorScheme)
+                gradient: AppTheme.providerGradient(for: selectedProviderId, scheme: colorScheme)
             ) {
-                if let url = selectedProvider.dashboardURL {
+                if let url = selectedProvider?.dashboardURL {
                     NSWorkspace.shared.open(url)
                 }
             }
             .keyboardShortcut("d")
 
             // Refresh Button
+            let isCurrentlyRefreshing = selectedProvider?.isSyncing == true
             WrappedActionButton(
-                icon: appState.isRefreshing ? "arrow.trianglehead.2.counterclockwise.rotate.90" : "arrow.clockwise",
-                label: appState.isRefreshing ? "Syncing" : "Refresh",
+                icon: isCurrentlyRefreshing ? "arrow.trianglehead.2.counterclockwise.rotate.90" : "arrow.clockwise",
+                label: isCurrentlyRefreshing ? "Syncing" : "Refresh",
                 gradient: AppTheme.accentGradient(for: colorScheme),
-                isLoading: appState.isRefreshing
+                isLoading: isCurrentlyRefreshing
             ) {
                 Task { await refresh() }
             }
@@ -357,40 +364,38 @@ struct MenuContentView: View {
 
     /// Refresh the currently selected provider (for button action)
     private func refresh() async {
-        await refresh(provider: selectedProvider)
+        await refresh(providerId: selectedProviderId)
     }
 
-    /// Refresh a specific provider
-    private func refresh(provider: AIProvider) async {
+    /// Refresh a specific provider by ID
+    private func refresh(providerId: String) async {
         // Prevent duplicate refreshes for the same provider
-        guard !refreshingProviders.contains(provider) else { return }
+        guard !refreshingProviders.contains(providerId) else { return }
 
-        refreshingProviders.insert(provider)
-        appState.isRefreshing = true
+        refreshingProviders.insert(providerId)
+
+        // Call the provider's refresh directly (providers are observable)
+        guard let provider = appState.providers.first(where: { $0.id == providerId }) else {
+            refreshingProviders.remove(providerId)
+            return
+        }
 
         do {
-            // Capture provider to avoid race condition when user switches tabs
-            if let snapshot = try await monitor.refresh(provider: provider) {
-                appState.snapshots[provider] = snapshot
-            }
+            try await provider.refresh()
             appState.lastError = nil
         } catch {
             appState.lastError = error.localizedDescription
         }
 
-        refreshingProviders.remove(provider)
-
-        // Only clear global refreshing if no providers are refreshing
-        if refreshingProviders.isEmpty {
-            appState.isRefreshing = false
-        }
+        refreshingProviders.remove(providerId)
     }
 }
 
 // MARK: - Provider Pill
 
 struct ProviderPill: View {
-    let provider: AIProvider
+    let providerId: String
+    let providerName: String
     let isSelected: Bool
     let hasData: Bool
     let action: () -> Void
@@ -404,7 +409,7 @@ struct ProviderPill: View {
                 Image(systemName: providerIcon)
                     .font(.system(size: 12, weight: .semibold))
 
-                Text(provider.name)
+                Text(providerName)
                     .font(AppTheme.bodyFont(size: 12))
             }
             .foregroundStyle(pillForegroundColor)
@@ -414,8 +419,8 @@ struct ProviderPill: View {
                 ZStack {
                     if isSelected {
                         Capsule()
-                            .fill(provider.themeGradient(for: colorScheme))
-                            .shadow(color: provider.themeColor(for: colorScheme).opacity(colorScheme == .dark ? 0.4 : 0.25), radius: 8, y: 2)
+                            .fill(AppTheme.providerGradient(for: providerId, scheme: colorScheme))
+                            .shadow(color: AppTheme.providerColor(for: providerId, scheme: colorScheme).opacity(colorScheme == .dark ? 0.4 : 0.25), radius: 8, y: 2)
                     } else {
                         Capsule()
                             .fill(pillBackgroundColor)
@@ -455,10 +460,11 @@ struct ProviderPill: View {
     }
 
     private var providerIcon: String {
-        switch provider {
-        case .claude: return "brain.fill"
-        case .codex: return "chevron.left.forwardslash.chevron.right"
-        case .gemini: return "sparkles"
+        switch providerId {
+        case "claude": return "brain.fill"
+        case "codex": return "chevron.left.forwardslash.chevron.right"
+        case "gemini": return "sparkles"
+        default: return "questionmark.circle.fill"
         }
     }
 }

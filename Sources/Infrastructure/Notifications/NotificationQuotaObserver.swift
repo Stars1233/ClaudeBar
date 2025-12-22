@@ -30,16 +30,18 @@ public final class NotificationQuotaObserver: QuotaObserverPort, @unchecked Send
         // No notification needed for regular updates
     }
 
-    public func onStatusChanged(provider: AIProvider, oldStatus: QuotaStatus, newStatus: QuotaStatus) async {
+    public func onStatusChanged(providerId: String, oldStatus: QuotaStatus, newStatus: QuotaStatus) async {
         // Only notify on degradation (getting worse)
         guard newStatus > oldStatus else { return }
 
         // Skip if status improved or stayed the same
         guard shouldNotify(for: newStatus) else { return }
 
+        let providerName = providerDisplayName(for: providerId)
+
         let content = UNMutableNotificationContent()
-        content.title = "\(provider.name) Quota Alert"
-        content.body = notificationBody(for: newStatus, provider: provider)
+        content.title = "\(providerName) Quota Alert"
+        content.body = notificationBody(for: newStatus, providerName: providerName)
         content.sound = .default
 
         // Add category for actionable notifications
@@ -59,20 +61,22 @@ public final class NotificationQuotaObserver: QuotaObserverPort, @unchecked Send
         }
     }
 
-    public func onError(_ error: Error, provider: AIProvider) async {
+    public func onError(_ error: Error, providerId: String) async {
         // Optionally notify on persistent errors
         guard let probeError = error as? ProbeError else { return }
+
+        let providerName = providerDisplayName(for: providerId)
 
         // Only notify for authentication issues
         switch probeError {
         case .authenticationRequired:
             let content = UNMutableNotificationContent()
-            content.title = "\(provider.name) Login Required"
-            content.body = "Please log in to \(provider.name) to continue monitoring quotas."
+            content.title = "\(providerName) Login Required"
+            content.body = "Please log in to \(providerName) to continue monitoring quotas."
             content.sound = .default
 
             let request = UNNotificationRequest(
-                identifier: "auth-\(provider.rawValue)",
+                identifier: "auth-\(providerId)",
                 content: content,
                 trigger: nil
             )
@@ -95,16 +99,25 @@ public final class NotificationQuotaObserver: QuotaObserverPort, @unchecked Send
         }
     }
 
-    private func notificationBody(for status: QuotaStatus, provider: AIProvider) -> String {
+    private func providerDisplayName(for providerId: String) -> String {
+        switch providerId {
+        case "claude": return "Claude"
+        case "codex": return "Codex"
+        case "gemini": return "Gemini"
+        default: return providerId.capitalized
+        }
+    }
+
+    private func notificationBody(for status: QuotaStatus, providerName: String) -> String {
         switch status {
         case .warning:
-            return "Your \(provider.name) quota is running low. Consider pacing your usage."
+            return "Your \(providerName) quota is running low. Consider pacing your usage."
         case .critical:
-            return "Your \(provider.name) quota is critically low! Save important work."
+            return "Your \(providerName) quota is critically low! Save important work."
         case .depleted:
-            return "Your \(provider.name) quota is depleted. Usage may be blocked."
+            return "Your \(providerName) quota is depleted. Usage may be blocked."
         case .healthy:
-            return "Your \(provider.name) quota has recovered."
+            return "Your \(providerName) quota has recovered."
         }
     }
 }

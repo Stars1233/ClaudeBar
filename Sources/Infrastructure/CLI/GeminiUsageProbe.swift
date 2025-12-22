@@ -6,9 +6,7 @@ private let logger = Logger(subsystem: "com.claudebar", category: "GeminiProbe")
 
 /// Infrastructure adapter that probes the Gemini API to fetch usage quotas.
 /// Uses OAuth credentials stored by the Gemini CLI, with CLI fallback.
-public struct GeminiUsageProbe: UsageProbePort {
-    public let provider: AIProvider = .gemini
-
+public struct GeminiUsageProbe: UsageProbe {
     private let homeDirectory: String
     private let timeout: TimeInterval
     private let networkClient: any NetworkClient

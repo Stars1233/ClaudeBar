@@ -36,7 +36,7 @@ struct UsageQuotaTests {
         let quota = UsageQuota(
             percentRemaining: 35,
             quotaType: .weekly,
-            provider: .claude,
+            providerId: "claude",
             resetsAt: resetDate
         )
 
@@ -81,7 +81,7 @@ struct UsageQuotaTests {
     @Test
     func `quota with more than 50 percent remaining is healthy`() {
         // Given
-        let quota = UsageQuota(percentRemaining: 65, quotaType: .session, provider: .claude)
+        let quota = UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")
 
         // When & Then
         #expect(quota.status == .healthy)
@@ -90,7 +90,7 @@ struct UsageQuotaTests {
     @Test
     func `quota between 20 and 50 percent remaining shows warning`() {
         // Given
-        let quota = UsageQuota(percentRemaining: 35, quotaType: .session, provider: .claude)
+        let quota = UsageQuota(percentRemaining: 35, quotaType: .session, providerId: "claude")
 
         // When & Then
         #expect(quota.status == .warning)
@@ -99,7 +99,7 @@ struct UsageQuotaTests {
     @Test
     func `quota below 20 percent remaining is critical`() {
         // Given
-        let quota = UsageQuota(percentRemaining: 15, quotaType: .session, provider: .claude)
+        let quota = UsageQuota(percentRemaining: 15, quotaType: .session, providerId: "claude")
 
         // When & Then
         #expect(quota.status == .critical)
@@ -108,7 +108,7 @@ struct UsageQuotaTests {
     @Test
     func `quota at zero percent is depleted`() {
         // Given
-        let quota = UsageQuota(percentRemaining: 0, quotaType: .session, provider: .claude)
+        let quota = UsageQuota(percentRemaining: 0, quotaType: .session, providerId: "claude")
 
         // When & Then
         #expect(quota.status == .depleted)
@@ -120,8 +120,8 @@ struct UsageQuotaTests {
     @Test
     func `quotas can be sorted by percentage remaining`() {
         // Given
-        let highQuota = UsageQuota(percentRemaining: 80, quotaType: .session, provider: .claude)
-        let lowQuota = UsageQuota(percentRemaining: 20, quotaType: .session, provider: .claude)
+        let highQuota = UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude")
+        let lowQuota = UsageQuota(percentRemaining: 20, quotaType: .session, providerId: "claude")
 
         // When & Then
         #expect(highQuota > lowQuota)
@@ -131,8 +131,8 @@ struct UsageQuotaTests {
     @Test
     func `quotas with same percentage are equal`() {
         // Given
-        let quota1 = UsageQuota(percentRemaining: 50, quotaType: .session, provider: .claude)
-        let quota2 = UsageQuota(percentRemaining: 50, quotaType: .session, provider: .claude)
+        let quota1 = UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")
+        let quota2 = UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")
 
         // When & Then
         #expect(quota1 == quota2)

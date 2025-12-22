@@ -9,10 +9,10 @@ public protocol QuotaObserverPort: Sendable {
     func onSnapshotUpdated(_ snapshot: UsageSnapshot) async
 
     /// Called when a quota status changes (e.g., from healthy to warning)
-    func onStatusChanged(provider: AIProvider, oldStatus: QuotaStatus, newStatus: QuotaStatus) async
+    func onStatusChanged(providerId: String, oldStatus: QuotaStatus, newStatus: QuotaStatus) async
 
     /// Called when an error occurs during monitoring
-    func onError(_ error: Error, provider: AIProvider) async
+    func onError(_ error: Error, providerId: String) async
 }
 
 /// A no-op observer for when no observer is registered
@@ -20,6 +20,6 @@ public struct NoOpQuotaObserver: QuotaObserverPort {
     public init() {}
 
     public func onSnapshotUpdated(_ snapshot: UsageSnapshot) async {}
-    public func onStatusChanged(provider: AIProvider, oldStatus: QuotaStatus, newStatus: QuotaStatus) async {}
-    public func onError(_ error: Error, provider: AIProvider) async {}
+    public func onStatusChanged(providerId: String, oldStatus: QuotaStatus, newStatus: QuotaStatus) async {}
+    public func onError(_ error: Error, providerId: String) async {}
 }

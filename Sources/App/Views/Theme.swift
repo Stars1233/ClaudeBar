@@ -564,35 +564,39 @@ extension View {
     }
 }
 
-// MARK: - Provider Colors (Adaptive)
+// MARK: - Provider Colors (by ID)
 
-extension AIProvider {
-    func themeColor(for scheme: ColorScheme) -> Color {
-        switch self {
-        case .claude:
-            AppTheme.coralAccent(for: scheme)
-        case .codex:
-            AppTheme.tealBright(for: scheme)
-        case .gemini:
-            AppTheme.goldenGlow(for: scheme)
+extension AppTheme {
+    /// Get provider theme color by ID
+    static func providerColor(for providerId: String, scheme: ColorScheme) -> Color {
+        switch providerId {
+        case "claude":
+            coralAccent(for: scheme)
+        case "codex":
+            tealBright(for: scheme)
+        case "gemini":
+            goldenGlow(for: scheme)
+        default:
+            purpleVibrant(for: scheme)
         }
     }
 
-    func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        switch self {
-        case .claude:
+    /// Get provider gradient by ID
+    static func providerGradient(for providerId: String, scheme: ColorScheme) -> LinearGradient {
+        switch providerId {
+        case "claude":
             LinearGradient(
                 colors: [
-                    AppTheme.coralAccent(for: scheme),
-                    AppTheme.pinkHot(for: scheme)
+                    coralAccent(for: scheme),
+                    pinkHot(for: scheme)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-        case .codex:
+        case "codex":
             LinearGradient(
                 colors: [
-                    AppTheme.tealBright(for: scheme),
+                    tealBright(for: scheme),
                     scheme == .dark
                         ? Color(red: 0.25, green: 0.65, blue: 0.85)
                         : Color(red: 0.12, green: 0.52, blue: 0.72)
@@ -600,10 +604,10 @@ extension AIProvider {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-        case .gemini:
+        case "gemini":
             LinearGradient(
                 colors: [
-                    AppTheme.goldenGlow(for: scheme),
+                    goldenGlow(for: scheme),
                     scheme == .dark
                         ? Color(red: 0.95, green: 0.55, blue: 0.35)
                         : Color(red: 0.85, green: 0.45, blue: 0.25)
@@ -611,53 +615,18 @@ extension AIProvider {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
+        default:
+            accentGradient(for: scheme)
         }
     }
 
-    // Legacy static properties (backward compatibility)
-    var themeColor: Color {
-        switch self {
-        case .claude:
-            AppTheme.coralAccent
-        case .codex:
-            AppTheme.tealBright
-        case .gemini:
-            AppTheme.goldenGlow
-        }
-    }
-
-    var themeGradient: LinearGradient {
-        switch self {
-        case .claude:
-            LinearGradient(
-                colors: [AppTheme.coralAccent, AppTheme.pinkHot],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        case .codex:
-            LinearGradient(
-                colors: [AppTheme.tealBright, Color(red: 0.25, green: 0.65, blue: 0.85)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        case .gemini:
-            LinearGradient(
-                colors: [AppTheme.goldenGlow, Color(red: 0.95, green: 0.55, blue: 0.35)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-    }
-
-    /// Icon displayed in the header - larger, more prominent
-    var headerIcon: String {
-        switch self {
-        case .claude:
-            "brain.head.profile.fill"
-        case .codex:
-            "terminal.fill"
-        case .gemini:
-            "sparkles"
+    /// Get provider icon asset name by ID
+    static func providerIconAssetName(for providerId: String) -> String {
+        switch providerId {
+        case "claude": "ClaudeIcon"
+        case "codex": "CodexIcon"
+        case "gemini": "GeminiIcon"
+        default: "QuestionIcon"
         }
     }
 }

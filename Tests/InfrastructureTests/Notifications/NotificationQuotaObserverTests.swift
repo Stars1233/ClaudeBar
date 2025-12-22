@@ -62,11 +62,12 @@ struct NotificationQuotaObserverTests {
 
     @Test
     func `notification title includes provider name`() {
-        // Given
-        let provider = AIProvider.claude
+        // Given - using provider ID and display name
+        let providerId = "claude"
+        let providerName = "Claude"
 
         // When - Building notification content
-        let expectedTitle = "\(provider.name) Quota Alert"
+        let expectedTitle = "\(providerName) Quota Alert"
 
         // Then
         #expect(expectedTitle == "Claude Quota Alert")
@@ -74,8 +75,8 @@ struct NotificationQuotaObserverTests {
 
     @Test
     func `notification body describes warning status`() {
-        let provider = AIProvider.codex
-        let expectedBody = "Your \(provider.name) quota is running low. Consider pacing your usage."
+        let providerName = "Codex"
+        let expectedBody = "Your \(providerName) quota is running low. Consider pacing your usage."
 
         #expect(expectedBody.contains("Codex"))
         #expect(expectedBody.contains("running low"))
@@ -83,8 +84,8 @@ struct NotificationQuotaObserverTests {
 
     @Test
     func `notification body describes critical status`() {
-        let provider = AIProvider.gemini
-        let expectedBody = "Your \(provider.name) quota is critically low! Save important work."
+        let providerName = "Gemini"
+        let expectedBody = "Your \(providerName) quota is critically low! Save important work."
 
         #expect(expectedBody.contains("Gemini"))
         #expect(expectedBody.contains("critically low"))
@@ -92,8 +93,8 @@ struct NotificationQuotaObserverTests {
 
     @Test
     func `notification body describes depleted status`() {
-        let provider = AIProvider.claude
-        let expectedBody = "Your \(provider.name) quota is depleted. Usage may be blocked."
+        let providerName = "Claude"
+        let expectedBody = "Your \(providerName) quota is depleted. Usage may be blocked."
 
         #expect(expectedBody.contains("Claude"))
         #expect(expectedBody.contains("depleted"))

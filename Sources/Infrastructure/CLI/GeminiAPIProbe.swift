@@ -120,7 +120,7 @@ internal struct GeminiAPIProbe {
                 UsageQuota(
                     percentRemaining: data.fraction * 100,
                     quotaType: .modelSpecific(modelId),
-                    provider: .gemini,
+                    providerId: "gemini",
                     resetText: data.resetTime.map { "Resets \($0)" }
                 )
             }
@@ -130,7 +130,7 @@ internal struct GeminiAPIProbe {
         }
 
         return UsageSnapshot(
-            provider: .gemini,
+            providerId: "gemini",
             quotas: quotas,
             capturedAt: Date()
         )

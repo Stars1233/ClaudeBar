@@ -44,7 +44,7 @@ struct GeminiUsageProbeParsingTests {
 
         // Then
         #expect(snapshot.quotas.count == 4)
-        #expect(snapshot.provider == .gemini)
+        #expect(snapshot.providerId == "gemini")
     }
 
     @Test

@@ -6,9 +6,7 @@ private let logger = Logger(subsystem: "com.claudebar", category: "CodexProbe")
 
 /// Infrastructure adapter that probes the Codex CLI to fetch usage quotas.
 /// Uses JSON-RPC via `codex app-server` for reliable data fetching.
-public struct CodexUsageProbe: UsageProbePort {
-    public let provider: AIProvider = .codex
-
+public struct CodexUsageProbe: UsageProbe {
     private let codexBinary: String
     private let timeout: TimeInterval
 
@@ -56,7 +54,7 @@ public struct CodexUsageProbe: UsageProbePort {
             quotas.append(UsageQuota(
                 percentRemaining: max(0, 100 - primary.usedPercent),
                 quotaType: .session,
-                provider: .codex,
+                providerId: "codex",
                 resetText: primary.resetDescription
             ))
         }
@@ -65,7 +63,7 @@ public struct CodexUsageProbe: UsageProbePort {
             quotas.append(UsageQuota(
                 percentRemaining: max(0, 100 - secondary.usedPercent),
                 quotaType: .weekly,
-                provider: .codex,
+                providerId: "codex",
                 resetText: secondary.resetDescription
             ))
         }
@@ -75,7 +73,7 @@ public struct CodexUsageProbe: UsageProbePort {
         }
 
         return UsageSnapshot(
-            provider: .codex,
+            providerId: "codex",
             quotas: quotas,
             capturedAt: Date()
         )
@@ -125,7 +123,7 @@ public struct CodexUsageProbe: UsageProbePort {
             quotas.append(UsageQuota(
                 percentRemaining: Double(fiveHourPct),
                 quotaType: .session,
-                provider: .codex
+                providerId: "codex"
             ))
         }
 
@@ -133,7 +131,7 @@ public struct CodexUsageProbe: UsageProbePort {
             quotas.append(UsageQuota(
                 percentRemaining: Double(weeklyPct),
                 quotaType: .weekly,
-                provider: .codex
+                providerId: "codex"
             ))
         }
 
@@ -142,7 +140,7 @@ public struct CodexUsageProbe: UsageProbePort {
         }
 
         return UsageSnapshot(
-            provider: .codex,
+            providerId: "codex",
             quotas: quotas,
             capturedAt: Date()
         )

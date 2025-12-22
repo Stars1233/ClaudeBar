@@ -9,26 +9,26 @@ import Domain
 #Preview("Provider Icons") {
     HStack(spacing: 40) {
         VStack(spacing: 8) {
-            ProviderIconView(provider: .claude, size: 32)
+            ProviderIconView(providerId: "claude", size: 32)
             Text("Claude")
                 .font(.caption)
                 .foregroundStyle(.white)
         }
         VStack(spacing: 8) {
-            ProviderIconView(provider: .codex, size: 32)
+            ProviderIconView(providerId: "codex", size: 32)
             Text("Codex")
                 .font(.caption)
                 .foregroundStyle(.white)
         }
         VStack(spacing: 8) {
-            ProviderIconView(provider: .gemini, size: 32)
+            ProviderIconView(providerId: "gemini", size: 32)
             Text("Gemini")
                 .font(.caption)
                 .foregroundStyle(.white)
         }
     }
     .padding(40)
-    .background(AppTheme.backgroundGradient)
+    .background(AppTheme.backgroundGradient(for: .dark))
 }
 
 // MARK: - Provider Pills Preview
@@ -37,20 +37,20 @@ import Domain
     VStack(spacing: 20) {
         // Selected states
         HStack(spacing: 8) {
-            ProviderPill(provider: .claude, isSelected: true, hasData: true) {}
-            ProviderPill(provider: .codex, isSelected: false, hasData: true) {}
-            ProviderPill(provider: .gemini, isSelected: false, hasData: false) {}
+            ProviderPill(providerId: "claude", providerName: "Claude", isSelected: true, hasData: true) {}
+            ProviderPill(providerId: "codex", providerName: "Codex", isSelected: false, hasData: true) {}
+            ProviderPill(providerId: "gemini", providerName: "Gemini", isSelected: false, hasData: false) {}
         }
 
         // Different selection
         HStack(spacing: 8) {
-            ProviderPill(provider: .claude, isSelected: false, hasData: true) {}
-            ProviderPill(provider: .codex, isSelected: true, hasData: true) {}
-            ProviderPill(provider: .gemini, isSelected: false, hasData: true) {}
+            ProviderPill(providerId: "claude", providerName: "Claude", isSelected: false, hasData: true) {}
+            ProviderPill(providerId: "codex", providerName: "Codex", isSelected: true, hasData: true) {}
+            ProviderPill(providerId: "gemini", providerName: "Gemini", isSelected: false, hasData: true) {}
         }
     }
     .padding(40)
-    .background(AppTheme.backgroundGradient)
+    .background(AppTheme.backgroundGradient(for: .dark))
 }
 
 // MARK: - Stat Cards Preview
@@ -59,50 +59,50 @@ import Domain
     let healthyQuota = UsageQuota(
         percentRemaining: 85,
         quotaType: .session,
-        provider: .claude,
+        providerId: "claude",
         resetText: "Resets 11am"
     )
 
-    return WrappedStatCard(quota: healthyQuota, delay: 0)
+    WrappedStatCard(quota: healthyQuota, delay: 0)
         .frame(width: 160)
         .padding(20)
-        .background(AppTheme.backgroundGradient)
+        .background(AppTheme.backgroundGradient(for: .dark))
 }
 
 #Preview("Stat Cards - Warning") {
     let warningQuota = UsageQuota(
         percentRemaining: 35,
         quotaType: .weekly,
-        provider: .claude,
+        providerId: "claude",
         resetText: "Resets Dec 25"
     )
 
-    return WrappedStatCard(quota: warningQuota, delay: 0)
+    WrappedStatCard(quota: warningQuota, delay: 0)
         .frame(width: 160)
         .padding(20)
-        .background(AppTheme.backgroundGradient)
+        .background(AppTheme.backgroundGradient(for: .dark))
 }
 
 #Preview("Stat Cards - Critical") {
     let criticalQuota = UsageQuota(
         percentRemaining: 12,
         quotaType: .modelSpecific("Opus"),
-        provider: .claude,
+        providerId: "claude",
         resetText: "Resets in 2h"
     )
 
     WrappedStatCard(quota: criticalQuota, delay: 0)
         .frame(width: 160)
         .padding(20)
-        .background(AppTheme.backgroundGradient)
+        .background(AppTheme.backgroundGradient(for: .dark))
 }
 
 #Preview("Stat Cards Grid") {
     let quotas = [
-        UsageQuota(percentRemaining: 94, quotaType: .session, provider: .claude, resetText: "Resets 11am"),
-        UsageQuota(percentRemaining: 33, quotaType: .weekly, provider: .claude, resetText: "Resets Dec 25"),
-        UsageQuota(percentRemaining: 99, quotaType: .modelSpecific("Opus"), provider: .claude, resetText: "Resets Dec 25"),
-        UsageQuota(percentRemaining: 5, quotaType: .modelSpecific("Sonnet"), provider: .claude, resetText: "Resets in 1h"),
+        UsageQuota(percentRemaining: 94, quotaType: .session, providerId: "claude", resetText: "Resets 11am"),
+        UsageQuota(percentRemaining: 33, quotaType: .weekly, providerId: "claude", resetText: "Resets Dec 25"),
+        UsageQuota(percentRemaining: 99, quotaType: .modelSpecific("Opus"), providerId: "claude", resetText: "Resets Dec 25"),
+        UsageQuota(percentRemaining: 5, quotaType: .modelSpecific("Sonnet"), providerId: "claude", resetText: "Resets in 1h"),
     ]
 
     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
@@ -112,7 +112,7 @@ import Domain
     }
     .padding(20)
     .frame(width: 360)
-    .background(AppTheme.backgroundGradient)
+    .background(AppTheme.backgroundGradient(for: .dark))
 }
 
 // MARK: - Status Badges Preview
@@ -120,14 +120,14 @@ import Domain
 #Preview("Status Badges") {
     VStack(spacing: 16) {
         HStack(spacing: 12) {
-            Text("HEALTHY").badge(AppTheme.statusHealthy)
-            Text("WARNING").badge(AppTheme.statusWarning)
-            Text("LOW").badge(AppTheme.statusCritical)
-            Text("EMPTY").badge(AppTheme.statusDepleted)
+            Text("HEALTHY").badge(AppTheme.statusHealthy(for: .dark))
+            Text("WARNING").badge(AppTheme.statusWarning(for: .dark))
+            Text("LOW").badge(AppTheme.statusCritical(for: .dark))
+            Text("EMPTY").badge(AppTheme.statusDepleted(for: .dark))
         }
     }
     .padding(40)
-    .background(AppTheme.backgroundGradient)
+    .background(AppTheme.backgroundGradient(for: .dark))
 }
 
 // MARK: - Action Buttons Preview
@@ -137,24 +137,24 @@ import Domain
         WrappedActionButton(
             icon: "safari.fill",
             label: "Dashboard",
-            gradient: AIProvider.claude.themeGradient
+            gradient: AppTheme.providerGradient(for: "claude", scheme: .dark)
         ) {}
 
         WrappedActionButton(
             icon: "arrow.clockwise",
             label: "Refresh",
-            gradient: AppTheme.accentGradient
+            gradient: AppTheme.accentGradient(for: .dark)
         ) {}
 
         WrappedActionButton(
             icon: "arrow.clockwise",
             label: "Syncing",
-            gradient: AppTheme.accentGradient,
+            gradient: AppTheme.accentGradient(for: .dark),
             isLoading: true
         ) {}
     }
     .padding(40)
-    .background(AppTheme.backgroundGradient)
+    .background(AppTheme.backgroundGradient(for: .dark))
 }
 
 // MARK: - Loading Spinner Preview
@@ -162,7 +162,7 @@ import Domain
 #Preview("Loading Spinner") {
     LoadingSpinnerView()
         .frame(width: 300)
-        .background(AppTheme.backgroundGradient)
+        .background(AppTheme.backgroundGradient(for: .dark))
 }
 
 // MARK: - Glass Card Preview
@@ -187,7 +187,7 @@ import Domain
     }
     .padding(40)
     .frame(width: 300)
-    .background(AppTheme.backgroundGradient)
+    .background(AppTheme.backgroundGradient(for: .dark))
 }
 
 // MARK: - Theme Colors Preview
@@ -200,15 +200,15 @@ import Domain
 
         HStack(spacing: 20) {
             VStack {
-                Circle().fill(AIProvider.claude.themeColor).frame(width: 40, height: 40)
+                Circle().fill(AppTheme.providerColor(for: "claude", scheme: .dark)).frame(width: 40, height: 40)
                 Text("Claude").font(.caption).foregroundStyle(.white)
             }
             VStack {
-                Circle().fill(AIProvider.codex.themeColor).frame(width: 40, height: 40)
+                Circle().fill(AppTheme.providerColor(for: "codex", scheme: .dark)).frame(width: 40, height: 40)
                 Text("Codex").font(.caption).foregroundStyle(.white)
             }
             VStack {
-                Circle().fill(AIProvider.gemini.themeColor).frame(width: 40, height: 40)
+                Circle().fill(AppTheme.providerColor(for: "gemini", scheme: .dark)).frame(width: 40, height: 40)
                 Text("Gemini").font(.caption).foregroundStyle(.white)
             }
         }
@@ -219,25 +219,25 @@ import Domain
 
         HStack(spacing: 20) {
             VStack {
-                Circle().fill(AppTheme.statusHealthy).frame(width: 40, height: 40)
+                Circle().fill(AppTheme.statusHealthy(for: .dark)).frame(width: 40, height: 40)
                 Text("Healthy").font(.caption).foregroundStyle(.white)
             }
             VStack {
-                Circle().fill(AppTheme.statusWarning).frame(width: 40, height: 40)
+                Circle().fill(AppTheme.statusWarning(for: .dark)).frame(width: 40, height: 40)
                 Text("Warning").font(.caption).foregroundStyle(.white)
             }
             VStack {
-                Circle().fill(AppTheme.statusCritical).frame(width: 40, height: 40)
+                Circle().fill(AppTheme.statusCritical(for: .dark)).frame(width: 40, height: 40)
                 Text("Critical").font(.caption).foregroundStyle(.white)
             }
             VStack {
-                Circle().fill(AppTheme.statusDepleted).frame(width: 40, height: 40)
+                Circle().fill(AppTheme.statusDepleted(for: .dark)).frame(width: 40, height: 40)
                 Text("Depleted").font(.caption).foregroundStyle(.white)
             }
         }
     }
     .padding(40)
-    .background(AppTheme.backgroundGradient)
+    .background(AppTheme.backgroundGradient(for: .dark))
 }
 
 // MARK: - Full Header Preview
@@ -246,7 +246,7 @@ import Domain
     VStack(spacing: 16) {
         // Header mock
         HStack(spacing: 12) {
-            ProviderIconView(provider: .claude, size: 24)
+            ProviderIconView(providerId: "claude", size: 24)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("ClaudeBar")
@@ -263,7 +263,7 @@ import Domain
             // Status badge
             HStack(spacing: 6) {
                 Circle()
-                    .fill(AppTheme.statusHealthy)
+                    .fill(AppTheme.statusHealthy(for: .dark))
                     .frame(width: 8, height: 8)
                 Text("HEALTHY")
                     .font(AppTheme.captionFont(size: 11))
@@ -273,19 +273,19 @@ import Domain
             .padding(.vertical, 6)
             .background(
                 Capsule()
-                    .fill(AppTheme.statusHealthy.opacity(0.25))
+                    .fill(AppTheme.statusHealthy(for: .dark).opacity(0.25))
             )
         }
         .padding(.horizontal, 16)
 
         // Provider pills
         HStack(spacing: 8) {
-            ProviderPill(provider: .claude, isSelected: true, hasData: true) {}
-            ProviderPill(provider: .codex, isSelected: false, hasData: true) {}
-            ProviderPill(provider: .gemini, isSelected: false, hasData: false) {}
+            ProviderPill(providerId: "claude", providerName: "Claude", isSelected: true, hasData: true) {}
+            ProviderPill(providerId: "codex", providerName: "Codex", isSelected: false, hasData: true) {}
+            ProviderPill(providerId: "gemini", providerName: "Gemini", isSelected: false, hasData: false) {}
         }
     }
     .padding(.vertical, 20)
     .frame(width: 380)
-    .background(AppTheme.backgroundGradient)
+    .background(AppTheme.backgroundGradient(for: .dark))
 }

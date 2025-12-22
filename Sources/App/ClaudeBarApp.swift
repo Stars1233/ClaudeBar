@@ -5,16 +5,20 @@ import Infrastructure
 /// Shared app state observable by all views
 @Observable
 final class AppState {
-    /// Current snapshots by provider
-    var snapshots: [AIProvider: UsageSnapshot] = [:]
+    /// The registered providers (rich domain models)
+    var providers: [any AIProvider] = []
 
     /// The overall status across all providers
     var overallStatus: QuotaStatus {
-        snapshots.values.map(\.overallStatus).max() ?? .healthy
+        providers
+            .compactMap(\.snapshot?.overallStatus)
+            .max() ?? .healthy
     }
 
-    /// Whether a refresh is in progress
-    var isRefreshing: Bool = false
+    /// Whether any provider is currently refreshing
+    var isRefreshing: Bool {
+        providers.contains { $0.isSyncing }
+    }
 
     /// Last error message, if any
     var lastError: String?
@@ -32,16 +36,26 @@ struct ClaudeBarApp: App {
     private let notificationObserver = NotificationQuotaObserver()
 
     init() {
-        // Create probes for each provider
-        let probes: [any UsageProbePort] = [
-            ClaudeUsageProbe(),
-            CodexUsageProbe(),
-            GeminiUsageProbe(),
+        // Create providers with their probes (rich domain models)
+        let providers: [any AIProvider] = [
+            ClaudeProvider(probe: ClaudeUsageProbe()),
+            CodexProvider(probe: CodexUsageProbe()),
+            GeminiProvider(probe: GeminiUsageProbe()),
         ]
+
+        // Register providers for global access
+        AIProviderRegistry.shared.register(providers)
+
+        // Store providers in app state
+        _appState = State(initialValue: {
+            let state = AppState()
+            state.providers = providers
+            return state
+        }())
 
         // Initialize the domain service with notification observer
         _monitor = State(initialValue: QuotaMonitor(
-            probes: probes,
+            providers: providers,
             observer: notificationObserver
         ))
 

@@ -59,7 +59,7 @@ internal struct GeminiCLIProbe {
         }
 
         return UsageSnapshot(
-            provider: .gemini,
+            providerId: "gemini",
             quotas: quotas,
             capturedAt: Date()
         )
@@ -103,7 +103,7 @@ internal struct GeminiCLIProbe {
             quotas.append(UsageQuota(
                 percentRemaining: pct,
                 quotaType: .modelSpecific(modelId),
-                provider: .gemini,
+                providerId: "gemini",
                 resetText: resetText
             ))
         }

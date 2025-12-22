@@ -3,8 +3,8 @@ import Foundation
 /// Represents a point-in-time snapshot of usage quotas for an AI provider.
 /// This is an aggregate root that collects all quota information for a provider.
 public struct UsageSnapshot: Sendable, Equatable {
-    /// The AI provider this snapshot belongs to
-    public let provider: AIProvider
+    /// The provider ID this snapshot belongs to (e.g., "claude", "codex", "gemini")
+    public let providerId: String
 
     /// All quotas captured in this snapshot
     public let quotas: [UsageQuota]
@@ -20,14 +20,14 @@ public struct UsageSnapshot: Sendable, Equatable {
     // MARK: - Initialization
 
     public init(
-        provider: AIProvider,
+        providerId: String,
         quotas: [UsageQuota],
         capturedAt: Date,
         accountEmail: String? = nil,
         accountOrganization: String? = nil,
         loginMethod: String? = nil
     ) {
-        self.provider = provider
+        self.providerId = providerId
         self.quotas = quotas
         self.capturedAt = capturedAt
         self.accountEmail = accountEmail
@@ -101,7 +101,7 @@ public struct UsageSnapshot: Sendable, Equatable {
     // MARK: - Empty Snapshot
 
     /// Creates an empty snapshot for when no data is available
-    public static func empty(for provider: AIProvider) -> UsageSnapshot {
-        UsageSnapshot(provider: provider, quotas: [], capturedAt: Date())
+    public static func empty(for providerId: String) -> UsageSnapshot {
+        UsageSnapshot(providerId: providerId, quotas: [], capturedAt: Date())
     }
 }

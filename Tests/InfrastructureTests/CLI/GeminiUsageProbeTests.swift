@@ -76,7 +76,7 @@ struct GeminiUsageProbeTests {
         // Then
         #expect(snapshot.quotas.count == 1)
         #expect(snapshot.quotas.first?.percentRemaining == 80.0)
-        #expect(snapshot.provider == .gemini)
+        #expect(snapshot.providerId == "gemini")
         
         // Verify API was actually called
         verify(mockService).request(.any).called(2)

@@ -1,24 +1,4 @@
 import Foundation
-import Mockable
-
-/// Port for probing AI provider CLIs to fetch current usage quotas.
-/// This is the primary boundary between domain and infrastructure.
-///
-/// Implementations translate CLI-specific output into domain models.
-@Mockable
-public protocol UsageProbePort: Sendable {
-    /// The AI provider this probe monitors
-    var provider: AIProvider { get }
-
-    /// Probes the CLI and returns the current usage snapshot.
-    /// - Returns: A snapshot containing all available quotas
-    /// - Throws: ProbeError if the CLI cannot be reached or output cannot be parsed
-    func probe() async throws -> UsageSnapshot
-
-    /// Checks if the CLI tool is available on the system.
-    /// - Returns: true if the CLI is installed and accessible
-    func isAvailable() async -> Bool
-}
 
 /// Errors that can occur when probing a CLI
 public enum ProbeError: Error, Equatable, LocalizedError, Sendable {

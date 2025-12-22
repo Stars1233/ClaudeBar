@@ -1,0 +1,59 @@
+import Foundation
+import Observation
+
+/// Gemini AI provider - a rich domain model.
+/// Observable class with its own state (isSyncing, snapshot, error).
+@Observable
+public final class GeminiProvider: AIProvider, @unchecked Sendable {
+    // MARK: - Identity
+
+    public let id: String = "gemini"
+    public let name: String = "Gemini"
+    public let cliCommand: String = "gemini"
+
+    public var dashboardURL: URL? {
+        URL(string: "https://aistudio.google.com")
+    }
+
+    public var statusPageURL: URL? {
+        URL(string: "https://status.cloud.google.com")
+    }
+
+    // MARK: - State (Observable)
+
+    public private(set) var isSyncing: Bool = false
+    public private(set) var snapshot: UsageSnapshot?
+    public private(set) var lastError: Error?
+
+    // MARK: - Internal
+
+    private let probe: any UsageProbe
+
+    // MARK: - Initialization
+
+    public init(probe: any UsageProbe) {
+        self.probe = probe
+    }
+
+    // MARK: - AIProvider Protocol
+
+    public func isAvailable() async -> Bool {
+        await probe.isAvailable()
+    }
+
+    @discardableResult
+    public func refresh() async throws -> UsageSnapshot {
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            let newSnapshot = try await probe.probe()
+            snapshot = newSnapshot
+            lastError = nil
+            return newSnapshot
+        } catch {
+            lastError = error
+            throw error
+        }
+    }
+}

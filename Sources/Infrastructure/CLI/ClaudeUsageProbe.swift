@@ -5,10 +5,8 @@ import os.log
 private let logger = Logger(subsystem: "com.claudebar", category: "ClaudeProbe")
 
 /// Infrastructure adapter that probes the Claude CLI to fetch usage quotas.
-/// Implements the UsageProbePort from the domain layer.
-public struct ClaudeUsageProbe: UsageProbePort {
-    public let provider: AIProvider = .claude
-
+/// Implements the UsageProbe protocol from the domain layer.
+public struct ClaudeUsageProbe: UsageProbe {
     private let claudeBinary: String
     private let timeout: TimeInterval
 
@@ -98,7 +96,7 @@ public struct ClaudeUsageProbe: UsageProbePort {
         quotas.append(UsageQuota(
             percentRemaining: Double(sessionPct),
             quotaType: .session,
-            provider: .claude,
+            providerId: "claude",
             resetsAt: parseResetDate(sessionReset),
             resetText: cleanResetText(sessionReset)
         ))
@@ -107,7 +105,7 @@ public struct ClaudeUsageProbe: UsageProbePort {
             quotas.append(UsageQuota(
                 percentRemaining: Double(weeklyPct),
                 quotaType: .weekly,
-                provider: .claude,
+                providerId: "claude",
                 resetsAt: parseResetDate(weeklyReset),
                 resetText: cleanResetText(weeklyReset)
             ))
@@ -117,14 +115,14 @@ public struct ClaudeUsageProbe: UsageProbePort {
             quotas.append(UsageQuota(
                 percentRemaining: Double(opusPct),
                 quotaType: .modelSpecific("opus"),
-                provider: .claude,
+                providerId: "claude",
                 resetsAt: parseResetDate(weeklyReset),
                 resetText: cleanResetText(weeklyReset)
             ))
         }
 
         return UsageSnapshot(
-            provider: .claude,
+            providerId: "claude",
             quotas: quotas,
             capturedAt: Date(),
             accountEmail: email,

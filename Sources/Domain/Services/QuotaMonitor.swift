@@ -2,26 +2,24 @@ import Foundation
 
 /// Events emitted during continuous monitoring
 public enum MonitoringEvent: Sendable {
-    /// A refresh cycle completed with updated snapshots
-    case refreshed([AIProvider: UsageSnapshot])
-    /// An error occurred during refresh
-    case error(Error)
+    /// A refresh cycle completed
+    case refreshed
+    /// An error occurred during refresh for a provider
+    case error(providerId: String, Error)
 }
 
 /// The main domain service that coordinates quota monitoring across AI providers.
-/// This is the aggregate root for the monitoring bounded context.
+/// Providers are rich domain models that own their own snapshots.
+/// QuotaMonitor coordinates refreshes and notifies observers.
 public actor QuotaMonitor {
-    /// All registered probes
-    private let probes: [any UsageProbePort]
+    /// All registered providers
+    private let providers: [any AIProvider]
 
     /// Observer to notify of updates
     private let observer: any QuotaObserverPort
 
-    /// Current snapshots by provider
-    private var snapshots: [AIProvider: UsageSnapshot] = [:]
-
     /// Previous status for change detection
-    private var previousStatuses: [AIProvider: QuotaStatus] = [:]
+    private var previousStatuses: [String: QuotaStatus] = [:]
 
     /// Current monitoring task
     private var monitoringTask: Task<Void, Never>?
@@ -32,66 +30,47 @@ public actor QuotaMonitor {
     // MARK: - Initialization
 
     public init(
-        probes: [any UsageProbePort],
+        providers: [any AIProvider],
         observer: any QuotaObserverPort = NoOpQuotaObserver()
     ) {
-        self.probes = probes
+        self.providers = providers
         self.observer = observer
     }
 
     // MARK: - Monitoring Operations
 
-    /// Refreshes all registered providers and returns the updated snapshots.
-    /// Providers are refreshed concurrently for efficiency.
-    @discardableResult
-    public func refreshAll() async throws -> [AIProvider: UsageSnapshot] {
-        await withTaskGroup(of: (AIProvider, UsageSnapshot?).self) { group in
-            for probe in probes {
+    /// Refreshes all registered providers concurrently.
+    /// Each provider updates its own snapshot.
+    public func refreshAll() async {
+        await withTaskGroup(of: Void.self) { group in
+            for provider in providers {
                 group.addTask {
-                    await self.refreshProvider(probe)
+                    await self.refreshProvider(provider)
                 }
             }
-
-            var results: [AIProvider: UsageSnapshot] = [:]
-            for await (provider, snapshot) in group {
-                if let snapshot {
-                    results[provider] = snapshot
-                }
-            }
-
-            // Update internal state
-            for (provider, snapshot) in results {
-                await self.updateSnapshot(provider: provider, snapshot: snapshot)
-            }
-
-            return results
         }
     }
 
     /// Refreshes a single provider
-    private func refreshProvider(_ probe: any UsageProbePort) async -> (AIProvider, UsageSnapshot?) {
-        let provider = probe.provider
-
-        guard await probe.isAvailable() else {
-            return (provider, nil)
+    private func refreshProvider(_ provider: any AIProvider) async {
+        guard await provider.isAvailable() else {
+            return
         }
 
         do {
-            let snapshot = try await probe.probe()
-            return (provider, snapshot)
+            let snapshot = try await provider.refresh()
+            await handleSnapshotUpdate(provider: provider, snapshot: snapshot)
         } catch {
-            await observer.onError(error, provider: provider)
-            return (provider, nil)
+            await observer.onError(error, providerId: provider.id)
         }
     }
 
-    /// Updates the internal snapshot and notifies observers of changes
-    private func updateSnapshot(provider: AIProvider, snapshot: UsageSnapshot) async {
-        let previousStatus = previousStatuses[provider] ?? .healthy
+    /// Handles snapshot update and notifies observers of changes
+    private func handleSnapshotUpdate(provider: any AIProvider, snapshot: UsageSnapshot) async {
+        let previousStatus = previousStatuses[provider.id] ?? .healthy
         let newStatus = snapshot.overallStatus
 
-        snapshots[provider] = snapshot
-        previousStatuses[provider] = newStatus
+        previousStatuses[provider.id] = newStatus
 
         // Notify observer of snapshot update
         await observer.onSnapshotUpdated(snapshot)
@@ -99,81 +78,57 @@ public actor QuotaMonitor {
         // Notify if status changed
         if previousStatus != newStatus {
             await observer.onStatusChanged(
-                provider: provider,
+                providerId: provider.id,
                 oldStatus: previousStatus,
                 newStatus: newStatus
             )
         }
     }
 
-    /// Refreshes a single provider by its AIProvider type.
-    /// Useful for loading only the active provider on startup.
-    @discardableResult
-    public func refresh(provider: AIProvider) async throws -> UsageSnapshot? {
-        guard let probe = probes.first(where: { $0.provider == provider }) else {
-            return nil
+    /// Refreshes a single provider by its ID.
+    public func refresh(providerId: String) async {
+        guard let provider = providers.first(where: { $0.id == providerId }) else {
+            return
         }
-
-        let (_, snapshot) = await refreshProvider(probe)
-        if let snapshot {
-            await updateSnapshot(provider: provider, snapshot: snapshot)
-            snapshots[provider] = snapshot
-        }
-        return snapshot
+        await refreshProvider(provider)
     }
 
     /// Refreshes all providers except the specified one.
-    /// Useful for background loading after the active provider is loaded.
-    @discardableResult
-    public func refreshOthers(except provider: AIProvider) async throws -> [AIProvider: UsageSnapshot] {
-        let otherProbes = probes.filter { $0.provider != provider }
+    public func refreshOthers(except providerId: String) async {
+        let otherProviders = providers.filter { $0.id != providerId }
 
-        return await withTaskGroup(of: (AIProvider, UsageSnapshot?).self) { group in
-            for probe in otherProbes {
+        await withTaskGroup(of: Void.self) { group in
+            for provider in otherProviders {
                 group.addTask {
-                    await self.refreshProvider(probe)
+                    await self.refreshProvider(provider)
                 }
             }
-
-            var results: [AIProvider: UsageSnapshot] = [:]
-            for await (provider, snapshot) in group {
-                if let snapshot {
-                    results[provider] = snapshot
-                }
-            }
-
-            // Update internal state
-            for (provider, snapshot) in results {
-                await self.updateSnapshot(provider: provider, snapshot: snapshot)
-            }
-
-            return results
         }
     }
 
     // MARK: - Queries
 
-    /// Returns the current snapshot for a provider, if available
-    public func snapshot(for provider: AIProvider) -> UsageSnapshot? {
-        snapshots[provider]
+    /// Returns the provider with the given ID
+    public func provider(for id: String) -> (any AIProvider)? {
+        providers.first { $0.id == id }
     }
 
-    /// Returns all current snapshots
-    public func allSnapshots() -> [AIProvider: UsageSnapshot] {
-        snapshots
+    /// Returns all providers
+    public var allProviders: [any AIProvider] {
+        providers
     }
 
     /// Returns the lowest quota across all monitored providers
     public func lowestQuota() -> UsageQuota? {
-        snapshots.values
-            .compactMap(\.lowestQuota)
+        providers
+            .compactMap(\.snapshot?.lowestQuota)
             .min()
     }
 
     /// Returns the overall status across all providers (worst status wins)
     public func overallStatus() -> QuotaStatus {
-        snapshots.values
-            .map(\.overallStatus)
+        providers
+            .compactMap(\.snapshot?.overallStatus)
             .max() ?? .healthy
     }
 
@@ -190,12 +145,8 @@ public actor QuotaMonitor {
         return AsyncStream { continuation in
             let task = Task {
                 while !Task.isCancelled {
-                    do {
-                        let results = try await self.refreshAll()
-                        continuation.yield(.refreshed(results))
-                    } catch {
-                        continuation.yield(.error(error))
-                    }
+                    await self.refreshAll()
+                    continuation.yield(.refreshed)
 
                     do {
                         try await Task.sleep(for: interval)

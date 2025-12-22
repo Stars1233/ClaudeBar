@@ -14,7 +14,7 @@ struct ProviderSectionView: View {
                     .fill(snapshot.overallStatus.displayColor)
                     .frame(width: 8, height: 8)
 
-                Text(snapshot.provider.name)
+                Text(providerDisplayName)
                     .font(.headline)
 
                 Spacer()
@@ -55,5 +55,14 @@ struct ProviderSectionView: View {
             GridItem(.flexible(), spacing: 8),
             GridItem(.flexible(), spacing: 8),
         ]
+    }
+
+    private var providerDisplayName: String {
+        switch snapshot.providerId {
+        case "claude": "Claude"
+        case "codex": "Codex"
+        case "gemini": "Gemini"
+        default: snapshot.providerId.capitalized
+        }
     }
 }

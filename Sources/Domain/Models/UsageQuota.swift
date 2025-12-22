@@ -9,8 +9,8 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     /// The type of quota (session, weekly, model-specific)
     public let quotaType: QuotaType
 
-    /// The AI provider this quota belongs to
-    public let provider: AIProvider
+    /// The provider ID this quota belongs to (e.g., "claude", "codex", "gemini")
+    public let providerId: String
 
     /// When this quota will reset (if known)
     public let resetsAt: Date?
@@ -23,13 +23,13 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     public init(
         percentRemaining: Double,
         quotaType: QuotaType,
-        provider: AIProvider,
+        providerId: String,
         resetsAt: Date? = nil,
         resetText: String? = nil
     ) {
         self.percentRemaining = max(0, min(100, percentRemaining))
         self.quotaType = quotaType
-        self.provider = provider
+        self.providerId = providerId
         self.resetsAt = resetsAt
         self.resetText = resetText
     }
