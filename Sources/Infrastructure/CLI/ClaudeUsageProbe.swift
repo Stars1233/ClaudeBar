@@ -4,12 +4,23 @@ import os.log
 
 private let logger = Logger(subsystem: "com.claudebar", category: "ClaudeProbe")
 
+/// Account information from /status command
+struct AccountInfo: Sendable {
+    let accountType: ClaudeAccountType
+    let email: String?
+    let organization: String?
+    let loginMethod: String?
+}
+
 /// Infrastructure adapter that probes the Claude CLI to fetch usage quotas.
 /// Implements the UsageProbe protocol from the domain layer.
-public struct ClaudeUsageProbe: UsageProbe {
+public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
     private let claudeBinary: String
     private let timeout: TimeInterval
     private let cliExecutor: CLIExecutor
+
+    /// Cached account info to avoid repeated /status calls
+    private var cachedAccountInfo: AccountInfo?
 
     public init(
         claudeBinary: String = "claude",
@@ -21,6 +32,12 @@ public struct ClaudeUsageProbe: UsageProbe {
         self.cliExecutor = cliExecutor ?? DefaultCLIExecutor()
     }
 
+    /// Clears the cached account info (useful for testing or forced refresh)
+    public func clearCache() {
+        cachedAccountInfo = nil
+        logger.debug("Account info cache cleared")
+    }
+
     public func isAvailable() async -> Bool {
         cliExecutor.locate(claudeBinary) != nil
     }
@@ -28,7 +45,30 @@ public struct ClaudeUsageProbe: UsageProbe {
     public func probe() async throws -> UsageSnapshot {
         logger.info("Starting Claude probe...")
 
-        // Step 1: Run /status to detect account type
+        // Step 1: Check cache or run /status to detect account type
+        let accountInfo = try await getAccountInfo()
+
+        // Step 2: Run appropriate command based on account type
+        if accountInfo.accountType == .api {
+            logger.info("Using API account path, running /cost command...")
+            return try await probeApiCost(accountInfo: accountInfo)
+        }
+
+        // Step 3: For Max accounts, run /usage command
+        logger.info("Using Max account path, running /usage command...")
+        return try await probeMaxUsage(accountInfo: accountInfo)
+    }
+
+    /// Gets account info from cache or fetches it from /status
+    private func getAccountInfo() async throws -> AccountInfo {
+        // Return cached info if available
+        if let cached = cachedAccountInfo {
+            logger.debug("Using cached account info (type: \(cached.accountType.rawValue))")
+            return cached
+        }
+
+        logger.debug("Fetching account info from /status...")
+
         let statusResult: CLIResult
         do {
             statusResult = try cliExecutor.execute(
@@ -53,19 +93,21 @@ public struct ClaudeUsageProbe: UsageProbe {
         let cleanStatus = stripANSICodes(statusResult.output)
         let accountType = detectAccountType(cleanStatus)
 
-        // Step 2: Run appropriate command based on account type
-        if accountType == .api {
-            logger.info("Detected API account, running /cost command...")
-            return try await probeApiCost(statusOutput: cleanStatus)
-        }
+        // Cache the account info
+        let accountInfo = AccountInfo(
+            accountType: accountType,
+            email: extractEmail(text: cleanStatus),
+            organization: extractOrganization(text: cleanStatus),
+            loginMethod: extractLoginMethod(text: cleanStatus)
+        )
+        cachedAccountInfo = accountInfo
+        logger.info("Cached account info: type=\(accountType.rawValue), email=\(accountInfo.email ?? "nil")")
 
-        // Step 3: For Max accounts, run /usage command
-        logger.info("Detected Max account, running /usage command...")
-        return try await probeMaxUsage(statusOutput: cleanStatus)
+        return accountInfo
     }
 
     /// Probes usage information for Max accounts using /usage command
-    private func probeMaxUsage(statusOutput: String) async throws -> UsageSnapshot {
+    private func probeMaxUsage(accountInfo: AccountInfo) async throws -> UsageSnapshot {
         let usageResult: CLIResult
         do {
             usageResult = try cliExecutor.execute(
@@ -87,7 +129,7 @@ public struct ClaudeUsageProbe: UsageProbe {
 
         logger.debug("Claude /usage output:\n\(usageResult.output)")
 
-        let snapshot = try parseClaudeOutput(usageResult.output, statusOutput: statusOutput)
+        let snapshot = try parseClaudeOutput(usageResult.output, accountInfo: accountInfo)
         logger.info("Claude probe success: \(snapshot.quotas.count) quotas found")
         for quota in snapshot.quotas {
             logger.info("  - \(quota.quotaType.displayName): \(Int(quota.percentRemaining))% remaining")
@@ -97,7 +139,7 @@ public struct ClaudeUsageProbe: UsageProbe {
     }
 
     /// Probes cost information for API accounts using /cost command
-    private func probeApiCost(statusOutput: String) async throws -> UsageSnapshot {
+    private func probeApiCost(accountInfo: AccountInfo) async throws -> UsageSnapshot {
         let costResult: CLIResult
         do {
             costResult = try cliExecutor.execute(
@@ -119,7 +161,7 @@ public struct ClaudeUsageProbe: UsageProbe {
 
         logger.debug("Claude /cost raw output:\n\(costResult.output)")
 
-        let snapshot = try parseCostOutput(costResult.output, statusOutput: statusOutput)
+        let snapshot = try parseCostOutput(costResult.output, accountInfo: accountInfo)
         logger.info("Claude API probe success: cost=\(snapshot.costUsage?.formattedCost ?? "N/A")")
 
         return snapshot
@@ -129,12 +171,19 @@ public struct ClaudeUsageProbe: UsageProbe {
 
     /// Parses Claude CLI output into a UsageSnapshot (for testing)
     public static func parse(_ text: String) throws -> UsageSnapshot {
-        try ClaudeUsageProbe().parseClaudeOutput(text, statusOutput: text)
+        let probe = ClaudeUsageProbe()
+        let clean = probe.stripANSICodes(text)
+        let accountInfo = AccountInfo(
+            accountType: probe.detectAccountType(clean),
+            email: probe.extractEmail(text: clean),
+            organization: probe.extractOrganization(text: clean),
+            loginMethod: probe.extractLoginMethod(text: clean)
+        )
+        return try probe.parseClaudeOutput(text, accountInfo: accountInfo)
     }
 
-    private func parseClaudeOutput(_ text: String, statusOutput: String) throws -> UsageSnapshot {
+    private func parseClaudeOutput(_ text: String, accountInfo: AccountInfo) throws -> UsageSnapshot {
         let clean = stripANSICodes(text)
-        let cleanStatus = stripANSICodes(statusOutput)
 
         // Check for errors first
         if let error = extractUsageError(clean) {
@@ -157,11 +206,6 @@ public struct ClaudeUsageProbe: UsageProbe {
         // Extract reset times
         let sessionReset = extractReset(labelSubstring: "Current session", text: clean)
         let weeklyReset = extractReset(labelSubstring: "Current week", text: clean)
-
-        // Extract account info from /status output
-        let email = extractEmail(text: cleanStatus)
-        let org = extractOrganization(text: cleanStatus)
-        let loginMethod = extractLoginMethod(text: cleanStatus)
 
         // Build quotas
         var quotas: [UsageQuota] = []
@@ -198,9 +242,9 @@ public struct ClaudeUsageProbe: UsageProbe {
             providerId: "claude",
             quotas: quotas,
             capturedAt: Date(),
-            accountEmail: email,
-            accountOrganization: org,
-            loginMethod: loginMethod,
+            accountEmail: accountInfo.email,
+            accountOrganization: accountInfo.organization,
+            loginMethod: accountInfo.loginMethod,
             accountType: .max,
             costUsage: nil
         )
@@ -266,9 +310,8 @@ public struct ClaudeUsageProbe: UsageProbe {
     // MARK: - Cost Parsing
 
     /// Parses /cost command output into a UsageSnapshot with CostUsage
-    internal func parseCostOutput(_ costText: String, statusOutput: String) throws -> UsageSnapshot {
+    internal func parseCostOutput(_ costText: String, accountInfo: AccountInfo) throws -> UsageSnapshot {
         let clean = stripANSICodes(costText)
-        let cleanStatus = stripANSICodes(statusOutput)
 
         // Extract cost data
         guard let totalCost = extractTotalCost(clean) else {
@@ -278,11 +321,6 @@ public struct ClaudeUsageProbe: UsageProbe {
         let apiDuration = extractApiDuration(clean) ?? 0
         let wallDuration = extractWallDuration(clean) ?? 0
         let (linesAdded, linesRemoved) = extractCodeChanges(clean)
-
-        // Extract account info from /status output
-        let email = extractEmail(text: cleanStatus)
-        let org = extractOrganization(text: cleanStatus)
-        let loginMethod = extractLoginMethod(text: cleanStatus)
 
         let costUsage = CostUsage(
             totalCost: totalCost,
@@ -298,9 +336,9 @@ public struct ClaudeUsageProbe: UsageProbe {
             providerId: "claude",
             quotas: [],
             capturedAt: Date(),
-            accountEmail: email,
-            accountOrganization: org,
-            loginMethod: loginMethod,
+            accountEmail: accountInfo.email,
+            accountOrganization: accountInfo.organization,
+            loginMethod: accountInfo.loginMethod,
             accountType: .api,
             costUsage: costUsage
         )
@@ -308,7 +346,15 @@ public struct ClaudeUsageProbe: UsageProbe {
 
     /// Parses /cost command output for testing
     public static func parseCost(_ costText: String, statusOutput: String = "") throws -> UsageSnapshot {
-        try ClaudeUsageProbe().parseCostOutput(costText, statusOutput: statusOutput)
+        let probe = ClaudeUsageProbe()
+        let cleanStatus = probe.stripANSICodes(statusOutput)
+        let accountInfo = AccountInfo(
+            accountType: .api,
+            email: probe.extractEmail(text: cleanStatus),
+            organization: probe.extractOrganization(text: cleanStatus),
+            loginMethod: probe.extractLoginMethod(text: cleanStatus)
+        )
+        return try probe.parseCostOutput(costText, accountInfo: accountInfo)
     }
 
     /// Extracts total cost from /cost output (e.g., "Total cost: $0.55")

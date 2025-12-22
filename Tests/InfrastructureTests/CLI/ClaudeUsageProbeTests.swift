@@ -107,4 +107,156 @@ struct ClaudeUsageProbeTests {
         #expect(url.path.contains("ClaudeBar/Probe"))
         #expect(FileManager.default.fileExists(atPath: url.path))
     }
+
+    // MARK: - Caching Tests
+
+    @Test
+    func `probe caches account info and skips status on second call`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+
+        // First call: /status returns Max account
+        let statusOutput = """
+        Version: 2.0.75
+        Login method: Claude Max Account
+        Email: user@example.com
+        """
+
+        // /usage returns quota data
+        let usageOutput = """
+        Current session
+        ████████████████░░░░ 65% left
+        Resets in 2h 15m
+        """
+
+        // Setup mock to track call count
+        var statusCallCount = 0
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .matching { $0.first == "/status" },
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            sendOnSubstrings: .any
+        ).willProduce { _, _, _, _, _, _ in
+            statusCallCount += 1
+            return CLIResult(output: statusOutput, exitCode: 0)
+        }
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .matching { $0.first == "/usage" },
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            sendOnSubstrings: .any
+        ).willReturn(CLIResult(output: usageOutput, exitCode: 0))
+
+        let probe = ClaudeUsageProbe(cliExecutor: mockExecutor)
+
+        // When - call probe twice
+        _ = try await probe.probe()
+        _ = try await probe.probe()
+
+        // Then - /status should only be called once (cached)
+        #expect(statusCallCount == 1)
+    }
+
+    @Test
+    func `clearCache causes status to be called again`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+
+        let statusOutput = """
+        Version: 2.0.75
+        Login method: Claude Max Account
+        Email: user@example.com
+        """
+
+        let usageOutput = """
+        Current session
+        ████████████████░░░░ 65% left
+        Resets in 2h 15m
+        """
+
+        var statusCallCount = 0
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .matching { $0.first == "/status" },
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            sendOnSubstrings: .any
+        ).willProduce { _, _, _, _, _, _ in
+            statusCallCount += 1
+            return CLIResult(output: statusOutput, exitCode: 0)
+        }
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .matching { $0.first == "/usage" },
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            sendOnSubstrings: .any
+        ).willReturn(CLIResult(output: usageOutput, exitCode: 0))
+
+        let probe = ClaudeUsageProbe(cliExecutor: mockExecutor)
+
+        // When - call probe, clear cache, call probe again
+        _ = try await probe.probe()
+        probe.clearCache()
+        _ = try await probe.probe()
+
+        // Then - /status should be called twice
+        #expect(statusCallCount == 2)
+    }
+
+    @Test
+    func `probe calls cost command for API account`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+
+        let statusOutput = """
+        Version: 2.0.75
+        Login method: Claude API Account
+        Email: user@example.com
+        """
+
+        let costOutput = """
+        Total cost: $1.25
+        Total duration (API): 10m 30.5s
+        Total duration (wall): 1h 15m 0.0s
+        Total code changes: 50 lines added, 10 lines removed
+        """
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .matching { $0.first == "/status" },
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            sendOnSubstrings: .any
+        ).willReturn(CLIResult(output: statusOutput, exitCode: 0))
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .matching { $0.first == "/cost" },
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            sendOnSubstrings: .any
+        ).willReturn(CLIResult(output: costOutput, exitCode: 0))
+
+        let probe = ClaudeUsageProbe(cliExecutor: mockExecutor)
+
+        // When
+        let snapshot = try await probe.probe()
+
+        // Then
+        #expect(snapshot.accountType == .api)
+        #expect(snapshot.costUsage != nil)
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "1.25"))
+        #expect(snapshot.quotas.isEmpty)
+    }
 }

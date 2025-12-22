@@ -248,6 +248,7 @@ struct ClaudeUsageProbeParsingTests {
 
     // MARK: - Account Type Detection
 
+    // /status output for API account (no quota data)
     static let apiAccountOutput = """
     Version: 2.0.75
     Session ID: d248f0a1-f805-4272-9ff8-757dd7c3b83d
@@ -257,6 +258,7 @@ struct ClaudeUsageProbeParsingTests {
     Email: user@example.com
     """
 
+    // /status output for Max account (no quota data)
     static let maxAccountOutput = """
     Version: 2.0.75
     Session ID: d248f0a1-f805-4272-9ff8-757dd7c3b83d
@@ -264,10 +266,6 @@ struct ClaudeUsageProbeParsingTests {
     Login method: Claude Max Account
     Organization: User's Organization
     Email: user@example.com
-
-    Current session
-    ████████████████░░░░ 65% left
-    Resets in 2h 15m
     """
 
     @Test
