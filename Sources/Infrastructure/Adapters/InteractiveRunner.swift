@@ -219,6 +219,8 @@ public struct InteractiveRunner: Sendable {
     ) throws -> Data {
         let deadline = Date().addingTimeInterval(options.timeout)
         var buffer = Data()
+        var lastDataTime = Date()
+        let idleTimeout: TimeInterval = 2.0  // Exit if no new data for 2 seconds
 
         let promptResponses = options.autoResponses.map {
             (prompt: Data($0.key.utf8), response: Data($0.value.utf8))
@@ -226,17 +228,32 @@ public struct InteractiveRunner: Sendable {
         var respondedPrompts = Set<Data>()
 
         while Date() < deadline {
+            let previousSize = buffer.count
             readAvailableData(from: fd, into: &buffer)
+
+            // Track when we last received data
+            if buffer.count > previousSize {
+                lastDataTime = Date()
+            }
 
             // Auto-respond to any recognized prompts
             for item in promptResponses where !respondedPrompts.contains(item.prompt) {
                 if buffer.range(of: item.prompt) != nil {
                     try? handle.write(contentsOf: item.response)
                     respondedPrompts.insert(item.prompt)
+                    lastDataTime = Date()  // Reset idle timer after responding
                 }
             }
 
+            // Exit if process stopped
             if !process.isRunning { break }
+
+            // Exit if we have output and haven't received new data for a while
+            // This handles cases where process.isRunning doesn't update promptly
+            if !buffer.isEmpty && Date().timeIntervalSince(lastDataTime) > idleTimeout {
+                break
+            }
+
             usleep(60000)
         }
 
