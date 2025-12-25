@@ -429,6 +429,7 @@ jobs:
 
           # Generate appcast.xml
           PUB_DATE=$(date -R)
+          BUILD_NUMBER=$(git rev-list --count HEAD)
           mkdir -p docs
 
           cat > docs/appcast.xml << EOF
@@ -442,9 +443,14 @@ jobs:
               <item>
                 <title>Version ${VERSION}</title>
                 <pubDate>${PUB_DATE}</pubDate>
-                <sparkle:version>${VERSION}</sparkle:version>
+                <sparkle:version>${BUILD_NUMBER}</sparkle:version>
                 <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
                 <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+                <description><![CDATA[
+                  <h2>What's New in ${VERSION}</h2>
+                  <p>Bug fixes and improvements.</p>
+                  <p>See <a href="https://github.com/tddworks/ClaudeBar/releases/tag/v${VERSION}">release notes</a> for details.</p>
+                ]]></description>
                 <enclosure
                   url="${DOWNLOAD_URL}"
                   sparkle:edSignature="${ED_SIGNATURE}"

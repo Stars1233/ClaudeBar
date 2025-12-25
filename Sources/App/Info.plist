@@ -38,7 +38,5 @@
     <true/>
     <key>SUAutomaticallyUpdate</key>
     <false/>
-    <key>SUBundleVersionKey</key>
-    <string>CFBundleShortVersionString</string>
 </dict>
 </plist>
