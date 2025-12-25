@@ -14,21 +14,59 @@ PUB_DATE=$(date -R)
 
 mkdir -p docs
 
-# Convert markdown to simple HTML
-# Replace **text** with <strong>text</strong>
-# Replace - item with <li>item</li>
-# Replace ### heading with <h4>heading</h4>
-HTML_NOTES=$(echo "$RELEASE_NOTES" | \
-    sed 's/\*\*\([^*]*\)\*\*/<strong>\1<\/strong>/g' | \
-    sed 's/^- \(.*\)/<li>\1<\/li>/g' | \
-    sed 's/^### \(.*\)/<h4>\1<\/h4>/g' | \
-    tr '\n' ' ' | \
-    sed 's/<\/li> <li>/<\/li><li>/g')
+# Convert markdown to clean HTML for Sparkle
+# Process line by line for proper list handling
+convert_to_html() {
+    local in_list=false
+    local result=""
 
-# Wrap list items in <ul> if present
-if echo "$HTML_NOTES" | grep -q '<li>'; then
-    HTML_NOTES=$(echo "$HTML_NOTES" | sed 's/<li>/<ul><li>/;s/<\/li>\([^<]*\)$/<\/li><\/ul>\1/')
-fi
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Skip empty lines
+        if [[ -z "$line" ]]; then
+            if $in_list; then
+                result+="</ul>"
+                in_list=false
+            fi
+            continue
+        fi
+
+        # Handle ### Heading
+        if [[ "$line" =~ ^###[[:space:]]+(.*) ]]; then
+            if $in_list; then
+                result+="</ul>"
+                in_list=false
+            fi
+            result+="<h3>${BASH_REMATCH[1]}</h3>"
+        # Handle - list item
+        elif [[ "$line" =~ ^-[[:space:]]+(.*) ]]; then
+            if ! $in_list; then
+                result+="<ul>"
+                in_list=true
+            fi
+            # Convert backticks to <code>
+            local item="${BASH_REMATCH[1]}"
+            item=$(echo "$item" | sed 's/`\([^`]*\)`/<code>\1<\/code>/g')
+            result+="<li>$item</li>"
+        else
+            if $in_list; then
+                result+="</ul>"
+                in_list=false
+            fi
+            result+="<p>$line</p>"
+        fi
+    done
+
+    if $in_list; then
+        result+="</ul>"
+    fi
+
+    echo "$result"
+}
+
+HTML_NOTES=$(echo "$RELEASE_NOTES" | convert_to_html)
+
+# Human-readable date for display
+DISPLAY_DATE=$(date "+%B %d, %Y")
 
 # Create fresh appcast with only the new version
 cat > docs/appcast.xml << EOF
@@ -43,6 +81,7 @@ cat > docs/appcast.xml << EOF
             <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
             <description><![CDATA[<h2>ClaudeBar ${VERSION}</h2>
+<p><em>Released ${DISPLAY_DATE}</em></p>
 ${HTML_NOTES}
 <p><a href="https://github.com/tddworks/ClaudeBar/releases/tag/v${VERSION}">View full release notes</a></p>
 ]]></description>

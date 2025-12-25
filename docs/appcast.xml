@@ -4,12 +4,13 @@
         <title>ClaudeBar</title>
         <item>
             <title>0.2.0</title>
-            <pubDate>Thu, 25 Dec 2025 13:33:43 +0800</pubDate>
+            <pubDate>Thu, 25 Dec 2025 13:42:46 +0800</pubDate>
             <sparkle:version>100</sparkle:version>
             <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
             <description><![CDATA[<h2>ClaudeBar 0.2.0</h2>
- <h4>Fixed</h4> <ul><li>CHANGELOG.md as single source of truth for release notes</li><li>`extract-changelog.sh` script to parse version-specific notes</li><li>Release notes now automatically sync to GitHub Releases and Sparkle appcast</li>  <h4>Changed</h4> <li>Improved menu bar UI design</li></ul> 
+<p><em>Released December 25, 2025</em></p>
+<h3>Added</h3><ul><li>CHANGELOG.md as single source of truth for release notes</li><li><code>extract-changelog.sh</code> script to parse version-specific notes</li><li>Release notes now automatically sync to GitHub Releases and Sparkle appcast</li><li>Sparkle gentle reminders for menu bar app with update badge indicator</li></ul><h3>Changed</h3><ul><li>Release workflow uses CHANGELOG.md instead of auto-generated notes</li></ul><h3>Fixed</h3><ul><li>Sparkle warning about background app not implementing gentle reminders</li></ul>
 <p><a href="https://github.com/tddworks/ClaudeBar/releases/tag/v0.2.0">View full release notes</a></p>
 ]]></description>
             <enclosure url="https://example.com/app.zip" length="12345678" type="application/octet-stream" sparkle:edSignature="test-signature"/>
