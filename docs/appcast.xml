@@ -1,10 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
-  <channel>
-    <title>ClaudeBar Updates</title>
-    <link>https://tddworks.github.io/ClaudeBar/appcast.xml</link>
-    <description>Most recent updates for ClaudeBar</description>
-    <language>en</language>
-    <!-- Release entries will be added automatically by the release workflow -->
-  </channel>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>ClaudeBar</title>
+        <item>
+            <title>0.2.0</title>
+            <pubDate>Thu, 25 Dec 2025 13:33:43 +0800</pubDate>
+            <sparkle:version>100</sparkle:version>
+            <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>ClaudeBar 0.2.0</h2>
+ <h4>Fixed</h4> <ul><li>CHANGELOG.md as single source of truth for release notes</li><li>`extract-changelog.sh` script to parse version-specific notes</li><li>Release notes now automatically sync to GitHub Releases and Sparkle appcast</li>  <h4>Changed</h4> <li>Improved menu bar UI design</li></ul> 
+<p><a href="https://github.com/tddworks/ClaudeBar/releases/tag/v0.2.0">View full release notes</a></p>
+]]></description>
+            <enclosure url="https://example.com/app.zip" length="12345678" type="application/octet-stream" sparkle:edSignature="test-signature"/>
+        </item>
+    </channel>
 </rss>

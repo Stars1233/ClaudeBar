@@ -110,7 +110,15 @@ struct ClaudeBarApp: App {
                 .themeProvider(currentThemeMode)
             #endif
         } label: {
+            #if ENABLE_SPARKLE
+            StatusBarIcon(
+                status: appState.overallStatus,
+                isChristmas: currentThemeMode == .christmas,
+                hasUpdate: sparkleUpdater.updateAvailable
+            )
+            #else
             StatusBarIcon(status: appState.overallStatus, isChristmas: currentThemeMode == .christmas)
+            #endif
         }
         .menuBarExtraStyle(.window)
     }
@@ -120,10 +128,21 @@ struct ClaudeBarApp: App {
 struct StatusBarIcon: View {
     let status: QuotaStatus
     var isChristmas: Bool = false
+    var hasUpdate: Bool = false
 
     var body: some View {
-        Image(systemName: iconName)
-            .foregroundStyle(iconColor)
+        ZStack(alignment: .topTrailing) {
+            Image(systemName: iconName)
+                .foregroundStyle(iconColor)
+
+            // Show update badge as a small dot
+            if hasUpdate {
+                Circle()
+                    .fill(Color.blue)
+                    .frame(width: 6, height: 6)
+                    .offset(x: 2, y: -2)
+            }
+        }
     }
 
     private var iconName: String {

@@ -11,19 +11,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG.md as single source of truth for release notes
 - `extract-changelog.sh` script to parse version-specific notes
 - Release notes now automatically sync to GitHub Releases and Sparkle appcast
+- Sparkle gentle reminders for menu bar app with update badge indicator
 
 ### Changed
 - Release workflow uses CHANGELOG.md instead of auto-generated notes
 
+### Fixed
+- Sparkle warning about background app not implementing gentle reminders
+
 ## [0.2.0] - 2025-12-25
 
-### Fixed
+### Added
 - CHANGELOG.md as single source of truth for release notes
 - `extract-changelog.sh` script to parse version-specific notes
 - Release notes now automatically sync to GitHub Releases and Sparkle appcast
+- Sparkle gentle reminders for menu bar app with update badge indicator
 
 ### Changed
-- Improved menu bar UI design
+- Release workflow uses CHANGELOG.md instead of auto-generated notes
+
+### Fixed
+- Sparkle warning about background app not implementing gentle reminders
 
 ## [0.1.0] - 2025-12-15
 
