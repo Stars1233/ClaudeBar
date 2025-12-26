@@ -37,11 +37,10 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
                 timeout: timeout,
                 workingDirectory: probeWorkingDirectory(),
                 autoResponses: [
-                    "Do you trust the files in this folder?": "\r",  // Menu with Enter to confirm
-                    "Yes, proceed": "\r",  // Folder trust menu option
-                    "Enter to confirm": "\r",  // Generic confirmation prompt
+                    "Esc to cancel": "\r",  // Trust prompt - press Enter to confirm
                     "Ready to code here?": "\r",
                     "Press Enter to continue": "\r",
+                    "ctrl+t to disable": "\r",  // Onboarding complete
                 ]
             )
         } catch {

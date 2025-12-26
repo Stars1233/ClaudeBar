@@ -220,7 +220,7 @@ public struct InteractiveRunner: Sendable {
         let deadline = Date().addingTimeInterval(options.timeout)
         var buffer = Data()
         var lastDataTime = Date()
-        let idleTimeout: TimeInterval = 2.0  // Exit if no new data for 2 seconds
+        let idleTimeout: TimeInterval = 3.0  // Exit if no new data for 3 seconds
 
         let promptResponses = options.autoResponses.map {
             (prompt: Data($0.key.utf8), response: Data($0.value.utf8))
