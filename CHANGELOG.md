@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2-beta] - 2025-12-26
+
+### Added
+- **Update Notification Badge**: See a visual indicator on the settings button when a new version is available
+- **Version Info Display**: View the available update version directly in the menu
+
 ## [0.2.1] - 2025-12-26
 
 ### Added
@@ -41,7 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.2.2-beta...HEAD
+[0.2.2-beta]: https://github.com/tddworks/ClaudeBar/compare/v0.2.1...v0.2.2-beta
 [0.2.1]: https://github.com/tddworks/ClaudeBar/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/tddworks/ClaudeBar/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/tddworks/ClaudeBar/releases/tag/v0.1.0
