@@ -106,6 +106,8 @@ The app will appear in your menu bar. Click to view quota details for each provi
 
 ## Development
 
+### Command Line (Swift Package Manager)
+
 ```bash
 # Build the project
 swift build
@@ -119,6 +121,23 @@ swift test --enable-code-coverage
 # Run a specific test
 swift test --filter "QuotaMonitorTests"
 ```
+
+### Xcode (with SwiftUI Previews)
+
+The project uses [Tuist](https://tuist.io) to generate Xcode projects with `ENABLE_DEBUG_DYLIB` for SwiftUI previews.
+
+```bash
+# Install Tuist (if not installed)
+brew install tuist
+
+# Generate Xcode project
+tuist generate
+
+# Open in Xcode
+open ClaudeBar.xcworkspace
+```
+
+After opening in Xcode, SwiftUI previews will work with `Cmd+Option+Return`.
 
 ## Architecture
 
@@ -158,6 +177,7 @@ ClaudeBar uses a layered architecture with protocol-based dependency injection:
 
 - [Sparkle](https://sparkle-project.org/) - Auto-update framework
 - [Mockable](https://github.com/Kolos65/Mockable) - Protocol mocking for tests
+- [Tuist](https://tuist.io) - Xcode project generation (for SwiftUI previews)
 
 ## Releasing
 

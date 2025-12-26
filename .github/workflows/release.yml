@@ -47,6 +47,9 @@ jobs:
         with:
           swift-version: ${{ env.SWIFT_VERSION }}
 
+      - name: Install Tuist
+        run: brew install tuist
+
       - name: Cache Swift Packages
         uses: actions/cache@v4
         with:
@@ -92,78 +95,44 @@ jobs:
           echo "Updated version to $VERSION (build $BUILD_NUMBER)"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
 
-      - name: Resolve Dependencies
-        run: swift package resolve
+      - name: Generate Xcode Project
+        run: tuist generate --no-open
 
-      - name: Build Release (arm64)
-        run: swift build -c release --arch arm64
-
-      - name: Build Release (x86_64)
-        run: swift build -c release --arch x86_64
-
-      - name: Create Universal Binary
+      - name: Build Universal App Bundle
         run: |
-          ARM64_BIN=$(swift build -c release --arch arm64 --show-bin-path)/$APP_NAME
-          X86_BIN=$(swift build -c release --arch x86_64 --show-bin-path)/$APP_NAME
+          ARCHIVE_PATH="build/${APP_NAME}.xcarchive"
 
-          mkdir -p .build/universal
-          lipo -create -output .build/universal/$APP_NAME "$ARM64_BIN" "$X86_BIN"
+          # Build for both architectures using xcodebuild archive
+          xcodebuild archive \
+            -workspace "${APP_NAME}.xcworkspace" \
+            -scheme "${APP_NAME}" \
+            -configuration Release \
+            -archivePath "$ARCHIVE_PATH" \
+            -destination "generic/platform=macOS" \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty || xcodebuild archive \
+              -workspace "${APP_NAME}.xcworkspace" \
+              -scheme "${APP_NAME}" \
+              -configuration Release \
+              -archivePath "$ARCHIVE_PATH" \
+              -destination "generic/platform=macOS" \
+              ARCHS="arm64 x86_64" \
+              ONLY_ACTIVE_ARCH=NO \
+              CODE_SIGN_IDENTITY="-" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
 
-          # Add rpath for embedded frameworks
-          install_name_tool -add_rpath @executable_path/../Frameworks .build/universal/$APP_NAME
+          # Extract app from archive
+          cp -R "$ARCHIVE_PATH/Products/Applications/${APP_NAME}.app" .
 
-          echo "Created universal binary:"
-          file .build/universal/$APP_NAME
-
-      - name: Create App Bundle
-        run: |
-          APP_BUNDLE="${APP_NAME}.app"
-          CONTENTS="$APP_BUNDLE/Contents"
-          MACOS="$CONTENTS/MacOS"
-          RESOURCES="$CONTENTS/Resources"
-          FRAMEWORKS="$CONTENTS/Frameworks"
-
-          mkdir -p "$MACOS" "$RESOURCES" "$FRAMEWORKS"
-
-          # Copy universal binary
-          cp .build/universal/$APP_NAME "$MACOS/"
-
-          # Copy Info.plist
-          cp Sources/App/Info.plist "$CONTENTS/"
-
-          # Copy Sparkle framework if present
-          SPARKLE_PATHS=(
-            ".build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
-            ".build/checkouts/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
-          )
-          for SPARKLE_PATH in "${SPARKLE_PATHS[@]}"; do
-            if [ -d "$SPARKLE_PATH" ]; then
-              cp -R "$SPARKLE_PATH" "$FRAMEWORKS/"
-              echo "Copied Sparkle framework from $SPARKLE_PATH"
-              break
-            fi
-          done
-
-          # Copy app icon
-          if [ -f "Sources/App/AppIcon.icns" ]; then
-            cp "Sources/App/AppIcon.icns" "$RESOURCES/"
-            echo "Copied AppIcon.icns to Resources"
-          fi
-
-          # Copy resource bundle for ResourceBundle.bundle access (images, etc.)
-          # Must be in Contents/Resources/ for macOS code signing compatibility
-          RESOURCE_BUNDLE=$(swift build -c release --arch arm64 --show-bin-path)/ClaudeBar_ClaudeBar.bundle
-          if [ -d "$RESOURCE_BUNDLE" ]; then
-            cp -R "$RESOURCE_BUNDLE" "$RESOURCES/"
-            echo "Copied resource bundle to Contents/Resources"
-          fi
-
-          # Create PkgInfo
-          echo "APPL????" > "$CONTENTS/PkgInfo"
-
-          echo "Created app bundle at $APP_BUNDLE"
-          ls -la "$CONTENTS"
-          ls -la "$RESOURCES"
+          echo "Created app bundle:"
+          ls -la "${APP_NAME}.app/Contents/"
+          ls -la "${APP_NAME}.app/Contents/Resources/" || true
+          file "${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
 
       - name: Import Code Signing Certificate
         env:
