@@ -262,39 +262,54 @@ public struct InteractiveRunner: Sendable {
         return buffer
     }
     
+    // MARK: - ANSI Escape Sequence Handling
+    
+    /// Cached regex for OSC sequences (ESC ] ... BEL or ESC ] ... ST).
+    /// OSC = Operating System Command, used for terminal titles, hyperlinks, etc.
+    /// Matches: ESC ] followed by any content (non-greedy) terminated by BEL (0x07) or ST (ESC \)
+    private static let oscRegex: NSRegularExpression? = {
+        try? NSRegularExpression(
+            pattern: #"\x1B\].*?(?:\x07|\x1B\\)"#,
+            options: .dotMatchesLineSeparators
+        )
+    }()
+    
     /// Checks if buffer contains meaningful content beyond just ANSI escape sequences.
-    /// ANSI escapes start with ESC (0x1B) followed by '[' and end with a letter.
-    /// Returns true only if there's visible text content.
-    private func hasMeaningfulContent(_ data: Data) -> Bool {
+    ///
+    /// ANSI escape sequences stripped:
+    /// - **CSI** (Control Sequence Introducer): `ESC [` followed by parameters and a letter
+    ///   - Examples: `\x1B[0m` (reset), `\x1B[?25h` (show cursor)
+    /// - **Charset**: `ESC (` or `ESC )` followed by charset designator
+    ///   - Examples: `\x1B(B` (ASCII), `\x1B(0` (line drawing)
+    /// - **OSC** (Operating System Command): `ESC ]` ... terminated by BEL or ST
+    ///   - BEL termination: `\x1B]0;title\x07`
+    ///   - ST termination: `\x1B]0;title\x1B\\`
+    ///
+    /// - Parameter data: The raw data buffer to check
+    /// - Returns: `true` if visible text content remains after stripping escapes,
+    ///            `true` if data is non-UTF8 (binary data), `false` otherwise
+    internal func hasMeaningfulContent(_ data: Data) -> Bool {
         guard let text = String(data: data, encoding: .utf8) else {
+            // Non-UTF8 binary data is considered meaningful
             return !data.isEmpty
         }
         
-        // Comprehensive ANSI escape sequence pattern:
-        // - CSI sequences: ESC [ params letter (e.g., \x1B[0m, \x1B[?25h)
-        // - Charset sequences: ESC ( or ) followed by charset designator (e.g., \x1B(B)
-        // - OSC sequences: ESC ] ... terminated by BEL (0x07) or ST (ESC \)
-        var stripped = text
-            // CSI sequences: ESC[ followed by parameters and final byte
-            .replacingOccurrences(
-                of: #"\x1B\[[0-9;?]*[A-Za-z]"#,
-                with: "",
-                options: .regularExpression
-            )
-            // Charset designation sequences: ESC( or ESC) followed by charset
-            .replacingOccurrences(
-                of: #"\x1B[\(\)][AB012]"#,
-                with: "",
-                options: .regularExpression
-            )
+        // Strip CSI sequences: ESC[ followed by parameters and final byte
+        var stripped = text.replacingOccurrences(
+            of: #"\x1B\[[0-9;?]*[A-Za-z]"#,
+            with: "",
+            options: .regularExpression
+        )
         
-        // OSC sequences: ESC ] ... terminated by BEL (0x07) or ST (ESC \)
-        // Uses non-greedy .*? to match minimal content, with dotMatchesLineSeparators
-        // to handle OSC sequences that may span multiple lines
-        if let oscRegex = try? NSRegularExpression(
-            pattern: #"\x1B\].*?(?:\x07|\x1B\\)"#,
-            options: .dotMatchesLineSeparators
-        ) {
+        // Strip charset designation sequences: ESC( or ESC) followed by charset
+        stripped = stripped.replacingOccurrences(
+            of: #"\x1B[\(\)][AB012]"#,
+            with: "",
+            options: .regularExpression
+        )
+        
+        // Strip OSC sequences using cached regex
+        if let oscRegex = Self.oscRegex {
             stripped = oscRegex.stringByReplacingMatches(
                 in: stripped,
                 range: NSRange(stripped.startIndex..., in: stripped),
