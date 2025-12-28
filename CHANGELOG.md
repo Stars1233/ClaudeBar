@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-12-28
+
+### Added
+- **Beta Updates Channel**: Opt into beta releases to get early access to new features before they're widely available
+- **Dual Update Tracks**: Stable and beta releases now coexist - stable users get stable updates, beta users get the latest beta
+
+### Improved
+- **Smarter Update Feed**: The appcast now maintains both the latest stable and beta versions, ensuring you always get the right update for your preference
+- **Reliable Version Detection**: Build numbers are now properly validated to prevent version confusion
+
+### Technical
+- Added comprehensive unit tests for update channel handling (17 test scenarios)
+- Improved release workflow documentation for beta releases
+
 ## [0.2.2] - 2025-12-26
 
 ### Added
@@ -47,7 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/tddworks/ClaudeBar/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/tddworks/ClaudeBar/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/tddworks/ClaudeBar/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/tddworks/ClaudeBar/compare/v0.1.0...v0.2.0

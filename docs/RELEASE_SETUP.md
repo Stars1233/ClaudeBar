@@ -282,6 +282,89 @@ The GitHub Actions workflow will automatically:
 
 ---
 
+## Part 5: Beta Channel Updates
+
+ClaudeBar uses Sparkle's channel feature to support beta updates. Users can opt into beta releases via Settings.
+
+### How Beta Channels Work
+
+1. **Appcast Structure**: The appcast maintains BOTH the latest stable AND latest beta versions:
+   ```xml
+   <channel>
+       <item>  <!-- Latest beta (if any) -->
+           <sparkle:channel>beta</sparkle:channel>
+           ...
+       </item>
+       <item>  <!-- Latest stable -->
+           <!-- No channel tag -->
+           ...
+       </item>
+   </channel>
+   ```
+
+2. **Client-Side Filtering**:
+   - **Beta OFF**: Sparkle only shows items WITHOUT `<sparkle:channel>` tag (stable only)
+   - **Beta ON**: Sparkle shows items with channel=beta AND items without channel tag
+
+3. **Version Comparison**: Sparkle compares `sparkle:version` (build number), not version strings. Build numbers always increase across all releases.
+
+### Version Update Scenarios
+
+The following table documents all supported update scenarios:
+
+| # | User Version | Appcast Contains | Beta Setting | Expected Result | Explanation |
+|---|--------------|------------------|--------------|-----------------|-------------|
+| 1 | 1.0.0 | 1.0.0 only | Either | No update | Already on latest |
+| 2 | 1.0.0 | 1.0.1-beta + 1.0.0 | ON | Get 1.0.1-beta | Beta enabled, newer beta available |
+| 3 | 1.0.0 | 1.0.1-beta + 1.0.0 | OFF | No update | Beta filtered out, already on latest stable |
+| 4 | 1.0.1-beta | 1.0.1 + 1.0.1-beta | Either | Get 1.0.1 | Stable has higher build number, always preferred |
+| 5 | 1.0.1 | 1.0.2-beta + 1.0.1 | ON | Get 1.0.2-beta | Beta enabled, newer beta available |
+| 6 | 1.0.1 | 1.0.2-beta + 1.0.1 | OFF | No update | Beta filtered out, already on latest stable |
+| 7 | 1.0.0 | 1.0.2-beta + 1.0.1 | OFF | Get 1.0.1 | Beta filtered out, but stable 1.0.1 available |
+| 8 | 1.0.0 | 1.0.2-beta + 1.0.1 | ON | Get 1.0.2-beta | Both visible, beta is newest |
+
+### Key Behaviors
+
+1. **Stable always has higher build number than its beta**: When releasing 1.0.1 stable after 1.0.1-beta, the stable gets a higher build number (e.g., 102 vs 101). This ensures beta users automatically upgrade to stable.
+
+2. **Appcast retains both versions**: The `update-appcast.sh` script maintains both latest stable and latest beta, ensuring:
+   - Stable users always see stable updates (even when betas exist)
+   - Beta users see both and get the newest version
+
+3. **No downgrade from stable to beta**: Since stable versions have higher build numbers than their corresponding betas, Sparkle won't offer a beta "upgrade" to a stable user on the same version.
+
+### Release Workflow Examples
+
+**Scenario A: Regular stable release**
+```
+1. v1.0.0 stable → appcast: [1.0.0]
+2. v1.0.1 stable → appcast: [1.0.1]
+   All users get 1.0.1
+```
+
+**Scenario B: Beta then stable**
+```
+1. v1.0.0 stable  → appcast: [1.0.0]
+2. v1.0.1-beta    → appcast: [1.0.1-beta, 1.0.0]
+   Beta users: get 1.0.1-beta
+   Stable users: stay on 1.0.0
+3. v1.0.1 stable  → appcast: [1.0.1, 1.0.1-beta]
+   All users: get 1.0.1 (higher build number)
+```
+
+**Scenario C: Multiple betas**
+```
+1. v1.0.0 stable  → appcast: [1.0.0]
+2. v1.0.1-beta.1  → appcast: [1.0.1-beta.1, 1.0.0]
+3. v1.0.1-beta.2  → appcast: [1.0.1-beta.2, 1.0.0]
+   Beta users: upgrade to 1.0.1-beta.2
+   Stable users: stay on 1.0.0
+4. v1.0.1 stable  → appcast: [1.0.1, 1.0.1-beta.2]
+   All users: get 1.0.1
+```
+
+---
+
 ## Troubleshooting
 
 ### Certificate Troubleshooting
