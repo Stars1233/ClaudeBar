@@ -1,5 +1,6 @@
 import SwiftUI
 import Domain
+import Infrastructure
 #if ENABLE_SPARKLE
 import Sparkle
 #endif
@@ -10,6 +11,7 @@ import Sparkle
 struct MenuContentView: View {
     let monitor: QuotaMonitor
     let appState: AppState
+    let quotaAlerter: QuotaAlerter
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isChristmasTheme) private var isChristmas
@@ -21,6 +23,7 @@ struct MenuContentView: View {
     @State private var animateIn = false
     @State private var showSettings = false
     @State private var settings = AppSettings.shared
+    @State private var hasRequestedNotificationPermission = false
 
     /// The currently selected provider
     private var selectedProvider: (any AIProvider)? {
@@ -80,6 +83,13 @@ struct MenuContentView: View {
         .fixedSize(horizontal: false, vertical: true)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .task {
+            // Request alert permission once (after app run loop is active)
+            if !hasRequestedNotificationPermission {
+                hasRequestedNotificationPermission = true
+                let granted = await quotaAlerter.requestPermission()
+                AppLog.notifications.info("Alert permission request result: \(granted ? "granted" : "denied")")
+            }
+
             // Show header and tabs immediately
             withAnimation(.easeOut(duration: 0.6)) {
                 animateIn = true

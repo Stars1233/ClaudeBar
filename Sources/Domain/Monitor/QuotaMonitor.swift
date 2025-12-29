@@ -10,13 +10,13 @@ public enum MonitoringEvent: Sendable {
 
 /// The main domain service that coordinates quota monitoring across AI providers.
 /// Providers are rich domain models that own their own snapshots.
-/// QuotaMonitor coordinates refreshes and optionally notifies status observers.
+/// QuotaMonitor coordinates refreshes and optionally notifies a status handler.
 public actor QuotaMonitor {
     /// All registered providers
     private let providers: [any AIProvider]
 
-    /// Optional observer for status changes (e.g., for system notifications)
-    private let statusObserver: (any StatusChangeObserver)?
+    /// Optional listener for status changes (e.g., QuotaAlerter)
+    private let statusListener: (any QuotaStatusListener)?
 
     /// Previous status for change detection
     private var previousStatuses: [String: QuotaStatus] = [:]
@@ -31,10 +31,10 @@ public actor QuotaMonitor {
 
     public init(
         providers: [any AIProvider],
-        statusObserver: (any StatusChangeObserver)? = nil
+        statusListener: (any QuotaStatusListener)? = nil
     ) {
         self.providers = providers
-        self.statusObserver = statusObserver
+        self.statusListener = statusListener
     }
 
     // MARK: - Monitoring Operations
@@ -72,9 +72,9 @@ public actor QuotaMonitor {
 
         previousStatuses[provider.id] = newStatus
 
-        // Notify observer only if status changed
-        if previousStatus != newStatus, let observer = statusObserver {
-            await observer.onStatusChanged(
+        // Notify listener only if status changed
+        if previousStatus != newStatus, let listener = statusListener {
+            await listener.onStatusChanged(
                 providerId: provider.id,
                 oldStatus: previousStatus,
                 newStatus: newStatus

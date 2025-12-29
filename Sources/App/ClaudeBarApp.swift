@@ -56,8 +56,8 @@ struct ClaudeBarApp: App {
     /// Shared app state
     @State private var appState = AppState()
 
-    /// Notification observer
-    private let notificationObserver = NotificationQuotaObserver()
+    /// Alerts users when quota status degrades
+    private let quotaAlerter = QuotaAlerter()
 
     #if ENABLE_SPARKLE
     /// Sparkle updater for auto-updates
@@ -91,20 +91,16 @@ struct ClaudeBarApp: App {
         // Store providers in app state
         appState = AppState(providers: providers)
 
-        // Initialize the domain service with notification observer
+        // Initialize the domain service with quota alerter
         monitor = QuotaMonitor(
             providers: providers,
-            statusObserver: notificationObserver
+            statusListener: quotaAlerter
         )
         AppLog.monitor.info("QuotaMonitor initialized")
 
-        // Request notification permission
-        let observer = notificationObserver
-        Task {
-            let granted = await observer.requestPermission()
-            AppLog.notifications.info("Notification permission: \(granted ? "granted" : "denied")")
-        }
-        
+        // Note: Notification permission is requested in onAppear, not here
+        // Menu bar apps need the run loop to be active before requesting permissions
+
         AppLog.ui.info("ClaudeBar initialization complete")
     }
 
@@ -119,11 +115,11 @@ struct ClaudeBarApp: App {
     var body: some Scene {
         MenuBarExtra {
             #if ENABLE_SPARKLE
-            MenuContentView(monitor: monitor, appState: appState)
+            MenuContentView(monitor: monitor, appState: appState, quotaAlerter: quotaAlerter)
                 .themeProvider(currentThemeMode)
                 .environment(\.sparkleUpdater, sparkleUpdater)
             #else
-            MenuContentView(monitor: monitor, appState: appState)
+            MenuContentView(monitor: monitor, appState: appState, quotaAlerter: quotaAlerter)
                 .themeProvider(currentThemeMode)
             #endif
         } label: {

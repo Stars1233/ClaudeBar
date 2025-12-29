@@ -57,7 +57,7 @@ The project follows a layered architecture with protocol-based dependency inject
 
 - **Domain** (`Sources/Domain/`): Pure business logic with no external dependencies
   - Provider (`Provider/`): `AIProvider` protocol, `UsageProbe` protocol, and rich models (`UsageQuota`, `UsageSnapshot`, `QuotaStatus`)
-  - Monitor (`Monitor/`): `QuotaMonitor` actor and `StatusChangeObserver` protocol
+  - Monitor (`Monitor/`): `QuotaMonitor` actor and `QuotaStatusListener` protocol
 
 - **Infrastructure** (`Sources/Infrastructure/`): Technical implementations
   - CLI (`CLI/`): Probes and protocols for CLI interaction
@@ -77,7 +77,7 @@ The project follows a layered architecture with protocol-based dependency inject
     - `DefaultCLIExecutor` - real CLI execution using PTYCommandRunner
     - `InsecureLocalhostNetworkClient` - NetworkClient that accepts self-signed certs for localhost (used by Antigravity)
   - Network (`Network/`): `NetworkClient` protocol for HTTP abstraction
-  - Notifications (`Notifications/`): `NotificationQuotaObserver` - macOS notification center
+  - Notifications (`Notifications/`): `QuotaAlerter` - alerts users when quota degrades
 
 - **App** (`Sources/App/`): SwiftUI menu bar application
   - Views directly consume domain models (no ViewModel layer)
@@ -86,7 +86,7 @@ The project follows a layered architecture with protocol-based dependency inject
 
 ### Key Patterns
 
-- **Protocol-Based DI**: Domain defines protocols (`UsageProbe`, `StatusChangeObserver`), infrastructure provides implementations
+- **Protocol-Based DI**: Domain defines protocols (`UsageProbe`, `QuotaStatusListener`), infrastructure provides implementations
 - **Actor-based concurrency**: `QuotaMonitor` is an actor for thread-safe state management
 - **Mockable protocol mocks**: Uses `@Mockable` macro from Mockable package for test doubles
 - **Swift Testing framework**: Tests use `@Test` and `@Suite` attributes, not XCTest
