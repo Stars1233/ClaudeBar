@@ -1,7 +1,177 @@
 import Testing
 import Foundation
+import Mockable
 @testable import Infrastructure
 @testable import Domain
+
+// MARK: - Behavior Tests
+
+@Suite
+struct GeminiCLIProbeBehaviorTests {
+
+    // MARK: - Binary Detection Tests
+
+    @Test
+    func `probe throws cliNotFound when gemini binary not found`() async {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        given(mockExecutor).locate(.value("gemini")).willReturn(nil)
+
+        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+
+        // When/Then
+        await #expect(throws: ProbeError.cliNotFound("gemini")) {
+            try await probe.probe()
+        }
+    }
+
+    @Test
+    func `probe executes gemini command when binary found`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        given(mockExecutor).locate(.value("gemini")).willReturn("/usr/local/bin/gemini")
+
+        let statsOutput = """
+        │ gemini-2.5-pro      │   -     │ 100.0% (Resets in 24h)          │
+        """
+        given(mockExecutor).execute(
+            binary: .value("gemini"),
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: statsOutput))
+
+        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+
+        // When
+        let snapshot = try await probe.probe()
+
+        // Then
+        #expect(snapshot.providerId == "gemini")
+        #expect(snapshot.quotas.count == 1)
+    }
+
+    @Test
+    func `probe throws timeout when CLI times out`() async {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        given(mockExecutor).locate(.value("gemini")).willReturn("/usr/local/bin/gemini")
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willThrow(InteractiveRunner.RunError.timedOut)
+
+        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+
+        // When/Then
+        await #expect(throws: ProbeError.timeout) {
+            try await probe.probe()
+        }
+    }
+
+    @Test
+    func `probe throws executionFailed when CLI launch fails`() async {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        given(mockExecutor).locate(.value("gemini")).willReturn("/usr/local/bin/gemini")
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willThrow(InteractiveRunner.RunError.launchFailed("Permission denied"))
+
+        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+
+        // When/Then
+        await #expect(throws: ProbeError.executionFailed("Permission denied")) {
+            try await probe.probe()
+        }
+    }
+
+    @Test
+    func `probe throws authenticationRequired when login prompt returned`() async {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        given(mockExecutor).locate(.value("gemini")).willReturn("/usr/local/bin/gemini")
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: "Please login with Google to continue"))
+
+        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+
+        // When/Then
+        await #expect(throws: ProbeError.authenticationRequired) {
+            try await probe.probe()
+        }
+    }
+
+    @Test
+    func `probe throws parseFailed when no usage data returned`() async {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        given(mockExecutor).locate(.value("gemini")).willReturn("/usr/local/bin/gemini")
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: "Some random output without stats"))
+
+        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+
+        // When/Then
+        await #expect(throws: ProbeError.self) {
+            try await probe.probe()
+        }
+    }
+
+    @Test
+    func `probe parses multiple models correctly`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        given(mockExecutor).locate(.value("gemini")).willReturn("/usr/local/bin/gemini")
+
+        let statsOutput = """
+        │ gemini-2.5-pro      │   -     │ 100.0% (Resets in 24h)          │
+        │ gemini-2.5-flash    │   5     │  95.0% (Resets in 12h)          │
+        │ gemini-2.0-flash    │  10     │  80.5% (Resets in 6h)           │
+        """
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: statsOutput))
+
+        let probe = GeminiCLIProbe(timeout: 30, cliExecutor: mockExecutor)
+
+        // When
+        let snapshot = try await probe.probe()
+
+        // Then
+        #expect(snapshot.quotas.count == 3)
+    }
+}
+
+// MARK: - Parsing Tests
 
 @Suite
 struct GeminiCLIProbeParsingTests {

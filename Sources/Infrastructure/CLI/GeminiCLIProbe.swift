@@ -3,13 +3,15 @@ import Domain
 
 internal struct GeminiCLIProbe {
     private let timeout: TimeInterval
+    private let cliExecutor: CLIExecutor
 
-    init(timeout: TimeInterval) {
+    init(timeout: TimeInterval, cliExecutor: CLIExecutor = DefaultCLIExecutor()) {
         self.timeout = timeout
+        self.cliExecutor = cliExecutor
     }
 
     func probe() async throws -> UsageSnapshot {
-        guard BinaryLocator.which("gemini") != nil else {
+        guard cliExecutor.locate("gemini") != nil else {
             // Log diagnostic info when binary not found
             let env = ProcessInfo.processInfo.environment
             AppLog.probes.error("Gemini binary 'gemini' not found in PATH")
@@ -20,18 +22,19 @@ internal struct GeminiCLIProbe {
 
         AppLog.probes.info("Starting Gemini CLI fallback...")
 
-        let runner = InteractiveRunner()
-        let options = InteractiveRunner.Options(
-            timeout: timeout,
-            arguments: []
-        )
-
-        let result: InteractiveRunner.Result
+        let result: CLIResult
         do {
-            result = try runner.run(binary: "gemini", input: "/stats\n", options: options)
-        } catch let error as InteractiveRunner.RunError {
+            result = try cliExecutor.execute(
+                binary: "gemini",
+                args: [],
+                input: "/stats\n",
+                timeout: timeout,
+                workingDirectory: nil,
+                autoResponses: [:]
+            )
+        } catch {
             AppLog.probes.error("Gemini CLI failed: \(error.localizedDescription)")
-            throw mapRunError(error)
+            throw mapError(error)
         }
 
         AppLog.probes.debug("Gemini CLI raw output:\n\(result.output)")
@@ -113,14 +116,17 @@ internal struct GeminiCLIProbe {
         return quotas
     }
 
-    private func mapRunError(_ error: InteractiveRunner.RunError) -> ProbeError {
-        switch error {
-        case .binaryNotFound(let bin):
-            .cliNotFound(bin)
-        case .timedOut:
-            .timeout
-        case .launchFailed(let msg):
-            .executionFailed(msg)
+    private func mapError(_ error: Error) -> ProbeError {
+        if let runError = error as? InteractiveRunner.RunError {
+            switch runError {
+            case .binaryNotFound(let bin):
+                return .cliNotFound(bin)
+            case .timedOut:
+                return .timeout
+            case .launchFailed(let msg):
+                return .executionFailed(msg)
+            }
         }
+        return .executionFailed(error.localizedDescription)
     }
 }

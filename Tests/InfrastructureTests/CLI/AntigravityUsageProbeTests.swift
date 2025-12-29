@@ -220,4 +220,230 @@ struct AntigravityUsageProbeTests {
             try await probe.probe()
         }
     }
+
+    // MARK: - Port Discovery Tests
+
+    @Test
+    func `probe throws executionFailed when port discovery fails`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+
+        // First call: ps returns process with CSRF token
+        // Second call: lsof fails
+        var callCount = 0
+        given(mockExecutor)
+            .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willProduce { _, _, _, _, _, _ in
+                callCount += 1
+                if callCount == 1 {
+                    return CLIResult(output: Self.samplePsOutputWithAntigravity, exitCode: 0)
+                } else {
+                    return CLIResult(output: "", exitCode: 1)
+                }
+            }
+
+        let probe = AntigravityUsageProbe(cliExecutor: mockExecutor)
+
+        // When & Then
+        await #expect(throws: ProbeError.self) {
+            try await probe.probe()
+        }
+    }
+
+    @Test
+    func `probe throws executionFailed when no listening ports found`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+
+        // ps returns process, lsof returns no ports
+        var callCount = 0
+        given(mockExecutor)
+            .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willProduce { _, _, _, _, _, _ in
+                callCount += 1
+                if callCount == 1 {
+                    return CLIResult(output: Self.samplePsOutputWithAntigravity, exitCode: 0)
+                } else {
+                    return CLIResult(output: "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME", exitCode: 0)
+                }
+            }
+
+        let probe = AntigravityUsageProbe(cliExecutor: mockExecutor)
+
+        // When & Then
+        await #expect(throws: ProbeError.self) {
+            try await probe.probe()
+        }
+    }
+
+    // MARK: - Full Probe Success Tests
+
+    @Test
+    func `probe returns snapshot when process, ports, and API all succeed`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        let mockNetwork = MockNetworkClient()
+
+        // ps returns process, lsof returns listening ports
+        var callCount = 0
+        given(mockExecutor)
+            .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willProduce { _, _, _, _, _, _ in
+                callCount += 1
+                if callCount == 1 {
+                    return CLIResult(output: Self.samplePsOutputWithAntigravity, exitCode: 0)
+                } else {
+                    return CLIResult(output: Self.sampleLsofOutput, exitCode: 0)
+                }
+            }
+
+        // API returns valid response
+        let apiResponseData = Data(Self.sampleApiResponse.utf8)
+        let response = HTTPURLResponse(
+            url: URL(string: "https://localhost:42135/user_status")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        given(mockNetwork).request(.any).willReturn((apiResponseData, response))
+
+        let probe = AntigravityUsageProbe(
+            cliExecutor: mockExecutor,
+            networkClient: mockNetwork
+        )
+
+        // When
+        let snapshot = try await probe.probe()
+
+        // Then
+        #expect(snapshot.providerId == "antigravity")
+        #expect(snapshot.accountEmail == "user@example.com")
+        #expect(snapshot.quotas.count == 1)
+        #expect(snapshot.quotas.first?.percentRemaining == 75.0)
+    }
+
+    // MARK: - API Error Tests
+
+    @Test
+    func `probe throws executionFailed when API returns error status`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        let mockNetwork = MockNetworkClient()
+
+        // ps returns process, lsof returns listening ports
+        var callCount = 0
+        given(mockExecutor)
+            .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willProduce { _, _, _, _, _, _ in
+                callCount += 1
+                if callCount == 1 {
+                    return CLIResult(output: Self.samplePsOutputWithAntigravity, exitCode: 0)
+                } else {
+                    return CLIResult(output: Self.sampleLsofOutput, exitCode: 0)
+                }
+            }
+
+        // API returns 401 error
+        let response = HTTPURLResponse(
+            url: URL(string: "https://localhost:42135/user_status")!,
+            statusCode: 401,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        given(mockNetwork).request(.any).willReturn((Data(), response))
+
+        let probe = AntigravityUsageProbe(
+            cliExecutor: mockExecutor,
+            networkClient: mockNetwork
+        )
+
+        // When & Then
+        await #expect(throws: ProbeError.self) {
+            try await probe.probe()
+        }
+    }
+
+    @Test
+    func `probe throws parseFailed when API returns invalid JSON`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        let mockNetwork = MockNetworkClient()
+
+        // ps returns process, lsof returns listening ports
+        var callCount = 0
+        given(mockExecutor)
+            .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willProduce { _, _, _, _, _, _ in
+                callCount += 1
+                if callCount == 1 {
+                    return CLIResult(output: Self.samplePsOutputWithAntigravity, exitCode: 0)
+                } else {
+                    return CLIResult(output: Self.sampleLsofOutput, exitCode: 0)
+                }
+            }
+
+        // API returns invalid JSON
+        let invalidData = Data("not valid json".utf8)
+        let response = HTTPURLResponse(
+            url: URL(string: "https://localhost:42135/user_status")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        given(mockNetwork).request(.any).willReturn((invalidData, response))
+
+        let probe = AntigravityUsageProbe(
+            cliExecutor: mockExecutor,
+            networkClient: mockNetwork
+        )
+
+        // When & Then
+        await #expect(throws: ProbeError.self) {
+            try await probe.probe()
+        }
+    }
+
+    @Test
+    func `probe tries extension port first when available`() async throws {
+        // Given
+        let mockExecutor = MockCLIExecutor()
+        let mockNetwork = MockNetworkClient()
+
+        // ps returns process WITH extension_server_port, lsof returns ports
+        let psOutput = """
+        12345 /path/to/language_server_macos --csrf_token abc123token --extension_server_port 8080 --app_data_dir antigravity
+        """
+        var callCount = 0
+        given(mockExecutor)
+            .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willProduce { _, _, _, _, _, _ in
+                callCount += 1
+                if callCount == 1 {
+                    return CLIResult(output: psOutput, exitCode: 0)
+                } else {
+                    return CLIResult(output: Self.sampleLsofOutput, exitCode: 0)
+                }
+            }
+
+        // API returns valid response
+        let apiResponseData = Data(Self.sampleApiResponse.utf8)
+        let response = HTTPURLResponse(
+            url: URL(string: "https://localhost:8080/user_status")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        given(mockNetwork).request(.any).willReturn((apiResponseData, response))
+
+        let probe = AntigravityUsageProbe(
+            cliExecutor: mockExecutor,
+            networkClient: mockNetwork
+        )
+
+        // When
+        let snapshot = try await probe.probe()
+
+        // Then
+        #expect(snapshot.providerId == "antigravity")
+    }
 }
