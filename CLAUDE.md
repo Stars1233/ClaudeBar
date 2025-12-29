@@ -116,7 +116,7 @@ The skill will guide you through:
 4. **Provider Class** → Create `AIProvider` in `Sources/Domain/Provider/`
 5. **Registration** → Add to `ClaudeBarApp.init()` and `AIProviderRegistry`
 
-**Skill location:** `skills/add-provider/SKILL.md`
+**Skill location:** `.claude/skills/add-provider/SKILL.md`
 
 **Reference implementation:** See `AntigravityUsageProbe` for a complete example of:
 - Local process detection via `ps` and `lsof`

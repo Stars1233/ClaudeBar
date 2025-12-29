@@ -185,7 +185,7 @@ Tell Claude Code: "I want to add a new provider for [ProviderName]"
 
 The skill guides you through: Parsing Tests → Probe Tests → Implementation → Registration.
 
-See `skills/add-provider/SKILL.md` for details and `AntigravityUsageProbe` as a reference implementation.
+See `.claude/skills/add-provider/SKILL.md` for details and `AntigravityUsageProbe` as a reference implementation.
 
 ## Dependencies
 
