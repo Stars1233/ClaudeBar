@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ClaudeBar is a macOS menu bar application that monitors AI coding assistant usage quotas (Claude, Codex, Gemini, GitHub Copilot). It probes CLI tools to fetch quota information and displays it in a menu bar interface with system notifications for status changes.
+ClaudeBar is a macOS menu bar application that monitors AI coding assistant usage quotas (Claude, Codex, Gemini, GitHub Copilot, Antigravity). It probes CLI tools to fetch quota information and displays it in a menu bar interface with system notifications for status changes.
 
 ## Build & Test Commands
 
@@ -70,10 +70,12 @@ The project follows a layered architecture with protocol-based dependency inject
     - `GeminiUsageProbe` - coordinates `GeminiAPIProbe` with network client
     - `GeminiProjectRepository` - discovers Gemini projects for quota lookup
     - `CopilotUsageProbe` - probes GitHub Copilot usage via credentials and API
+    - `AntigravityUsageProbe` - probes local Antigravity language server via process detection and local API
   - Adapters (`Adapters/`): Pure adapters for 3rd party interaction (excluded from coverage)
     - `PTYCommandRunner` - runs CLI commands with PTY for interactive prompts
     - `ProcessRPCTransport` - JSON-RPC over Process stdin/stdout pipes
     - `DefaultCLIExecutor` - real CLI execution using PTYCommandRunner
+    - `InsecureLocalhostNetworkClient` - NetworkClient that accepts self-signed certs for localhost (used by Antigravity)
   - Network (`Network/`): `NetworkClient` protocol for HTTP abstraction
   - Notifications (`Notifications/`): `NotificationQuotaObserver` - macOS notification center
 
