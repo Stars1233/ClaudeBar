@@ -316,7 +316,7 @@ struct ClaudeUsageProbeParsingTests {
         let snapshot = try ClaudeUsageProbe.parse(Self.realCliOutput)
 
         // Then
-        #expect(snapshot.accountType == .pro)
+        #expect(snapshot.accountTier == .claudePro)
         #expect(snapshot.accountOrganization == "Some User")
         #expect(snapshot.sessionQuota != nil)
         #expect(snapshot.sessionQuota?.percentRemaining == 99) // 1% used = 99% left
@@ -331,7 +331,7 @@ struct ClaudeUsageProbeParsingTests {
         let snapshot = try ClaudeUsageProbe.parse(Self.realCliOutputWithAnsi)
 
         // Then
-        #expect(snapshot.accountType == .pro)
+        #expect(snapshot.accountTier == .claudePro)
         #expect(snapshot.accountOrganization == "Some User")
         #expect(snapshot.sessionQuota != nil)
         #expect(snapshot.sessionQuota?.percentRemaining == 99) // 1% used = 99% left
@@ -348,7 +348,7 @@ struct ClaudeUsageProbeParsingTests {
         let accountType = probe.detectAccountType(Self.maxHeaderOutput)
 
         // Then
-        #expect(accountType == .max)
+        #expect(accountType == .claudeMax)
     }
 
     @Test
@@ -360,7 +360,7 @@ struct ClaudeUsageProbeParsingTests {
         let accountType = probe.detectAccountType(Self.proHeaderOutput)
 
         // Then
-        #expect(accountType == .pro)
+        #expect(accountType == .claudePro)
     }
 
     @Test
@@ -373,7 +373,7 @@ struct ClaudeUsageProbeParsingTests {
         let accountType = probe.detectAccountType(output)
 
         // Then
-        #expect(accountType == .max)
+        #expect(accountType == .claudeMax)
     }
 
     @Test
@@ -392,7 +392,7 @@ struct ClaudeUsageProbeParsingTests {
         let accountType = probe.detectAccountType(output)
 
         // Then - Both Max and Pro can have Extra usage, defaults to Max without header
-        #expect(accountType == .max)
+        #expect(accountType == .claudeMax)
     }
 
     // MARK: - Extra Usage Parsing
@@ -500,7 +500,7 @@ struct ClaudeUsageProbeParsingTests {
         let snapshot = try ClaudeUsageProbe.parse(Self.proWithExtraUsageOutput)
 
         // Then
-        #expect(snapshot.accountType == .pro)
+        #expect(snapshot.accountTier == .claudePro)
         #expect(snapshot.costUsage != nil)
         #expect(snapshot.costUsage?.totalCost == Decimal(string: "5.41"))
         #expect(snapshot.costUsage?.budget == Decimal(string: "20.00"))

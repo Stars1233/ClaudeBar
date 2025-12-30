@@ -17,8 +17,8 @@ public struct UsageSnapshot: Sendable, Equatable {
     public let accountOrganization: String?
     public let loginMethod: String?
 
-    /// The type of Claude account (nil for non-Claude providers)
-    public let accountType: ClaudeAccountType?
+    /// The account tier (e.g., Claude Max, Pro, or custom tier from other providers)
+    public let accountTier: AccountTier?
 
     /// Cost-based usage data (for Claude API accounts)
     public let costUsage: CostUsage?
@@ -32,7 +32,7 @@ public struct UsageSnapshot: Sendable, Equatable {
         accountEmail: String? = nil,
         accountOrganization: String? = nil,
         loginMethod: String? = nil,
-        accountType: ClaudeAccountType? = nil,
+        accountTier: AccountTier? = nil,
         costUsage: CostUsage? = nil
     ) {
         self.providerId = providerId
@@ -41,7 +41,7 @@ public struct UsageSnapshot: Sendable, Equatable {
         self.accountEmail = accountEmail
         self.accountOrganization = accountOrganization
         self.loginMethod = loginMethod
-        self.accountType = accountType
+        self.accountTier = accountTier
         self.costUsage = costUsage
     }
 

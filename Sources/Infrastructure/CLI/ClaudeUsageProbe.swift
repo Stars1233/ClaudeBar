@@ -69,7 +69,7 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
             throw error
         }
         
-        AppLog.probes.info("Claude probe success: accountType=\(snapshot.accountType?.rawValue ?? "unknown"), quotas=\(snapshot.quotas.count)")
+        AppLog.probes.info("Claude probe success: accountTier=\(snapshot.accountTier?.badgeText ?? "unknown"), quotas=\(snapshot.quotas.count)")
         for quota in snapshot.quotas {
             AppLog.probes.info("  - \(quota.quotaType.displayName): \(Int(quota.percentRemaining))% remaining")
         }
@@ -163,49 +163,49 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
             accountEmail: email,
             accountOrganization: organization,
             loginMethod: loginMethod,
-            accountType: accountType,
+            accountTier: accountType,
             costUsage: extraUsage
         )
     }
 
     // MARK: - Account Type Detection
 
-    /// Detects the account type from the /usage header line.
+    /// Detects the account tier from the /usage header line.
     /// Format: "Opus 4.5 · Claude Max · email@example.com's Organization"
     /// or "Opus 4.5 · Claude Pro · email@example.com's Organization"
-    internal func detectAccountType(_ text: String) -> ClaudeAccountType {
+    internal func detectAccountType(_ text: String) -> AccountTier {
         let lower = text.lowercased()
-        AppLog.probes.debug("Detecting account type from /usage output...")
+        AppLog.probes.debug("Detecting account tier from /usage output...")
 
         // Check for Claude Pro in header (e.g., "Opus 4.5 · Claude Pro")
         if lower.contains("· claude pro") || lower.contains("·claude pro") {
             AppLog.probes.info("Detected Claude Pro account from header")
-            return .pro
+            return .claudePro
         }
 
         // Check for Claude Max in header (e.g., "Opus 4.5 · Claude Max")
         if lower.contains("· claude max") || lower.contains("·claude max") {
             AppLog.probes.info("Detected Claude Max account from header")
-            return .max
+            return .claudeMax
         }
 
         // Check for Claude API (unlikely in /usage, but check anyway)
         if lower.contains("· claude api") || lower.contains("·claude api") ||
            lower.contains("api account") {
             AppLog.probes.info("Detected Claude API account from header")
-            return .api
+            return .claudeApi
         }
 
         // Fallback: Check for presence of quota data (subscription accounts have quotas)
         let hasSessionQuota = lower.contains("current session") && (lower.contains("% left") || lower.contains("% used"))
         if hasSessionQuota {
             AppLog.probes.info("Detected subscription account from quota data, defaulting to Max")
-            return .max
+            return .claudeMax
         }
 
         // Default to Max if we can't determine
-        AppLog.probes.warning("Could not determine account type, defaulting to Max")
-        return .max
+        AppLog.probes.warning("Could not determine account tier, defaulting to Max")
+        return .claudeMax
     }
 
     // MARK: - Extra Usage Parsing

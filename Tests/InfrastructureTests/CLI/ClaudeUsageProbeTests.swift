@@ -156,7 +156,7 @@ struct ClaudeUsageProbeTests {
         let snapshot = try await probe.probe()
 
         // Then
-        #expect(snapshot.accountType == .max)
+        #expect(snapshot.accountTier == .claudeMax)
         #expect(snapshot.quotas.count >= 1)
     }
 
@@ -196,7 +196,7 @@ struct ClaudeUsageProbeTests {
         let snapshot = try await probe.probe()
 
         // Then
-        #expect(snapshot.accountType == .pro)
+        #expect(snapshot.accountTier == .claudePro)
         #expect(snapshot.costUsage != nil)
         #expect(snapshot.costUsage?.totalCost == Decimal(string: "5.41"))
         #expect(snapshot.costUsage?.budget == Decimal(string: "20.00"))

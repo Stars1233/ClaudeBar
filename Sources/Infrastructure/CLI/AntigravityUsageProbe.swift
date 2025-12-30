@@ -327,11 +327,17 @@ public struct AntigravityUsageProbe: UsageProbe {
             throw ProbeError.parseFailed("No valid model quotas found")
         }
 
+        // Extract account tier from planName (e.g., "Pro" → .custom("PRO"))
+        let accountTier: AccountTier? = response.userStatus?.planStatus?.planInfo?.planName.map {
+            .custom($0.uppercased())
+        }
+
         return UsageSnapshot(
             providerId: providerId,
             quotas: quotas,
             capturedAt: Date(),
-            accountEmail: response.userStatus?.email
+            accountEmail: response.userStatus?.email,
+            accountTier: accountTier
         )
     }
 
@@ -402,6 +408,15 @@ private struct UserStatusResponse: Decodable {
 private struct UserStatus: Decodable {
     let email: String?
     let cascadeModelConfigData: ModelConfigData?
+    let planStatus: PlanStatus?
+}
+
+private struct PlanStatus: Decodable {
+    let planInfo: PlanInfo?
+}
+
+private struct PlanInfo: Decodable {
+    let planName: String?
 }
 
 private struct ModelConfigData: Decodable {

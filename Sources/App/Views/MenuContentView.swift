@@ -321,9 +321,9 @@ struct MenuContentView: View {
                         .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
                         .lineLimit(1)
 
-                    // Account type badge
-                    if let accountType = snapshot.accountType {
-                        Text(accountType.badgeText)
+                    // Account tier badge
+                    if let accountTier = snapshot.accountTier {
+                        Text(accountTier.badgeText)
                             .font(AppTheme.captionFont(size: 8))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 5)
