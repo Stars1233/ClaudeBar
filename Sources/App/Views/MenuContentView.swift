@@ -22,6 +22,7 @@ struct MenuContentView: View {
     @State private var isHoveringRefresh = false
     @State private var animateIn = false
     @State private var showSettings = false
+    @State private var showSharePass = false
     @State private var settings = AppSettings.shared
     @State private var hasRequestedNotificationPermission = false
 
@@ -76,6 +77,16 @@ struct MenuContentView: View {
                     actionBar
                         .padding(.horizontal, 16)
                         .padding(.bottom, 12)
+                }
+            }
+
+            // Share Pass Overlay
+            if showSharePass, let claudeProvider = selectedProvider as? ClaudeProvider,
+               let guestPass = claudeProvider.guestPass {
+                SharePassOverlay(pass: guestPass) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showSharePass = false
+                    }
                 }
             }
         }
@@ -442,6 +453,38 @@ struct MenuContentView: View {
 
             Spacer()
 
+            // Share Button (Claude only) - icon only
+            if let claudeProvider = selectedProvider as? ClaudeProvider,
+               claudeProvider.supportsGuestPasses {
+                let isFetchingPasses = claudeProvider.isFetchingPasses
+                Button {
+                    Task { await fetchAndShowPasses() }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                isChristmas
+                                    ? AppTheme.christmasGoldGradient
+                                    : AppTheme.shareGradient(for: colorScheme)
+                            )
+                            .frame(width: 32, height: 32)
+
+                        if isFetchingPasses {
+                            ProgressView()
+                                .scaleEffect(0.5)
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "gift.fill")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .help("Share Claude Code")
+                .keyboardShortcut("s")
+            }
+
             // Settings Button with update indicator
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -511,6 +554,25 @@ struct MenuContentView: View {
         do {
             try await provider.refresh()
             appState.lastError = nil
+        } catch {
+            appState.lastError = error.localizedDescription
+        }
+    }
+
+    /// Fetch guest passes and show the share view
+    private func fetchAndShowPasses() async {
+        guard let claudeProvider = selectedProvider as? ClaudeProvider else {
+            return
+        }
+
+        // Prevent duplicate fetches
+        guard !claudeProvider.isFetchingPasses else { return }
+
+        do {
+            _ = try await claudeProvider.fetchPasses()
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showSharePass = true
+            }
         } catch {
             appState.lastError = error.localizedDescription
         }
@@ -791,6 +853,7 @@ struct WrappedActionButton: View {
 
                 Text(label)
                     .font(AppTheme.bodyFont(size: 12))
+                    .fixedSize()
             }
             .foregroundStyle(buttonForegroundColor)
             .padding(.horizontal, 14)

@@ -81,7 +81,7 @@ struct ClaudeBarApp: App {
             : ZaiUsageProbe()
 
         var providers: [any AIProvider] = [
-            ClaudeProvider(probe: ClaudeUsageProbe()),
+            ClaudeProvider(probe: ClaudeUsageProbe(), passProbe: ClaudePassProbe()),
             CodexProvider(probe: CodexUsageProbe()),
             GeminiProvider(probe: GeminiUsageProbe()),
             AntigravityProvider(probe: AntigravityUsageProbe()),

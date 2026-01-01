@@ -31,17 +31,29 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
     /// The last error that occurred during refresh
     public private(set) var lastError: Error?
 
+    /// The current guest pass information (nil if never fetched)
+    public private(set) var guestPass: ClaudePass?
+
+    /// Whether the provider is currently fetching passes
+    public private(set) var isFetchingPasses: Bool = false
+
     // MARK: - Internal
 
     /// The probe used to fetch usage data
     private let probe: any UsageProbe
 
+    /// The probe used to fetch guest pass data
+    private let passProbe: (any ClaudePassProbing)?
+
     // MARK: - Initialization
 
-    /// Creates a Claude provider with the specified probe
-    /// - Parameter probe: The probe to use for fetching usage data
-    public init(probe: any UsageProbe) {
+    /// Creates a Claude provider with the specified probes
+    /// - Parameters:
+    ///   - probe: The probe to use for fetching usage data
+    ///   - passProbe: The probe to use for fetching guest pass data (optional)
+    public init(probe: any UsageProbe, passProbe: (any ClaudePassProbing)? = nil) {
         self.probe = probe
+        self.passProbe = passProbe
     }
 
     // MARK: - AIProvider Protocol
@@ -65,6 +77,48 @@ public final class ClaudeProvider: AIProvider, @unchecked Sendable {
         } catch {
             lastError = error
             throw error
+        }
+    }
+
+    // MARK: - Guest Pass
+
+    /// Fetches the current guest pass information.
+    /// Sets isFetchingPasses during fetch and captures any errors.
+    @discardableResult
+    public func fetchPasses() async throws -> ClaudePass {
+        guard let passProbe else {
+            throw PassError.probeNotConfigured
+        }
+
+        isFetchingPasses = true
+        defer { isFetchingPasses = false }
+
+        do {
+            let pass = try await passProbe.probe()
+            guestPass = pass
+            lastError = nil
+            return pass
+        } catch {
+            lastError = error
+            throw error
+        }
+    }
+
+    /// Whether guest passes feature is available
+    public var supportsGuestPasses: Bool {
+        passProbe != nil
+    }
+}
+
+// MARK: - Pass Error
+
+public enum PassError: Error, LocalizedError {
+    case probeNotConfigured
+
+    public var errorDescription: String? {
+        switch self {
+        case .probeNotConfigured:
+            return "Guest pass probe is not configured"
         }
     }
 }

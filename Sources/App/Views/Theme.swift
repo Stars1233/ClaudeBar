@@ -200,6 +200,13 @@ enum AppTheme {
         endPoint: .trailing
     )
 
+    /// Christmas gold gradient - for share button
+    static let christmasGoldGradient = LinearGradient(
+        colors: [christmasGold, christmasGoldWarm],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+
     /// Christmas pill gradient - subtle red/green shimmer
     static let christmasPillGradient = LinearGradient(
         colors: [
@@ -342,6 +349,18 @@ enum AppTheme {
     static func accentGradient(for scheme: ColorScheme) -> LinearGradient {
         LinearGradient(
             colors: [coralAccent(for: scheme), pinkHot(for: scheme)],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+
+    /// Share button gradient - warm gold/amber tones
+    static func shareGradient(for scheme: ColorScheme) -> LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(red: 1.0, green: 0.75, blue: 0.0),  // Golden yellow
+                Color(red: 1.0, green: 0.55, blue: 0.0)   // Orange
+            ],
             startPoint: .leading,
             endPoint: .trailing
         )
