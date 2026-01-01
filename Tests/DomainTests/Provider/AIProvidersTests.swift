@@ -108,4 +108,79 @@ struct AIProvidersTests {
 
         #expect(providers.enabled.count == 1)
     }
+
+    // MARK: - Add Provider
+
+    @Test
+    func `add appends new provider to all`() {
+        let claude = ClaudeProvider(probe: MockUsageProbe())
+        let providers = AIProviders(providers: [claude])
+
+        #expect(providers.all.count == 1)
+
+        let codex = CodexProvider(probe: MockUsageProbe())
+        providers.add(codex)
+
+        #expect(providers.all.count == 2)
+        #expect(providers.all.contains { $0.id == "codex" })
+    }
+
+    @Test
+    func `add does not duplicate existing provider`() {
+        let claude = ClaudeProvider(probe: MockUsageProbe())
+        let providers = AIProviders(providers: [claude])
+
+        let anotherClaude = ClaudeProvider(probe: MockUsageProbe())
+        providers.add(anotherClaude)
+
+        #expect(providers.all.count == 1)
+    }
+
+    @Test
+    func `add to empty repository works`() {
+        let providers = AIProviders(providers: [])
+
+        #expect(providers.all.isEmpty)
+
+        let claude = ClaudeProvider(probe: MockUsageProbe())
+        providers.add(claude)
+
+        #expect(providers.all.count == 1)
+        #expect(providers.all.first?.id == "claude")
+    }
+
+    // MARK: - Remove Provider
+
+    @Test
+    func `remove deletes provider by id`() {
+        let claude = ClaudeProvider(probe: MockUsageProbe())
+        let codex = CodexProvider(probe: MockUsageProbe())
+        let providers = AIProviders(providers: [claude, codex])
+
+        #expect(providers.all.count == 2)
+
+        providers.remove(id: "claude")
+
+        #expect(providers.all.count == 1)
+        #expect(providers.all.first?.id == "codex")
+    }
+
+    @Test
+    func `remove does nothing for unknown id`() {
+        let claude = ClaudeProvider(probe: MockUsageProbe())
+        let providers = AIProviders(providers: [claude])
+
+        providers.remove(id: "unknown")
+
+        #expect(providers.all.count == 1)
+    }
+
+    @Test
+    func `remove from empty repository does nothing`() {
+        let providers = AIProviders(providers: [])
+
+        providers.remove(id: "claude")
+
+        #expect(providers.all.isEmpty)
+    }
 }
