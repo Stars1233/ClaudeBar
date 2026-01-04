@@ -165,6 +165,7 @@ struct MenuContentView: View {
                     .blur(radius: 30)
             }
         }
+        .frame(width: 380, height: 600)
     }
 
     // MARK: - Header
