@@ -1229,5 +1229,6 @@ struct ChristmasBackgroundOrbs: View {
                     .blur(radius: 18)
             }
         }
+        .frame(width: 380, height: 600)
     }
 }
