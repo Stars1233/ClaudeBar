@@ -85,8 +85,23 @@ public struct ZaiUsageProbe: UsageProbe {
             throw ProbeError.authenticationRequired
         }
 
-        guard let apiKey = Self.extractAPIKey(from: config) else {
-            AppLog.probes.error("Zai probe failed: No API key found in Claude config (path: \(configPath))")
+        // Try to extract API key from config file first
+        var apiKey: String?
+        if let configApiKey = Self.extractAPIKey(from: config) {
+            apiKey = configApiKey
+            AppLog.probes.debug("Zai: Using API key from config file")
+        } else {
+            // Fall back to environment variable if configured
+            if let envVarName = UserDefaults.standard.string(forKey: "glmAuthEnvVar"), !envVarName.isEmpty {
+                if let envValue = ProcessInfo.processInfo.environment[envVarName], !envValue.isEmpty {
+                    apiKey = envValue
+                    AppLog.probes.debug("Zai: API key not in config, using env var '\(envVarName)'")
+                }
+            }
+        }
+
+        guard let apiKey else {
+            AppLog.probes.error("Zai probe failed: No API key found (config file: \(configPath), env var: \(UserDefaults.standard.string(forKey: "glmAuthEnvVar") ?? "not set"))")
             throw ProbeError.authenticationRequired
         }
 

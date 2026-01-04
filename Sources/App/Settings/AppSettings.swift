@@ -65,6 +65,13 @@ public final class AppSettings {
         }
     }
 
+    /// Name of environment variable containing GLM auth token (fallback if not in config file)
+    public var glmAuthEnvVar: String {
+        didSet {
+            UserDefaults.standard.set(glmAuthEnvVar, forKey: Keys.glmAuthEnvVar)
+        }
+    }
+
     // MARK: - Initialization
 
     private init() {
@@ -74,6 +81,7 @@ public final class AppSettings {
         self.claudeApiBudget = Decimal(UserDefaults.standard.double(forKey: Keys.claudeApiBudget))
         self.receiveBetaUpdates = UserDefaults.standard.bool(forKey: Keys.receiveBetaUpdates)
         self.zaiConfigPath = UserDefaults.standard.string(forKey: Keys.zaiConfigPath) ?? ""
+        self.glmAuthEnvVar = UserDefaults.standard.string(forKey: Keys.glmAuthEnvVar) ?? ""
 
         // Auto-enable Christmas theme during Dec 24-26 if user hasn't explicitly chosen
         applySeasonalTheme()
@@ -133,6 +141,7 @@ private extension AppSettings {
         static let claudeApiBudget = "claudeApiBudget"
         static let receiveBetaUpdates = "receiveBetaUpdates"
         static let zaiConfigPath = "zaiConfigPath"
+        static let glmAuthEnvVar = "glmAuthEnvVar"
     }
 }
 

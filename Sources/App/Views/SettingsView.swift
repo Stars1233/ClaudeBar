@@ -27,6 +27,7 @@ struct SettingsContentView: View {
 
     // Z.ai config path state
     @State private var zaiConfigPathInput: String = ""
+    @State private var glmAuthEnvVarInput: String = ""
 
     /// The Copilot provider from the monitor (cast to CopilotProvider for credential access)
     private var copilotProvider: CopilotProvider? {
@@ -92,8 +93,9 @@ struct SettingsContentView: View {
             if settings.claudeApiBudget > 0 {
                 budgetInput = String(describing: settings.claudeApiBudget)
             }
-            // Initialize Z.ai config path
+            // Initialize Z.ai settings
             zaiConfigPathInput = settings.zaiConfigPath
+            glmAuthEnvVarInput = settings.glmAuthEnvVar
         }
     }
 
@@ -672,72 +674,130 @@ struct SettingsContentView: View {
 
     // MARK: - Z.ai Config Card
 
+    @State private var zaiConfigExpanded: Bool = false
+
     private var zaiConfigCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.2, green: 0.6, blue: 0.9),
-                                    Color(red: 0.15, green: 0.45, blue: 0.8)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 32, height: 32)
-
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 0) {
+            // Header (always visible, clickable to expand)
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    zaiConfigExpanded.toggle()
                 }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Z.ai Configuration")
-                        .font(AppTheme.titleFont(size: 14))
-                        .foregroundStyle(isChristmas ? AppTheme.christmasTextPrimary : AppTheme.textPrimary(for: colorScheme))
-
-                    Text("Custom settings path for Z.ai")
-                        .font(AppTheme.captionFont(size: 10))
-                        .foregroundStyle(isChristmas ? AppTheme.christmasTextTertiary : AppTheme.textTertiary(for: colorScheme))
-                }
-
-                Spacer()
-            }
-
-            // Config Path Input
-            VStack(alignment: .leading, spacing: 6) {
-                Text("SETTINGS.JSON PATH")
-                    .font(AppTheme.captionFont(size: 9))
-                    .foregroundStyle(AppTheme.textSecondary(for: colorScheme))
-                    .tracking(0.5)
-
-                TextField("", text: $zaiConfigPathInput, prompt: Text("~/.claude/settings.json").foregroundStyle(AppTheme.textTertiary(for: colorScheme)))
-                    .font(AppTheme.bodyFont(size: 12))
-                    .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(AppTheme.glassBorder(for: colorScheme), lineWidth: 1)
+            } label: {
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.2, green: 0.6, blue: 0.9),
+                                        Color(red: 0.15, green: 0.45, blue: 0.8)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                    )
-                    .onChange(of: zaiConfigPathInput) { _, newValue in
-                        settings.zaiConfigPath = newValue
+                            .frame(width: 32, height: 32)
+
+                        Image(systemName: zaiConfigExpanded ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white)
                     }
-            }
 
-            // Help text
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Leave empty to use default path (~/.claude/settings.json)")
-                    .font(AppTheme.captionFont(size: 9))
-                    .foregroundStyle(AppTheme.textTertiary(for: colorScheme))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Z.ai / GLM Configuration")
+                            .font(AppTheme.titleFont(size: 14))
+                            .foregroundStyle(isChristmas ? AppTheme.christmasTextPrimary : AppTheme.textPrimary(for: colorScheme))
+
+                        Text("Authentication fallback settings")
+                            .font(AppTheme.captionFont(size: 10))
+                            .foregroundStyle(isChristmas ? AppTheme.christmasTextTertiary : AppTheme.textTertiary(for: colorScheme))
+                    }
+
+                    Spacer()
+                }
+            }
+            .buttonStyle(.plain)
+
+            // Expanded content
+            if zaiConfigExpanded {
+                Divider()
+                    .background(AppTheme.glassBorder(for: colorScheme))
+                    .padding(.vertical, 12)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    // Explanation text
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("TOKEN LOOKUP ORDER")
+                            .font(AppTheme.captionFont(size: 9))
+                            .foregroundStyle(AppTheme.textSecondary(for: colorScheme))
+                            .tracking(0.5)
+
+                        Text("1. First looks for token in the settings.json file")
+                            .font(AppTheme.captionFont(size: 10))
+                            .foregroundStyle(AppTheme.textTertiary(for: colorScheme))
+                        Text("2. Falls back to environment variable if not found in file")
+                            .font(AppTheme.captionFont(size: 10))
+                            .foregroundStyle(AppTheme.textTertiary(for: colorScheme))
+                    }
+
+                    // Config Path Input
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("SETTINGS.JSON PATH")
+                            .font(AppTheme.captionFont(size: 9))
+                            .foregroundStyle(AppTheme.textSecondary(for: colorScheme))
+                            .tracking(0.5)
+
+                        TextField("", text: $zaiConfigPathInput, prompt: Text("~/.claude/settings.json").foregroundStyle(AppTheme.textTertiary(for: colorScheme)))
+                            .font(AppTheme.bodyFont(size: 12))
+                            .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.8))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(AppTheme.glassBorder(for: colorScheme), lineWidth: 1)
+                                    )
+                            )
+                            .onChange(of: zaiConfigPathInput) { _, newValue in
+                                settings.zaiConfigPath = newValue
+                            }
+                    }
+
+                    // Environment Variable Input
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("AUTH TOKEN ENV VAR (FALLBACK)")
+                            .font(AppTheme.captionFont(size: 9))
+                            .foregroundStyle(AppTheme.textSecondary(for: colorScheme))
+                            .tracking(0.5)
+
+                        TextField("", text: $glmAuthEnvVarInput, prompt: Text("GLM_AUTH_TOKEN").foregroundStyle(AppTheme.textTertiary(for: colorScheme)))
+                            .font(AppTheme.bodyFont(size: 12))
+                            .foregroundStyle(AppTheme.textPrimary(for: colorScheme))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.8))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(AppTheme.glassBorder(for: colorScheme), lineWidth: 1)
+                                    )
+                            )
+                            .onChange(of: glmAuthEnvVarInput) { _, newValue in
+                                settings.glmAuthEnvVar = newValue
+                            }
+                    }
+
+                    // Help text
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Leave both empty to use default path with no env var fallback")
+                            .font(AppTheme.captionFont(size: 9))
+                            .foregroundStyle(AppTheme.textTertiary(for: colorScheme))
+                    }
+                }
             }
         }
         .padding(14)
