@@ -82,7 +82,7 @@ struct ClaudeBarApp: App {
             #endif
         } label: {
             // Show overall status (worst across all enabled providers) in menu bar
-            StatusBarIcon(status: monitor.overallStatus)
+            StatusBarIcon(status: monitor.selectedProviderStatus)
                 .appThemeProvider(themeModeId: settings.themeMode)
         }
         .menuBarExtraStyle(.window)
