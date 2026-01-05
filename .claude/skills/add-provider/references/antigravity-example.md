@@ -151,6 +151,8 @@ public struct AntigravityUsageProbe: UsageProbe {
 
 ## Provider Class Pattern
 
+Antigravity uses the **base `ProviderSettingsRepository`** since it has no special config/credentials.
+
 ```swift
 @Observable
 public final class AntigravityProvider: AIProvider, @unchecked Sendable {
@@ -161,14 +163,24 @@ public final class AntigravityProvider: AIProvider, @unchecked Sendable {
     public var dashboardURL: URL? { nil }
     public var statusPageURL: URL? { nil }
 
+    /// Whether the provider is enabled (persisted via settingsRepository)
+    public var isEnabled: Bool {
+        didSet {
+            settingsRepository.setEnabled(isEnabled, forProvider: id)
+        }
+    }
+
     public private(set) var isSyncing: Bool = false
     public private(set) var snapshot: UsageSnapshot?
     public private(set) var lastError: Error?
 
     private let probe: any UsageProbe
+    private let settingsRepository: any ProviderSettingsRepository  // Base protocol - no special config
 
-    public init(probe: any UsageProbe) {
+    public init(probe: any UsageProbe, settingsRepository: any ProviderSettingsRepository) {
         self.probe = probe
+        self.settingsRepository = settingsRepository
+        self.isEnabled = settingsRepository.isEnabled(forProvider: "antigravity")
     }
 
     public func isAvailable() async -> Bool {
@@ -191,6 +203,10 @@ public final class AntigravityProvider: AIProvider, @unchecked Sendable {
     }
 }
 ```
+
+**Note:** For providers needing special config (like Z.ai or Copilot), use a sub-protocol:
+- `ZaiSettingsRepository` - config path + env var
+- `CopilotSettingsRepository` - env var + credentials
 
 ## Common Probe Types
 

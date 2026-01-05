@@ -190,7 +190,11 @@ public protocol UsageProbe: Sendable {
 | **Infrastructure** | `Sources/Infrastructure/` | Probes, storage, adapters |
 | **App** | `Sources/App/` | SwiftUI views consuming domain directly (no ViewModel) |
 
-**Key patterns:** Repository Pattern, Protocol-Based DI, Chicago School TDD, No ViewModel layer.
+**Key patterns:**
+- **Repository Pattern with ISP** - Provider-specific sub-protocols (`ZaiSettingsRepository`, `CopilotSettingsRepository`)
+- **Protocol-Based DI** - `@Mockable` for testing
+- **Chicago School TDD** - Test state, not interactions
+- **No ViewModel layer** - Views consume domain directly
 
 ## TDD Workflow (Chicago School)
 

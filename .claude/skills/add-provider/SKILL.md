@@ -123,6 +123,10 @@ public struct {Provider}UsageProbe: UsageProbe {
 
 ### Phase 4: Create Provider
 
+**Choose Repository Type (ISP):**
+- **Simple provider** (no special config) → Use base `ProviderSettingsRepository`
+- **Provider with config** → Create sub-protocol extending base (see ISP section below)
+
 Create `Sources/Domain/Provider/{Provider}Provider.swift`:
 
 ```swift
@@ -150,7 +154,7 @@ public final class {Provider}Provider: AIProvider, @unchecked Sendable {
     public private(set) var lastError: Error?
 
     private let probe: any UsageProbe
-    private let settingsRepository: any ProviderSettingsRepository
+    private let settingsRepository: any ProviderSettingsRepository  // Or your sub-protocol
 
     public init(probe: any UsageProbe, settingsRepository: any ProviderSettingsRepository) {
         self.probe = probe
@@ -194,11 +198,20 @@ let repository = AIProviders(providers: [
 ])
 ```
 
-For providers that require credentials (like CopilotProvider):
+**For providers with special settings (ISP pattern):**
 
 ```swift
-let credentialRepository = UserDefaultsCredentialRepository.shared
-CopilotProvider(probe: probe, settingsRepository: settingsRepository, credentialRepository: credentialRepository)
+// ZaiProvider uses ZaiSettingsRepository (sub-protocol)
+ZaiProvider(
+    probe: ZaiUsageProbe(settingsRepository: settingsRepository),
+    settingsRepository: settingsRepository  // Same instance, casted to ZaiSettingsRepository
+)
+
+// CopilotProvider uses CopilotSettingsRepository (sub-protocol with credentials)
+CopilotProvider(
+    probe: CopilotUsageProbe(settingsRepository: settingsRepository),
+    settingsRepository: settingsRepository  // Same instance, casted to CopilotSettingsRepository
+)
 ```
 
 Add visual identity in `Sources/App/Views/Theme.swift`:
@@ -238,6 +251,58 @@ ProbeError.authenticationRequired          // Auth token missing/expired
 ProbeError.executionFailed("message")      // Runtime errors
 ProbeError.parseFailed("message")          // Parse errors
 ```
+
+## ISP: Creating Provider-Specific Repository Sub-Protocols
+
+If your provider needs special configuration or credentials, create a sub-protocol following ISP:
+
+### Step 1: Define Sub-Protocol in Domain
+
+Add to `Sources/Domain/Provider/ProviderSettingsRepository.swift`:
+
+```swift
+/// {Provider}-specific settings repository, extending base ProviderSettingsRepository.
+public protocol {Provider}SettingsRepository: ProviderSettingsRepository {
+    // Configuration
+    func {provider}ConfigPath() -> String
+    func set{Provider}ConfigPath(_ path: String)
+
+    // Credentials (if needed)
+    func save{Provider}Token(_ token: String)
+    func get{Provider}Token() -> String?
+    func has{Provider}Token() -> Bool
+}
+```
+
+### Step 2: Implement in Infrastructure
+
+Add to `Sources/Infrastructure/Storage/UserDefaultsProviderSettingsRepository.swift`:
+
+```swift
+extension UserDefaultsProviderSettingsRepository: {Provider}SettingsRepository {
+    public func {provider}ConfigPath() -> String {
+        userDefaults.string(forKey: Keys.{provider}ConfigPath) ?? ""
+    }
+
+    // ... other methods
+}
+```
+
+### Step 3: Update Provider and Probe
+
+```swift
+// Provider
+private let settingsRepository: any {Provider}SettingsRepository
+
+// Probe (if needs settings)
+public init(settingsRepository: any {Provider}SettingsRepository) {
+    self.settingsRepository = settingsRepository
+}
+```
+
+**Existing Examples:**
+- `ZaiSettingsRepository` - config path + env var
+- `CopilotSettingsRepository` - env var + GitHub credentials
 
 ## Reference Implementation
 
