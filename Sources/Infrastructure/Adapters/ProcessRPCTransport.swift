@@ -13,20 +13,22 @@ public final class ProcessRPCTransport: RPCTransport, @unchecked Sendable {
         self.stdinPipe = Pipe()
         self.stdoutPipe = Pipe()
 
+        // Find the executable using BinaryLocator (supports Nushell, Fish, etc.)
+        guard let executablePath = BinaryLocator.which(executable) else {
+            AppLog.probes.error("RPC transport: '\(executable)' not found in PATH")
+            AppLog.probes.debug("Shell PATH: \(BinaryLocator.shellPath())")
+            throw ProbeError.cliNotFound(executable)
+        }
+        
+        AppLog.probes.debug("RPC transport: Found '\(executable)' at: \(executablePath)")
+
         var env = environment ?? ProcessInfo.processInfo.environment
-        let currentPath = env["PATH"] ?? ""
-        let additionalPaths = [
-            "/usr/local/bin",
-            "/opt/homebrew/bin",
-            "\(NSHomeDirectory())/.nvm/versions/node/*/bin",
-            "\(NSHomeDirectory())/.local/bin",
-            "/usr/local/lib/node_modules/.bin"
-        ]
-        env["PATH"] = (additionalPaths + [currentPath]).joined(separator: ":")
+        // Use shell PATH for consistency with BinaryLocator
+        env["PATH"] = BinaryLocator.shellPath()
 
         process.environment = env
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = [executable] + arguments
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = arguments
         process.standardInput = stdinPipe
         process.standardOutput = stdoutPipe
         process.standardError = FileHandle.nullDevice
@@ -34,6 +36,7 @@ public final class ProcessRPCTransport: RPCTransport, @unchecked Sendable {
         do {
             try process.run()
         } catch {
+            AppLog.probes.error("RPC transport: Failed to start '\(executable)' at \(executablePath): \(error.localizedDescription)")
             throw ProbeError.executionFailed("Failed to start \(executable): \(error.localizedDescription)")
         }
     }

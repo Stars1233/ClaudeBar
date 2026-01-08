@@ -5,6 +5,7 @@ internal struct GeminiAPIProbe {
     private let homeDirectory: String
     private let timeout: TimeInterval
     private let networkClient: any NetworkClient
+    private let cliExecutor: CLIExecutor
 
     private static let quotaEndpoint = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota"
     private static let credentialsPath = "/.gemini/oauth_creds.json"
@@ -15,15 +16,29 @@ internal struct GeminiAPIProbe {
         homeDirectory: String,
         timeout: TimeInterval,
         networkClient: any NetworkClient,
-        maxRetries: Int = 3
+        maxRetries: Int = 3,
+        cliExecutor: CLIExecutor = DefaultCLIExecutor()
     ) {
         self.homeDirectory = homeDirectory
         self.timeout = timeout
         self.networkClient = networkClient
         self.maxRetries = maxRetries
+        self.cliExecutor = cliExecutor
     }
 
     func probe() async throws -> UsageSnapshot {
+        // Try API probe, and if we get a 401, let CLI refresh the token and retry
+        do {
+            return try await probeAPI()
+        } catch ProbeError.authenticationRequired {
+            AppLog.probes.info("Gemini: Token expired, running CLI to refresh...")
+            try await refreshTokenViaCLI()
+            AppLog.probes.info("Gemini: Retrying API probe after token refresh...")
+            return try await probeAPI()
+        }
+    }
+
+    private func probeAPI() async throws -> UsageSnapshot {
         let creds = try loadCredentials()
         AppLog.probes.debug("Gemini credentials loaded, expiry: \(String(describing: creds.expiryDate))")
 
@@ -90,6 +105,32 @@ internal struct GeminiAPIProbe {
         }
 
         return snapshot
+    }
+
+    /// Runs the Gemini CLI briefly to trigger OAuth token refresh.
+    /// The CLI handles token refresh automatically when it starts up.
+    private func refreshTokenViaCLI() async throws {
+        guard cliExecutor.locate("gemini") != nil else {
+            AppLog.probes.error("Gemini CLI not found, cannot refresh token")
+            throw ProbeError.cliNotFound("gemini")
+        }
+
+        AppLog.probes.debug("Gemini: Running CLI to refresh OAuth token...")
+
+        // Run gemini with /quit to just start it (triggering token refresh) and exit
+        _ = try cliExecutor.execute(
+            binary: "gemini",
+            args: [],
+            input: "/quit\n",
+            timeout: 15.0,
+            workingDirectory: nil,
+            autoResponses: [:]
+        )
+
+        // Give a moment for the credentials file to be written
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+
+        AppLog.probes.debug("Gemini: CLI token refresh completed")
     }
 
     private func mapToSnapshot(_ data: Data) throws -> UsageSnapshot {
