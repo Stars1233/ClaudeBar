@@ -171,6 +171,11 @@ struct ShellTests {
         #expect(Shell.nushell.parseWhichOutput("╯───") == nil)
         #expect(Shell.nushell.parseWhichOutput("path─with─box") == nil)
         #expect(Shell.nushell.parseWhichOutput("├──┼──┤") == nil)
+        // Additional box-drawing characters used in table headers/footers
+        #expect(Shell.nushell.parseWhichOutput("─┬─") == nil)
+        #expect(Shell.nushell.parseWhichOutput("─┴─") == nil)
+        #expect(Shell.nushell.parseWhichOutput("┌──┐") == nil)
+        #expect(Shell.nushell.parseWhichOutput("└──┘") == nil)
     }
 
     @Test

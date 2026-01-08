@@ -99,7 +99,7 @@ enum Shell: Sendable, Equatable {
             return trimmed
         case .nushell:
             // Reject table output that may have leaked through (check for box-drawing chars)
-            let tableChars = CharacterSet(charactersIn: "│╭╮╯╰─┼┤├")
+            let tableChars = CharacterSet(charactersIn: "│╭╮╯╰─┼┤├┬┴┌┐└┘")
             if trimmed.rangeOfCharacter(from: tableChars) != nil {
                 return nil
             }
