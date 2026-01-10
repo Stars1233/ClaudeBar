@@ -71,27 +71,21 @@ struct ShellTests {
 
     @Test
     func `which command rejects shell metacharacters`() {
-        // Semicolon injection attempt
         let args1 = Shell.posix.whichArguments(for: "claude; rm -rf /")
         #expect(args1 == ["-l", "-c", "which ''"])
 
-        // Command substitution attempt
         let args2 = Shell.posix.whichArguments(for: "$(whoami)")
         #expect(args2 == ["-l", "-c", "which ''"])
 
-        // Backtick injection attempt
         let args3 = Shell.posix.whichArguments(for: "`id`")
         #expect(args3 == ["-l", "-c", "which ''"])
 
-        // Quote injection attempt
         let args4 = Shell.posix.whichArguments(for: "tool'injection")
         #expect(args4 == ["-l", "-c", "which ''"])
 
-        // Space injection attempt
         let args5 = Shell.posix.whichArguments(for: "tool with spaces")
         #expect(args5 == ["-l", "-c", "which ''"])
 
-        // Nushell also rejects metacharacters
         let args6 = Shell.nushell.whichArguments(for: "claude; rm -rf /")
         #expect(args6 == ["-l", "-c", "which ''"])
     }
@@ -171,7 +165,6 @@ struct ShellTests {
         #expect(Shell.nushell.parseWhichOutput("╯───") == nil)
         #expect(Shell.nushell.parseWhichOutput("path─with─box") == nil)
         #expect(Shell.nushell.parseWhichOutput("├──┼──┤") == nil)
-        // Additional box-drawing characters used in table headers/footers
         #expect(Shell.nushell.parseWhichOutput("─┬─") == nil)
         #expect(Shell.nushell.parseWhichOutput("─┴─") == nil)
         #expect(Shell.nushell.parseWhichOutput("┌──┐") == nil)
@@ -189,8 +182,6 @@ struct ShellTests {
 
     @Test
     func `current returns shell based on SHELL environment variable`() {
-        // Shell.current reads from ProcessInfo which we can't easily mock,
-        // but we can verify it returns a valid shell type and matches detect()
         let current = Shell.current
         let shellPath = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         let expected = Shell.detect(from: shellPath)

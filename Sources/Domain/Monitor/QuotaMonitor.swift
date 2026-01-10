@@ -20,6 +20,9 @@ public final class QuotaMonitor: @unchecked Sendable {
     /// Optional alerter for quota changes (e.g., system notifications)
     private let alerter: (any QuotaAlerter)?
 
+    /// Clock for scheduling intervals (injectable for tests)
+    private let clock: any Clock
+
     /// Previous status for change detection
     private var previousStatuses: [String: QuotaStatus] = [:]
 
@@ -38,10 +41,12 @@ public final class QuotaMonitor: @unchecked Sendable {
     /// Automatically validates the selected provider on initialization.
     public init(
         providers: any AIProviderRepository,
-        alerter: (any QuotaAlerter)? = nil
+        alerter: (any QuotaAlerter)? = nil,
+        clock: any Clock
     ) {
         self.providers = providers
         self.alerter = alerter
+        self.clock = clock
         selectFirstEnabledIfNeeded()
     }
 
@@ -214,7 +219,7 @@ public final class QuotaMonitor: @unchecked Sendable {
                     continuation.yield(.refreshed)
 
                     do {
-                        try await Task.sleep(for: interval)
+                        try await clock.sleep(for: interval)
                     } catch {
                         break
                     }

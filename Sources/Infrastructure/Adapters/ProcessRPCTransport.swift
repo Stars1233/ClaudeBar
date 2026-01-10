@@ -13,7 +13,6 @@ public final class ProcessRPCTransport: RPCTransport, @unchecked Sendable {
         self.stdinPipe = Pipe()
         self.stdoutPipe = Pipe()
 
-        // Find the executable using BinaryLocator (supports Nushell, Fish, etc.)
         guard let executablePath = BinaryLocator.which(executable) else {
             AppLog.probes.error("RPC transport: '\(executable)' not found in PATH")
             AppLog.probes.debug("Shell PATH: \(BinaryLocator.shellPath())")
@@ -23,7 +22,6 @@ public final class ProcessRPCTransport: RPCTransport, @unchecked Sendable {
         AppLog.probes.debug("RPC transport: Found '\(executable)' at: \(executablePath)")
 
         var env = environment ?? ProcessInfo.processInfo.environment
-        // Use shell PATH for consistency with BinaryLocator
         env["PATH"] = BinaryLocator.shellPath()
 
         process.environment = env

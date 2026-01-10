@@ -6,9 +6,6 @@ import Foundation
 /// from their shell configuration (.zshrc, .bashrc, config.nu, etc.). This supports
 /// tools installed via nix-darwin, Homebrew, npm, and other package managers.
 ///
-/// Supports multiple shell types including POSIX shells (bash, zsh), Fish, and Nushell.
-/// See `Shell` enum for details on shell-specific command syntax.
-///
 /// Usage:
 /// ```swift
 /// if let path = BinaryLocator.which("claude") {
