@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.15] - 2026-01-23
+
+### Added
+- **AWS Bedrock Support**: Monitor your AWS Bedrock AI usage directly from the menu bar. Track daily costs, token counts, and per-model breakdowns for your Claude, Llama, and other Bedrock models. ([#75](https://github.com/tddworks/ClaudeBar/pull/75) - thanks [@tomstetson](https://github.com/tomstetson)!)
+- **Bedrock Usage Card**: New dedicated view showing daily costs, input/output token counts, and detailed per-model usage breakdown
+- **Provider Icon**: New Bedrock provider icon with AWS orange theme for easy identification
+
+### Improved
+- **AWS SSO Authentication**: Full support for AWS SSO profile-based authentication using `SSOAWSCredentialIdentityResolver`, making it easy to use your existing AWS profiles
+- **Cross-Region Inference**: Properly handles regional prefixes (us., eu., etc.) in model IDs for accurate pricing across regions
+- **Model Pricing**: Added Claude Haiku 4.5 model pricing for accurate cost calculations
+
+### Fixed
+- **CloudWatch Period Calculation**: Fixed period calculation to be multiples of 60 seconds as required by CloudWatch API
+- **CloudWatch Filters**: Removed problematic filters that could cause incomplete usage data
+
+### Technical
+- Implemented `BedrockUsageProbe` with CloudWatch metrics integration
+- Added `SSOAWSCredentialIdentityResolver` for profile-based SSO credential resolution
+- Created `BedrockUsageCard` SwiftUI view with cost and token breakdown display
+- Extended visual identity system with Bedrock-specific colors and styling
+- Added pricing normalization for cross-region inference model ID prefixes
+- Bundled pricing data for Claude Haiku 4.5 model
+
 ## [0.3.12] - 2026-01-20
 
 ### Changed
@@ -301,8 +325,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.3.7...HEAD
-[0.3.12]: https://github.com/tddworks/ClaudeBar/compare/v0.3.6...v0.3.7
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.3.15...HEAD
+[0.3.15]: https://github.com/tddworks/ClaudeBar/compare/v0.3.12...v0.3.15
+[0.3.12]: https://github.com/tddworks/ClaudeBar/compare/v0.3.6...v0.3.12
 [0.3.6]: https://github.com/tddworks/ClaudeBar/compare/v0.3.4...v0.3.6
 [0.3.4]: https://github.com/tddworks/ClaudeBar/compare/v0.3.0...v0.3.4
 [0.3.0]: https://github.com/tddworks/ClaudeBar/compare/v0.2.15...v0.3.0
