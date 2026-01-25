@@ -361,7 +361,7 @@ struct CopilotUsageProbeTests {
     // MARK: - Manual Override Tests
 
     @Test
-    func `probe auto-enables manual override when API returns empty usageItems`() async throws {
+    func `probe sets apiReturnedEmpty flag when API returns empty usageItems`() async throws {
         let settings = makeSettingsRepository(username: "testuser", hasToken: true)
         let mockNetwork = MockNetworkClient()
         let responseJSON = """
@@ -386,11 +386,15 @@ struct CopilotUsageProbeTests {
             settingsRepository: settings
         )
 
-        _ = try await probe.probe()
+        let snapshot = try await probe.probe()
 
-        // Verify manual override was auto-enabled
-        #expect(settings.copilotManualOverrideEnabled() == true)
+        // Verify apiReturnedEmpty flag was set (but manual override NOT auto-enabled)
         #expect(settings.copilotApiReturnedEmpty() == true)
+        #expect(settings.copilotManualOverrideEnabled() == false)
+        
+        // Should return 100% remaining (zero usage)
+        let quota = snapshot.quotas.first!
+        #expect(quota.percentRemaining == 100.0)
     }
 
     @Test

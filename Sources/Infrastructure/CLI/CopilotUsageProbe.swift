@@ -160,15 +160,12 @@ public struct CopilotUsageProbe: UsageProbe {
         settingsRepository.setCopilotLastUsagePeriod(month: currentMonth, year: currentYear)
 
         // Detect if API returned empty data (common for org-based Copilot Business)
+        // Note: We set the flag but don't auto-enable manual override to avoid
+        // conflating "zero usage" with "API can't report usage"
         let apiReturnedEmpty = items.isEmpty
         if apiReturnedEmpty {
-            AppLog.probes.info("Copilot: API returned no usage items (likely org-based subscription)")
+            AppLog.probes.info("Copilot: API returned no usage items (could be zero usage or org-based subscription)")
             settingsRepository.setCopilotApiReturnedEmpty(true)
-            // Auto-enable manual override for org-based subscriptions
-            if !settingsRepository.copilotManualOverrideEnabled() {
-                AppLog.probes.info("Copilot: Auto-enabling manual override")
-                settingsRepository.setCopilotManualOverrideEnabled(true)
-            }
         } else {
             // Clear the flag if we got data
             settingsRepository.setCopilotApiReturnedEmpty(false)
@@ -200,13 +197,8 @@ public struct CopilotUsageProbe: UsageProbe {
         let used: Double
         let isManual: Bool
         
-        if manualOverrideEnabled {
-            // Check if manual value is set
-            guard let manualValue = settingsRepository.copilotManualUsageValue() else {
-                AppLog.probes.warning("Copilot: Manual override enabled but no value set")
-                throw ProbeError.executionFailed("Manual usage override enabled but no value entered. Please enter your current usage from GitHub settings.")
-            }
-            
+        if manualOverrideEnabled, let manualValue = settingsRepository.copilotManualUsageValue() {
+            // Manual override is enabled AND value is set - use manual value
             let isPercent = settingsRepository.copilotManualUsageIsPercent()
             
             if isPercent {
@@ -221,7 +213,12 @@ public struct CopilotUsageProbe: UsageProbe {
             }
             
             isManual = true
+        } else if manualOverrideEnabled && apiReturnedEmpty {
+            // Manual override enabled but no value set, and API returned no data
+            AppLog.probes.warning("Copilot: Manual override enabled but no value set")
+            throw ProbeError.executionFailed("Manual usage override enabled but no value entered. Please enter your current usage from GitHub settings.")
         } else {
+            // Use API data (or zero if no API data but manual override not enabled)
             used = totalGrossQuantity
             isManual = false
         }
