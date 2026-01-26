@@ -133,4 +133,44 @@ struct UserDefaultsProviderSettingsRepositoryTests {
         // Then
         #expect(enabled == true)
     }
+
+    // MARK: - Copilot Monthly Limit Tests
+
+    @Test
+    func `copilotMonthlyLimit returns nil when not set`() {
+        // Given
+        let repository = makeRepository()
+        defer { cleanupDefaults() }
+
+        // Then
+        #expect(repository.copilotMonthlyLimit() == nil)
+    }
+
+    @Test
+    func `copilotMonthlyLimit returns stored value when set`() {
+        // Given
+        let repository = makeRepository()
+        defer { cleanupDefaults() }
+
+        // When
+        repository.setCopilotMonthlyLimit(300)
+
+        // Then
+        #expect(repository.copilotMonthlyLimit() == 300)
+    }
+
+    @Test
+    func `setCopilotMonthlyLimit removes value when set to nil`() {
+        // Given
+        let repository = makeRepository()
+        defer { cleanupDefaults() }
+
+        // When - set a value first
+        repository.setCopilotMonthlyLimit(300)
+        #expect(repository.copilotMonthlyLimit() == 300)
+
+        // Then - clear it by setting nil
+        repository.setCopilotMonthlyLimit(nil)
+        #expect(repository.copilotMonthlyLimit() == nil)
+    }
 }

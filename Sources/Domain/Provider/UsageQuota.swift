@@ -3,7 +3,7 @@ import Foundation
 /// Represents a single usage quota measurement for an AI provider.
 /// This is a rich domain model that encapsulates quota-related behavior.
 public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
-    /// The percentage of quota remaining (0-100)
+    /// The percentage of quota remaining (can be negative when over quota, capped at 100)
     public let percentRemaining: Double
 
     /// The type of quota (session, weekly, model-specific)
@@ -27,7 +27,7 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         resetsAt: Date? = nil,
         resetText: String? = nil
     ) {
-        self.percentRemaining = max(0, min(100, percentRemaining))
+        self.percentRemaining = min(100, percentRemaining)  // Allow negative, cap at 100
         self.quotaType = quotaType
         self.providerId = providerId
         self.resetsAt = resetsAt

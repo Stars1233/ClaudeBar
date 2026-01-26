@@ -145,33 +145,108 @@ public struct CopilotUsageProbe: UsageProbe {
 
         AppLog.probes.debug("Copilot: Found \(copilotItems.count) Copilot items for \(response.timePeriod.month)/\(response.timePeriod.year)")
 
+        // Check if usage period changed (new billing month)
+        let currentMonth = response.timePeriod.month
+        let currentYear = response.timePeriod.year
+        let lastMonth = settingsRepository.copilotLastUsagePeriodMonth()
+        let lastYear = settingsRepository.copilotLastUsagePeriodYear()
+        
+        if let lastMonth, let lastYear, (currentMonth != lastMonth || currentYear != lastYear) {
+            AppLog.probes.info("Copilot: Usage period changed from \(lastMonth)/\(lastYear) to \(currentMonth)/\(currentYear) - clearing manual entry")
+            settingsRepository.setCopilotManualUsageValue(nil)
+        }
+        
+        // Update stored period
+        settingsRepository.setCopilotLastUsagePeriod(month: currentMonth, year: currentYear)
+
+        // Detect if API returned empty Copilot data (common for org-based Copilot Business)
+        // Note: We check copilotItems specifically to handle cases where API returns
+        // other product usage (e.g., GitHub Actions) but no Copilot usage data.
+        // We set the flag but don't auto-enable manual override to avoid
+        // conflating "zero usage" with "API can't report usage"
+        let apiReturnedEmpty = copilotItems.isEmpty
+        if apiReturnedEmpty {
+            AppLog.probes.info("Copilot: API returned no Copilot usage items (could be zero usage or org-based subscription)")
+            settingsRepository.setCopilotApiReturnedEmpty(true)
+        } else {
+            // Clear the flag if we got Copilot data
+            settingsRepository.setCopilotApiReturnedEmpty(false)
+        }
+
         // Log model breakdown
         let modelBreakdown = Dictionary(grouping: copilotItems) { $0.model ?? "Unknown" }
             .mapValues { items in items.reduce(0) { $0 + ($1.grossQuantity ?? 0) } }
-        AppLog.probes.debug("Copilot models: \(modelBreakdown)")
+        if !copilotItems.isEmpty {
+            AppLog.probes.debug("Copilot models: \(modelBreakdown)")
+        }
 
-        // Calculate totals
+        // Calculate totals from API
         let totalGrossQuantity = copilotItems.reduce(0.0) { $0 + ($1.grossQuantity ?? 0) }
         let totalDiscountQuantity = copilotItems.reduce(0.0) { $0 + ($1.discountQuantity ?? 0) }
         let totalNetQuantity = copilotItems.reduce(0.0) { $0 + ($1.netQuantity ?? 0) }
         let totalNetAmount = copilotItems.reduce(0.0) { $0 + ($1.netAmount ?? 0) }
 
-        AppLog.probes.debug("Copilot: gross=\(Int(totalGrossQuantity)), discount=\(Int(totalDiscountQuantity)), net=\(Int(totalNetQuantity)), amount=\(totalNetAmount)")
+        if !copilotItems.isEmpty {
+            AppLog.probes.debug("Copilot: gross=\(Int(totalGrossQuantity)), discount=\(Int(totalDiscountQuantity)), net=\(Int(totalNetQuantity)), amount=\(totalNetAmount)")
+        }
 
-        // GitHub Copilot Free tier: ~2000 premium requests/month
-        let monthlyLimit: Double = 2000
-        let used = totalGrossQuantity
-        let remaining = max(0, monthlyLimit - used)
+        // Use configured monthly limit or default to 50 (Free/Pro tier premium requests)
+        // Note: 2000 is code completions limit, not premium requests limit
+        var monthlyLimit: Double = Double(settingsRepository.copilotMonthlyLimit() ?? 50)
+        
+        // Guard against division by zero (ensure monthlyLimit is positive)
+        if monthlyLimit <= 0 {
+            AppLog.probes.warning("Copilot: Invalid monthly limit (\(Int(monthlyLimit))), using default 50")
+            monthlyLimit = 50
+        }
+        
+        // Determine usage: manual override or API data
+        let manualOverrideEnabled = settingsRepository.copilotManualOverrideEnabled()
+        let used: Double
+        let isManual: Bool
+        
+        if manualOverrideEnabled, let manualValue = settingsRepository.copilotManualUsageValue() {
+            // Manual override is enabled AND value is set - use manual value
+            let isPercent = settingsRepository.copilotManualUsageIsPercent()
+            
+            if isPercent {
+                // Value is a percentage of quota used (e.g., 198 means 198% used)
+                let percentUsed = manualValue
+                used = (percentUsed / 100.0) * monthlyLimit
+                AppLog.probes.info("Copilot: Using manual override - \(Int(percentUsed))% used = \(Int(used))/\(Int(monthlyLimit))")
+            } else {
+                // Value is request count
+                used = manualValue
+                AppLog.probes.info("Copilot: Using manual override - \(Int(used))/\(Int(monthlyLimit))")
+            }
+            
+            isManual = true
+        } else if manualOverrideEnabled && apiReturnedEmpty {
+            // Manual override enabled but no value set, and API returned no data
+            AppLog.probes.warning("Copilot: Manual override enabled but no value set")
+            throw ProbeError.executionFailed("Manual usage override enabled but no value entered. Please enter your current usage from GitHub settings.")
+        } else {
+            // Use API data (or zero if no API data but manual override not enabled)
+            used = totalGrossQuantity
+            isManual = false
+        }
+        
+        // Allow negative percentages to show over-quota usage
+        let remaining = monthlyLimit - used
         let percentRemaining = (remaining / monthlyLimit) * 100
 
         AppLog.probes.debug("Copilot: Used \(Int(used))/\(Int(monthlyLimit)) this month, \(Int(percentRemaining))% remaining")
 
-        // Create quota
+        // Create quota with manual indicator
+        let resetText = isManual 
+            ? "\(Int(used))/\(Int(monthlyLimit)) requests (manual)"
+            : "\(Int(used))/\(Int(monthlyLimit)) requests"
+        
         let quota = UsageQuota(
             percentRemaining: percentRemaining,
             quotaType: .session,
             providerId: "copilot",
-            resetText: "\(Int(used))/\(Int(monthlyLimit)) requests"
+            resetText: resetText
         )
 
         return UsageSnapshot(

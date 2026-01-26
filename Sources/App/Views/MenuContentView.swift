@@ -741,10 +741,10 @@ struct WrappedStatCard: View {
                     RoundedRectangle(cornerRadius: 3)
                         .fill(theme.progressTrack)
 
-                    // Fill
+                    // Fill (clamp width to 0-100% even if percentRemaining is negative)
                     RoundedRectangle(cornerRadius: 3)
                         .fill(theme.progressGradient(for: quota.percentRemaining))
-                        .frame(width: animateProgress ? geo.size.width * quota.percentRemaining / 100 : 0)
+                        .frame(width: animateProgress ? geo.size.width * max(0, min(100, quota.percentRemaining)) / 100 : 0)
                         .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(delay + 0.2), value: animateProgress)
                 }
             }

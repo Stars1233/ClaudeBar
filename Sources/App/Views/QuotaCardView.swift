@@ -27,10 +27,10 @@ struct QuotaCardView: View {
                         .fill(Color.primary.opacity(0.1))
                         .frame(height: 4)
 
-                    // Fill
+                    // Fill (clamp width to 0-100% even if percentRemaining is negative)
                     RoundedRectangle(cornerRadius: 2)
                         .fill(quota.status.displayColor)
-                        .frame(width: geometry.size.width * quota.percentRemaining / 100, height: 4)
+                        .frame(width: geometry.size.width * max(0, min(100, quota.percentRemaining)) / 100, height: 4)
                 }
             }
             .frame(height: 4)

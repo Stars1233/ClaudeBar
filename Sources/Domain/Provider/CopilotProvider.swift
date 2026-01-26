@@ -13,7 +13,7 @@ public final class CopilotProvider: AIProvider, @unchecked Sendable {
     public let cliCommand: String = "gh"
 
     public var dashboardURL: URL? {
-        URL(string: "https://github.com/settings/billing/summary")
+        URL(string: "https://github.com/settings/copilot/features")
     }
 
     public var statusPageURL: URL? {

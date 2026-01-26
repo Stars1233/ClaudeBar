@@ -46,6 +46,52 @@ public protocol CopilotSettingsRepository: ProviderSettingsRepository {
     /// Sets the environment variable name for GitHub Copilot token
     func setCopilotAuthEnvVar(_ envVar: String)
 
+    // MARK: - Monthly Limit
+
+    /// Gets the monthly premium request limit for Copilot (nil = use default of 50 for Free/Pro)
+    func copilotMonthlyLimit() -> Int?
+
+    /// Sets the monthly premium request limit for Copilot
+    func setCopilotMonthlyLimit(_ limit: Int?)
+
+    // MARK: - Manual Usage Override (for org-based subscriptions)
+
+    /// Gets the manually entered usage value (nil = use API data)
+    /// Can be either a request count or percentage depending on `copilotManualUsageIsPercent()`
+    func copilotManualUsageValue() -> Double?
+
+    /// Sets the manually entered usage value
+    func setCopilotManualUsageValue(_ value: Double?)
+
+    /// Gets whether the manual usage value is a percentage (true) or request count (false)
+    func copilotManualUsageIsPercent() -> Bool
+
+    /// Sets whether the manual usage value is a percentage
+    func setCopilotManualUsageIsPercent(_ isPercent: Bool)
+
+    /// Gets whether manual override is enabled (controlled externally, not auto-enabled)
+    func copilotManualOverrideEnabled() -> Bool
+
+    /// Sets whether manual override is enabled (must be controlled externally)
+    func setCopilotManualOverrideEnabled(_ enabled: Bool)
+
+    /// Gets whether the API returned empty data (persisted state)
+    func copilotApiReturnedEmpty() -> Bool
+
+    /// Sets whether the API returned empty data
+    func setCopilotApiReturnedEmpty(_ empty: Bool)
+
+    // MARK: - Usage Period Tracking
+
+    /// Gets the last known usage period month (1-12)
+    func copilotLastUsagePeriodMonth() -> Int?
+
+    /// Gets the last known usage period year
+    func copilotLastUsagePeriodYear() -> Int?
+
+    /// Sets the last known usage period
+    func setCopilotLastUsagePeriod(month: Int, year: Int)
+
     // MARK: - Credentials
 
     /// Saves the GitHub token

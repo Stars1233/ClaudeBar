@@ -34,6 +34,11 @@ struct SettingsContentView: View {
     @State private var zaiConfigPathInput: String = ""
     @State private var glmAuthEnvVarInput: String = ""
     @State private var copilotAuthEnvVarInput: String = ""
+    @State private var copilotMonthlyLimit: Int = 50
+    @State private var copilotManualOverrideEnabled: Bool = false
+    @State private var copilotManualUsageInput: String = ""
+    @State private var copilotManualUsageInputError: String?
+    @State private var copilotApiReturnedEmpty: Bool = false
     @State private var isTestingCopilot = false
     @State private var copilotTestResult: String?
 
@@ -140,6 +145,17 @@ struct SettingsContentView: View {
             zaiConfigPathInput = UserDefaultsProviderSettingsRepository.shared.zaiConfigPath()
             glmAuthEnvVarInput = UserDefaultsProviderSettingsRepository.shared.glmAuthEnvVar()
             copilotAuthEnvVarInput = UserDefaultsProviderSettingsRepository.shared.copilotAuthEnvVar()
+            copilotMonthlyLimit = UserDefaultsProviderSettingsRepository.shared.copilotMonthlyLimit() ?? 50
+            copilotManualOverrideEnabled = UserDefaultsProviderSettingsRepository.shared.copilotManualOverrideEnabled()
+            copilotApiReturnedEmpty = UserDefaultsProviderSettingsRepository.shared.copilotApiReturnedEmpty()
+            if let value = UserDefaultsProviderSettingsRepository.shared.copilotManualUsageValue() {
+                let isPercent = UserDefaultsProviderSettingsRepository.shared.copilotManualUsageIsPercent()
+                if isPercent {
+                    copilotManualUsageInput = String(Int(value)) + "%"
+                } else {
+                    copilotManualUsageInput = String(Int(value))
+                }
+            }
 
             // Initialize Bedrock settings
             awsProfileNameInput = UserDefaultsProviderSettingsRepository.shared.awsProfileName()
@@ -687,6 +703,156 @@ struct SettingsContentView: View {
                     .onChange(of: copilotAuthEnvVarInput) { _, newValue in
                         UserDefaultsProviderSettingsRepository.shared.setCopilotAuthEnvVar(newValue)
                     }
+            }
+
+            // Monthly Limit (Premium Requests)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("MONTHLY PREMIUM REQUEST LIMIT")
+                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                    .foregroundStyle(theme.textSecondary)
+                    .tracking(0.5)
+
+                Picker("", selection: $copilotMonthlyLimit) {
+                    Text("Free/Pro (50)").tag(50)
+                    Text("Business (300)").tag(300)
+                    Text("Enterprise (1000)").tag(1000)
+                    Text("Pro+ (1500)").tag(1500)
+                }
+                .pickerStyle(.menu)
+                .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
+                .foregroundStyle(theme.textPrimary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(theme.glassBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(theme.glassBorder, lineWidth: 1)
+                        )
+                )
+                .onChange(of: copilotMonthlyLimit) { _, newValue in
+                    UserDefaultsProviderSettingsRepository.shared.setCopilotMonthlyLimit(newValue)
+                }
+
+                Text("Note: This is for premium requests (Copilot Chat with advanced models), not code completions")
+                    .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                    .foregroundStyle(theme.textTertiary)
+            }
+
+            // Warning banner for org-based subscriptions
+            if copilotApiReturnedEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(theme.statusWarning)
+                        Text("API returned no usage data")
+                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
+                            .foregroundStyle(theme.textPrimary)
+                    }
+                    
+                    Text("This is common for Copilot Business subscriptions through an organization.")
+                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                        .foregroundStyle(theme.textSecondary)
+                    
+                    Link(destination: URL(string: "https://github.com/settings/copilot/features")!) {
+                        HStack(spacing: 4) {
+                            Text("View usage on GitHub")
+                                .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 8))
+                        }
+                        .foregroundStyle(theme.accentPrimary)
+                    }
+                }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(theme.statusWarning.opacity(0.1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(theme.statusWarning.opacity(0.3), lineWidth: 1)
+                        )
+                )
+            }
+
+            // Manual override toggle
+            Toggle("Enable manual usage entry", isOn: $copilotManualOverrideEnabled)
+                .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
+                .foregroundStyle(theme.textPrimary)
+                .toggleStyle(.switch)
+                .onChange(of: copilotManualOverrideEnabled) { _, newValue in
+                    UserDefaultsProviderSettingsRepository.shared.setCopilotManualOverrideEnabled(newValue)
+                }
+
+            // Manual usage input (shown when toggle is on)
+            if copilotManualOverrideEnabled {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("CURRENT PREMIUM REQUEST USAGE")
+                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textSecondary)
+                        .tracking(0.5)
+
+                    TextField("", text: $copilotManualUsageInput, prompt: Text("99 or 198%").foregroundStyle(theme.textTertiary))
+                        .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
+                        .foregroundStyle(theme.textPrimary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(theme.glassBackground)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(
+                                            copilotManualUsageInputError != nil ? Color.red.opacity(0.6) : theme.glassBorder,
+                                            lineWidth: copilotManualUsageInputError != nil ? 1.5 : 1
+                                        )
+                                )
+                        )
+                        .onChange(of: copilotManualUsageInput) { _, newValue in
+                            // Parse input: if ends with %, treat as percentage; otherwise as request count
+                            let trimmed = newValue.trimmingCharacters(in: .whitespaces)
+                            
+                            if trimmed.isEmpty {
+                                // Clear value and error if input is empty
+                                copilotManualUsageInputError = nil
+                                UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageValue(nil)
+                            } else if trimmed.hasSuffix("%") {
+                                // Percentage input (e.g., "198%")
+                                let numberPart = trimmed.dropLast()
+                                if let intValue = Int(numberPart), intValue >= 0 {
+                                    // Valid percentage (integer >= 0)
+                                    copilotManualUsageInputError = nil
+                                    UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageValue(Double(intValue))
+                                    UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageIsPercent(true)
+                                } else {
+                                    // Invalid percentage
+                                    copilotManualUsageInputError = "Enter a valid number (e.g., 198%)"
+                                    UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageValue(nil)
+                                }
+                            } else if let intValue = Int(trimmed), intValue >= 0 {
+                                // Valid request count (integer >= 0)
+                                copilotManualUsageInputError = nil
+                                UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageValue(Double(intValue))
+                                UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageIsPercent(false)
+                            } else {
+                                // Invalid request count
+                                copilotManualUsageInputError = "Enter a whole number or percentage"
+                                UserDefaultsProviderSettingsRepository.shared.setCopilotManualUsageValue(nil)
+                            }
+                        }
+                    
+                    if let error = copilotManualUsageInputError {
+                        Text(error)
+                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(.red)
+                    } else {
+                        Text("Enter request count (e.g., 99) or percentage (e.g., 198%)")
+                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textTertiary)
+                    }
+                }
             }
 
             // Explanatory text
