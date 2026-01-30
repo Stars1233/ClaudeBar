@@ -5,6 +5,7 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -20,6 +21,9 @@ jobs:
 
       - name: Install Tuist
         run: brew install --cask tuist
+
+      - name: Install Dependencies
+        run: tuist install
 
       - name: Run Tests with Coverage
         run: tuist test --result-bundle-path TestResults.xcresult -- -enableCodeCoverage YES -skipMacroValidation
