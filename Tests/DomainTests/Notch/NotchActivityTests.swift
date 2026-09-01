@@ -45,11 +45,23 @@ struct NotchActivityTests {
     }
 
     @Test
+    func `the idle glance ranks below everything else`() {
+        let glance = NotchActivity.quotaGlance(quota(86))
+
+        #expect(glance < .working(session()))
+        #expect(glance < .agentsWorking(session()))
+        #expect(glance < .quotaThreshold(quota(2)))
+        #expect(glance < .finished(session()))
+        #expect(glance < .awaitingInput(session()))
+    }
+
+    @Test
     func `session accessor exposes the session for session-backed activities`() {
         #expect(NotchActivity.working(session("a")).session?.id == "a")
         #expect(NotchActivity.agentsWorking(session("b")).session?.id == "b")
         #expect(NotchActivity.awaitingInput(session("c")).session?.id == "c")
         #expect(NotchActivity.finished(session("d")).session?.id == "d")
         #expect(NotchActivity.quotaThreshold(quota(2)).session == nil)
+        #expect(NotchActivity.quotaGlance(quota(86)).session == nil)
     }
 }

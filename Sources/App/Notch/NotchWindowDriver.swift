@@ -103,7 +103,12 @@ final class NotchWindowDriver {
         let snapshots = monitor.enabledProviders.compactMap(\.snapshot)
         let quotas = snapshots.flatMap(\.quotas)
 
-        var activity = resolver.resolve(sessions: sessions, quotas: quotas, now: now)
+        var activity = resolver.resolve(
+            sessions: sessions,
+            quotas: quotas,
+            headlineQuota: headlineQuota(),
+            now: now
+        )
         if isSnoozed(at: now), !demandsAttentionThroughSnooze(activity) {
             activity = nil
         }
@@ -116,6 +121,15 @@ final class NotchWindowDriver {
             quotas: Array(quotas.sorted { $0.percentRemaining < $1.percentRemaining }.prefix(3)),
             today: snapshots.compactMap(\.dailyUsageReport).first?.today
         )
+    }
+
+    /// The quota the notch rests on: whichever one the user already chose to
+    /// watch in the menu bar, so the two surfaces never disagree.
+    private func headlineQuota() -> UsageQuota? {
+        monitor.quota(
+            providerId: settings.menuBarPercentageProviderId,
+            quotaKey: settings.menuBarPercentageQuotaKey
+        ) ?? monitor.lowestQuota()
     }
 
     private func refreshQuotas() {

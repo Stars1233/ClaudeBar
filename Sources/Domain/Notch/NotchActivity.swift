@@ -10,6 +10,13 @@ import Foundation
 /// Ordering is by how loudly the activity demands attention, so two activities
 /// of the same kind are order-equivalent without being equal.
 public enum NotchActivity: Sendable, Equatable {
+    /// Nothing is happening, so the notch does the job ClaudeBar exists for:
+    /// shows how much of the quota the user chose to watch is left.
+    ///
+    /// This is the resting state, not an absence of one. A notch that goes
+    /// blank between sessions has no reason to be on screen at all.
+    case quotaGlance(UsageQuota)
+
     /// Claude Code is working on a turn.
     case working(ClaudeSession)
 
@@ -35,7 +42,7 @@ public enum NotchActivity: Sendable, Equatable {
              .finished(let session),
              .awaitingInput(let session):
             session
-        case .quotaThreshold:
+        case .quotaThreshold, .quotaGlance:
             nil
         }
     }
@@ -43,7 +50,7 @@ public enum NotchActivity: Sendable, Equatable {
     /// The quota behind this activity, for the activities that have one.
     public var quota: UsageQuota? {
         switch self {
-        case .quotaThreshold(let quota): quota
+        case .quotaThreshold(let quota), .quotaGlance(let quota): quota
         default: nil
         }
     }
@@ -55,6 +62,7 @@ public enum NotchActivity: Sendable, Equatable {
     /// ambient state without ever masking a blocked session.
     var severity: Int {
         switch self {
+        case .quotaGlance: 0
         case .working: 1
         case .agentsWorking: 2
         case .quotaThreshold: 3

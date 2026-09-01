@@ -110,9 +110,9 @@ struct NotchRootView: View {
                     .foregroundStyle(.green)
                 NotchLabel(session.repoName)
             }
-        case .quotaThreshold(let quota):
+        case .quotaThreshold(let quota), .quotaGlance(let quota):
             NotchLane {
-                NotchLabel(quota.quotaType.shortLabel)
+                NotchLabel(quota.compactTitle ?? quota.quotaType.shortLabel)
                 Text("\(Int(quota.percentRemaining))%")
                     .font(.system(size: 11, weight: .semibold))
                     .monospacedDigit()
@@ -145,7 +145,7 @@ struct NotchRootView: View {
                 }
                 NotchMeta(session.durationDescription)
             }
-        case .quotaThreshold(let quota):
+        case .quotaThreshold(let quota), .quotaGlance(let quota):
             NotchLane {
                 QuotaBar(percentRemaining: quota.percentRemaining, color: quotaColor(quota))
                 if let reset = quota.compactResetTime {

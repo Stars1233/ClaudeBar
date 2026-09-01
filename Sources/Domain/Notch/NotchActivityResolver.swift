@@ -22,17 +22,24 @@ public struct NotchActivityResolver: Sendable {
     ///   - sessions: Live and recently finished sessions. Callers filter out
     ///     ClaudeBar's own probe runs before this point.
     ///   - quotas: Every provider quota currently known.
+    ///   - headlineQuota: The quota the user chose to watch, shown whenever
+    ///     nothing louder is happening. Nil before the first probe returns.
     ///   - now: The reference time, so the "done" flash can expire deterministically.
     /// - Returns: The winning activity, or nil when the notch should stay hidden.
     public func resolve(
         sessions: [ClaudeSession],
         quotas: [UsageQuota],
+        headlineQuota: UsageQuota?,
         now: Date
     ) -> NotchActivity? {
         var candidates = sessions.compactMap { activity(for: $0, now: now) }
 
         if let quota = mostDepletedQuotaNeedingAttention(in: quotas) {
             candidates.append(.quotaThreshold(quota))
+        }
+
+        if let headlineQuota {
+            candidates.append(.quotaGlance(headlineQuota))
         }
 
         guard let topSeverity = candidates.map(\.severity).max() else { return nil }

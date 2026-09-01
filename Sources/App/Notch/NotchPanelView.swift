@@ -34,7 +34,7 @@ struct NotchPanelView: View {
 
     private var header: some View {
         HStack(spacing: 9) {
-            Text("Claude Code")
+            Text(title)
                 .font(.system(size: 13, weight: .semibold, design: theme.fontDesign))
                 .foregroundStyle(.white)
 
@@ -59,6 +59,12 @@ struct NotchPanelView: View {
         }
     }
 
+    /// Named for what the panel is about right now: a session when one is
+    /// running, otherwise the usage the notch exists to report.
+    private var title: String {
+        content.sessions.isEmpty ? "Usage" : "Claude Code"
+    }
+
     private var headlineBadge: (text: String, color: Color)? {
         switch content.activity {
         case .awaitingInput: ("Needs you", .yellow)
@@ -66,7 +72,7 @@ struct NotchPanelView: View {
         case .working: ("Active", .green)
         case .finished: ("Done", .green)
         case .quotaThreshold: ("Low quota", .orange)
-        case nil: nil
+        case .quotaGlance, nil: nil
         }
     }
 

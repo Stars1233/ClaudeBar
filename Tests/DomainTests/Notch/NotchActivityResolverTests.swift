@@ -19,25 +19,25 @@ struct NotchActivityResolverTests {
 
     @Test
     func `no sessions and no quotas resolves to nothing`() {
-        #expect(resolver.resolve(sessions: [], quotas: [], now: now) == nil)
+        #expect(resolver.resolve(sessions: [], quotas: [], headlineQuota: nil, now: now) == nil)
     }
 
     @Test
-    func `a healthy quota alone resolves to nothing`() {
-        #expect(resolver.resolve(sessions: [], quotas: [quota(80)], now: now) == nil)
+    func `a healthy quota that is not the headline resolves to nothing`() {
+        #expect(resolver.resolve(sessions: [], quotas: [quota(80)], headlineQuota: nil, now: now) == nil)
     }
 
     @Test
-    func `a warning quota is not worth taking over the notch`() {
+    func `a warning quota does not take over the notch`() {
         // 35% remaining is QuotaStatus.warning — visible in the popover, not in the notch.
-        #expect(resolver.resolve(sessions: [], quotas: [quota(35)], now: now) == nil)
+        #expect(resolver.resolve(sessions: [], quotas: [quota(35)], headlineQuota: nil, now: now) == nil)
     }
 
     // MARK: - Session phases
 
     @Test
     func `an active session resolves to working`() {
-        let result = resolver.resolve(sessions: [running("claudebar")], quotas: [], now: now)
+        let result = resolver.resolve(sessions: [running("claudebar")], quotas: [], headlineQuota: nil, now: now)
 
         #expect(result == .working(running("claudebar")))
     }
@@ -47,7 +47,7 @@ struct NotchActivityResolverTests {
         var session = running("claudebar")
         session.subagentStarted()
 
-        let result = resolver.resolve(sessions: [session], quotas: [], now: now)
+        let result = resolver.resolve(sessions: [session], quotas: [], headlineQuota: nil, now: now)
 
         #expect(result?.session?.activeSubagentCount == 1)
         #expect(result == .agentsWorking(session))
@@ -58,7 +58,7 @@ struct NotchActivityResolverTests {
         var session = running("claudebar")
         session.awaitInput("Bash · rm -rf build/", at: now)
 
-        let result = resolver.resolve(sessions: [session], quotas: [], now: now)
+        let result = resolver.resolve(sessions: [session], quotas: [], headlineQuota: nil, now: now)
 
         #expect(result == .awaitingInput(session))
         #expect(result?.session?.pendingPrompt == "Bash · rm -rf build/")
@@ -75,14 +75,14 @@ struct NotchActivityResolverTests {
         busy.subagentStarted()
         busy.subagentStarted()
 
-        let result = resolver.resolve(sessions: [busy, running("billfold"), blocked], quotas: [], now: now)
+        let result = resolver.resolve(sessions: [busy, running("billfold"), blocked], quotas: [], headlineQuota: nil, now: now)
 
         #expect(result?.session?.id == "claudebar")
     }
 
     @Test
     func `a critical quota outranks a working session`() {
-        let result = resolver.resolve(sessions: [running("claudebar")], quotas: [quota(5)], now: now)
+        let result = resolver.resolve(sessions: [running("claudebar")], quotas: [quota(5)], headlineQuota: nil, now: now)
 
         #expect(result == .quotaThreshold(quota(5)))
     }
@@ -92,7 +92,7 @@ struct NotchActivityResolverTests {
         var blocked = running("claudebar")
         blocked.awaitInput("Bash · git push", at: now)
 
-        let result = resolver.resolve(sessions: [blocked], quotas: [quota(0)], now: now)
+        let result = resolver.resolve(sessions: [blocked], quotas: [quota(0)], headlineQuota: nil, now: now)
 
         #expect(result == .awaitingInput(blocked))
     }
@@ -102,6 +102,7 @@ struct NotchActivityResolverTests {
         let result = resolver.resolve(
             sessions: [],
             quotas: [quota(18, provider: "copilot"), quota(3, provider: "claude"), quota(60, provider: "codex")],
+            headlineQuota: nil,
             now: now
         )
 
@@ -115,9 +116,71 @@ struct NotchActivityResolverTests {
         var late = running("asc", startedAt: now.addingTimeInterval(-30))
         late.awaitInput("Bash · ls", at: now)
 
-        let result = resolver.resolve(sessions: [late, early], quotas: [], now: now)
+        let result = resolver.resolve(sessions: [late, early], quotas: [], headlineQuota: nil, now: now)
 
         #expect(result?.session?.id == "claudebar")
+    }
+
+    // MARK: - The idle glance
+
+    @Test
+    func `the headline quota is shown at a glance when nothing is happening`() {
+        // ClaudeBar is a quota monitor. With no session running, how much is
+        // left is still the thing the user came for.
+        let headline = quota(86)
+
+        let result = resolver.resolve(sessions: [], quotas: [headline], headlineQuota: headline, now: now)
+
+        #expect(result == .quotaGlance(headline))
+    }
+
+    @Test
+    func `the glance shows the chosen quota even when another one is lower`() {
+        let headline = quota(86, provider: "claude")
+        let lower = quota(55, provider: "codex")
+
+        let result = resolver.resolve(
+            sessions: [],
+            quotas: [lower, headline],
+            headlineQuota: headline,
+            now: now
+        )
+
+        #expect(result == .quotaGlance(headline))
+    }
+
+    @Test
+    func `a working session takes the notch back from the glance`() {
+        let headline = quota(86)
+
+        let result = resolver.resolve(
+            sessions: [running("claudebar")],
+            quotas: [headline],
+            headlineQuota: headline,
+            now: now
+        )
+
+        #expect(result == .working(running("claudebar")))
+    }
+
+    @Test
+    func `a quota past the threshold outranks the glance`() {
+        let headline = quota(86, provider: "claude")
+        let critical = quota(4, provider: "codex")
+
+        let result = resolver.resolve(
+            sessions: [],
+            quotas: [headline, critical],
+            headlineQuota: headline,
+            now: now
+        )
+
+        #expect(result == .quotaThreshold(critical))
+    }
+
+    @Test
+    func `there is nothing to glance at before the first probe returns`() {
+        #expect(resolver.resolve(sessions: [], quotas: [], headlineQuota: nil, now: now) == nil)
     }
 
     // MARK: - The finished flash
@@ -127,7 +190,7 @@ struct NotchActivityResolverTests {
         var session = running("claudebar")
         session.stop(at: now.addingTimeInterval(-1))
 
-        let result = resolver.resolve(sessions: [session], quotas: [], now: now)
+        let result = resolver.resolve(sessions: [session], quotas: [], headlineQuota: nil, now: now)
 
         #expect(result == .finished(session))
     }
@@ -137,7 +200,7 @@ struct NotchActivityResolverTests {
         var session = running("claudebar")
         session.end(at: now.addingTimeInterval(-3))
 
-        #expect(resolver.resolve(sessions: [session], quotas: [], now: now) == .finished(session))
+        #expect(resolver.resolve(sessions: [session], quotas: [], headlineQuota: nil, now: now) == .finished(session))
     }
 
     @Test
@@ -145,7 +208,7 @@ struct NotchActivityResolverTests {
         var session = running("claudebar")
         session.end(at: now.addingTimeInterval(-5))
 
-        #expect(resolver.resolve(sessions: [session], quotas: [], now: now) == nil)
+        #expect(resolver.resolve(sessions: [session], quotas: [], headlineQuota: nil, now: now) == nil)
     }
 
     @Test
@@ -154,7 +217,7 @@ struct NotchActivityResolverTests {
         done.end(at: now.addingTimeInterval(-30))
         let stillGoing = running("asc")
 
-        let result = resolver.resolve(sessions: [done, stillGoing], quotas: [], now: now)
+        let result = resolver.resolve(sessions: [done, stillGoing], quotas: [], headlineQuota: nil, now: now)
 
         #expect(result == .working(stillGoing))
     }
@@ -164,7 +227,7 @@ struct NotchActivityResolverTests {
         var done = running("claudebar")
         done.end(at: now.addingTimeInterval(-1))
 
-        let result = resolver.resolve(sessions: [done, running("asc")], quotas: [], now: now)
+        let result = resolver.resolve(sessions: [done, running("asc")], quotas: [], headlineQuota: nil, now: now)
 
         #expect(result?.session?.id == "claudebar")
     }
@@ -176,7 +239,7 @@ struct NotchActivityResolverTests {
         var blocked = running("claudebar")
         blocked.awaitInput("Bash · rm", at: now)
 
-        let result = resolver.resolve(sessions: [done, blocked], quotas: [], now: now)
+        let result = resolver.resolve(sessions: [done, blocked], quotas: [], headlineQuota: nil, now: now)
 
         #expect(result?.session?.id == "claudebar")
     }
