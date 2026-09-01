@@ -29,7 +29,12 @@ final class NotchWindowController {
     /// the window accepts and whether the pointer counts as hovering.
     private var interactiveRect: CGRect = .zero
 
+    /// Last known answer to "is the pointer over the notch". Kept so the
+    /// tracking callback can bail out without touching observable state.
+    private var isPointerOverNotch = false
+
     private(set) var isRunning = false
+
 
     // MARK: - Lifecycle
 
@@ -82,13 +87,19 @@ final class NotchWindowController {
 
     // MARK: - Content
 
-    /// Hands the notch the activity to display, or nil to retract it.
-    func update(activity: NotchActivity?) {
+    /// Hands the notch everything it draws, in one go.
+    func update(content: NotchContent) {
         guard isRunning else { return }
-        state.activity = activity
-        if activity == nil {
+        state.content = content
+        if content.activity == nil, state.isExpanded {
             state.isExpanded = false
         }
+    }
+
+    /// Wires the panel's buttons to the app.
+    func setActions(refresh: @escaping () -> Void, snooze: @escaping () -> Void) {
+        state.refresh = refresh
+        state.snooze = snooze
     }
 
     // MARK: - Placement
@@ -150,6 +161,13 @@ final class NotchWindowController {
         }
     }
 
+    /// Called for every mouse-moved event anywhere on screen, so it must do
+    /// nothing at all in the common case.
+    ///
+    /// `@Observable` has no equality check: assigning the same value still
+    /// fires observers, so writing `isExpanded` unconditionally here would
+    /// invalidate the notch's SwiftUI tree on every pointer movement across the
+    /// entire display.
     private func updateMouseTracking() {
         guard let window else { return }
 
@@ -158,9 +176,13 @@ final class NotchWindowController {
             y: NSEvent.mouseLocation.y - window.frame.origin.y
         )
         let isOverNotch = interactiveRect.contains(mouseInWindow)
+        let shouldExpand = isOverNotch && state.activity != nil
 
+        guard isOverNotch != isPointerOverNotch || shouldExpand != state.isExpanded else { return }
+
+        isPointerOverNotch = isOverNotch
         window.ignoresMouseEvents = !isOverNotch
-        state.isExpanded = isOverNotch && state.activity != nil
+        state.isExpanded = shouldExpand
     }
 
     private func updateInteractiveRect() {
@@ -171,6 +193,7 @@ final class NotchWindowController {
             interactiveRect = .zero
             hostingView.interactiveRect = .zero
             window.ignoresMouseEvents = true
+            isPointerOverNotch = false
             return
         }
 

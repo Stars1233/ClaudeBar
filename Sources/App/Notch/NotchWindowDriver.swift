@@ -17,11 +17,23 @@ final class NotchWindowDriver {
     private let controller = NotchWindowController()
     private let resolver = NotchActivityResolver()
 
-    private var activitySync: ObservationRenderSync<NotchActivity?>?
+    private var contentSync: ObservationRenderSync<NotchContent>?
     private var enabledSync: ObservationRenderSync<Bool>?
 
-    /// Retracts the "done" flash, which expires on a clock rather than on state.
-    private var expiryTimer: Timer?
+    /// Re-resolves the content at a moment nothing else will: the end of the
+    /// "done" flash, or the end of a snooze.
+    private var wakeTimer: Timer?
+
+    /// While set, the notch stays retracted. Snoozing is time-boxed on purpose —
+    /// a dismissal that never comes back is indistinguishable from a broken
+    /// feature.
+    private var snoozedUntil: Date?
+
+    /// How long the snooze button silences the notch for.
+    private static let snoozeDuration: TimeInterval = 30 * 60
+
+    /// How long a finished session stays worth listing in the panel.
+    private static let recentSessionWindow: TimeInterval = 10 * 60
 
     init(monitor: QuotaMonitor, sessionMonitor: SessionMonitor, settings: AppSettings) {
         self.monitor = monitor
@@ -37,9 +49,13 @@ final class NotchWindowDriver {
                 guard let self else { return }
                 if enabled {
                     controller.start()
-                    startActivitySync()
+                    controller.setActions(
+                        refresh: { [weak self] in self?.refreshQuotas() },
+                        snooze: { [weak self] in self?.snooze() }
+                    )
+                    startContentSync()
                 } else {
-                    stopActivitySync()
+                    stopContentSync()
                     controller.stop()
                 }
             }
@@ -50,53 +66,108 @@ final class NotchWindowDriver {
 
     // MARK: - Private
 
-    private func startActivitySync() {
-        guard activitySync == nil else { return }
+    private func startContentSync() {
+        guard contentSync == nil else { return }
 
-        let sync = ObservationRenderSync<NotchActivity?>(
-            read: { [weak self] in self?.currentActivity() ?? nil },
-            render: { [weak self] activity in
-                self?.controller.update(activity: activity)
-                self?.scheduleExpiry(for: activity)
+        let sync = ObservationRenderSync<NotchContent>(
+            read: { [weak self] in self?.currentContent() ?? .empty },
+            render: { [weak self] content in
+                self?.controller.update(content: content)
+                self?.scheduleWake(for: content.activity)
             }
         )
-        activitySync = sync
+        contentSync = sync
         sync.start()
     }
 
-    private func stopActivitySync() {
-        activitySync?.stop()
-        activitySync = nil
-        expiryTimer?.invalidate()
-        expiryTimer = nil
+    private func stopContentSync() {
+        contentSync?.stop()
+        contentSync = nil
+        wakeTimer?.invalidate()
+        wakeTimer = nil
     }
 
     /// Reads everything the notch depends on. Every `@Observable` property
-    /// touched here is tracked, so any change re-resolves the activity.
-    private func currentActivity() -> NotchActivity? {
-        let sessions = [sessionMonitor.activeSession].compactMap { $0 }
-            + sessionMonitor.recentSessions
-        let quotas = monitor.enabledProviders.compactMap(\.snapshot).flatMap(\.quotas)
+    /// touched here is tracked, so any change re-resolves the content.
+    private func currentContent() -> NotchContent {
+        let now = Date()
 
-        return resolver.resolve(sessions: sessions, quotas: quotas, now: Date())
+        // A session that finished ten minutes ago is history, not status. Left
+        // unfiltered it would sit in the panel for the rest of the day.
+        let sessions = [sessionMonitor.activeSession].compactMap { $0 }
+            + sessionMonitor.recentSessions.filter { session in
+                guard let finishedAt = session.finishedAt else { return true }
+                return now.timeIntervalSince(finishedAt) < Self.recentSessionWindow
+            }
+
+        let snapshots = monitor.enabledProviders.compactMap(\.snapshot)
+        let quotas = snapshots.flatMap(\.quotas)
+
+        var activity = resolver.resolve(sessions: sessions, quotas: quotas, now: now)
+        if isSnoozed(at: now), !demandsAttentionThroughSnooze(activity) {
+            activity = nil
+        }
+
+        return NotchContent(
+            activity: activity,
+            sessions: Array(sessions.prefix(3)),
+            // The panel is about what is nearly gone, so lead with the most
+            // depleted rather than whichever provider happens to be first.
+            quotas: Array(quotas.sorted { $0.percentRemaining < $1.percentRemaining }.prefix(3)),
+            today: snapshots.compactMap(\.dailyUsageReport).first?.today
+        )
+    }
+
+    private func refreshQuotas() {
+        Task { await monitor.refreshAll() }
+    }
+
+    private func snooze() {
+        snoozedUntil = Date().addingTimeInterval(Self.snoozeDuration)
+        contentSync?.refreshNow()
+        scheduleWake(at: snoozedUntil)
+    }
+
+    private func isSnoozed(at now: Date) -> Bool {
+        guard let snoozedUntil else { return false }
+        if now >= snoozedUntil {
+            self.snoozedUntil = nil
+            return false
+        }
+        return true
+    }
+
+    /// A snooze quiets ambient status, not a session that is blocked on the
+    /// user — that is the one thing worth interrupting for.
+    private func demandsAttentionThroughSnooze(_ activity: NotchActivity?) -> Bool {
+        if case .awaitingInput = activity { return true }
+        return false
     }
 
     /// A finished session stops being worth showing on a clock, not on a state
     /// change — nothing will fire an observation to retract it, so schedule the
-    /// re-resolve ourselves.
-    private func scheduleExpiry(for activity: NotchActivity?) {
-        expiryTimer?.invalidate()
-        expiryTimer = nil
+    /// re-resolve ourselves. Same for the end of a snooze.
+    private func scheduleWake(for activity: NotchActivity?) {
+        guard case .finished(let session) = activity, let finishedAt = session.finishedAt else {
+            scheduleWake(at: snoozedUntil)
+            return
+        }
+        scheduleWake(
+            at: finishedAt.addingTimeInterval(NotchActivityResolver.defaultFinishedDisplayDuration)
+        )
+    }
 
-        guard case .finished(let session) = activity, let finishedAt = session.finishedAt else { return }
+    private func scheduleWake(at date: Date?) {
+        wakeTimer?.invalidate()
+        wakeTimer = nil
 
-        let remaining = NotchActivityResolver.defaultFinishedDisplayDuration
-            - Date().timeIntervalSince(finishedAt)
-        guard remaining > 0 else { return }
+        guard let date else { return }
+        let delay = date.timeIntervalSinceNow + 0.1
+        guard delay > 0 else { return }
 
-        expiryTimer = Timer.scheduledTimer(withTimeInterval: remaining + 0.1, repeats: false) { [weak self] _ in
+        wakeTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.activitySync?.refreshNow()
+                self?.contentSync?.refreshNow()
             }
         }
     }

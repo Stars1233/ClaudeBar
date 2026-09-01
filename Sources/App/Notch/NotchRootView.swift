@@ -27,11 +27,18 @@ struct NotchRootView: View {
     var body: some View {
         VStack(spacing: 0) {
             collapsedBar
-            if state.isExpanded, let activity = state.activity {
-                NotchPanelView(activity: activity)
-                    .environment(\.appTheme, theme)
-                    .frame(width: 520)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+            if state.isExpanded {
+                NotchPanelView(
+                    content: state.content,
+                    refresh: state.refresh,
+                    snooze: state.snooze
+                )
+                .environment(\.appTheme, theme)
+                .padding(.horizontal, 18)
+                .padding(.top, 6)
+                .padding(.bottom, 16)
+                .frame(width: 600)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .fixedSize()
