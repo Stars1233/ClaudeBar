@@ -107,6 +107,16 @@ public final class AppSettings {
         }
     }
 
+    // MARK: - Notch Settings
+
+    /// Whether Claude Code session and quota state is drawn into the notch
+    /// (default: false).
+    public var notchEnabled: Bool {
+        didSet {
+            repository.setNotchEnabled(notchEnabled)
+        }
+    }
+
     // MARK: - Overview Mode Settings
 
     /// Whether to show all enabled providers at once instead of one at a time
@@ -232,6 +242,7 @@ public final class AppSettings {
         self.burnRateWarningEnabled = repository.burnRateWarningEnabled()
         self.burnRateThreshold = repository.burnRateThreshold()
         self.showDailyUsageCards = repository.showDailyUsageCards()
+        self.notchEnabled = repository.notchEnabled()
         self.overviewModeEnabled = repository.overviewModeEnabled()
         self.backgroundSyncEnabled = repository.backgroundSyncEnabled()
         self.backgroundSyncInterval = repository.backgroundSyncInterval()

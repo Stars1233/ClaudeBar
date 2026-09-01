@@ -24,6 +24,10 @@ struct ClaudeBarApp: App {
     /// permanently stop re-evaluating after system sleep (issue #192).
     private let statusItemDriver: StatusItemLabelDriver
 
+    /// Draws Claude Code session and quota state into the notch. Comes up and
+    /// goes down with `app.notchEnabled`; does nothing until it is turned on.
+    private let notchDriver: NotchWindowDriver
+
     /// Binding required by `.menuBarExtraAccess`; also enables programmatic
     /// dropdown control if ever needed.
     @State private var isMenuPresented = false
@@ -153,6 +157,13 @@ struct ClaudeBarApp: App {
         )
         statusItemDriver.startMonitoringLifecycle()
         statusItemDriver.startAttachLifecycle()
+
+        notchDriver = NotchWindowDriver(
+            monitor: monitor,
+            sessionMonitor: sessionMonitor,
+            settings: AppSettings.shared
+        )
+        notchDriver.start()
 
         // Load user extensions from ~/.claudebar/extensions/
         let extensionRegistry = ExtensionRegistry(

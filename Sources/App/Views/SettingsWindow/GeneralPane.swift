@@ -44,6 +44,15 @@ struct GeneralPane: View {
                 ) {
                     SettingsSwitch(isOn: $settings.showDailyUsageCards)
                 }
+
+                SettingsRowDivider()
+
+                SettingsRow(
+                    title: "Notch Live Activity",
+                    subtitle: "Show session and quota state in the notch. Appears only while there is something to report."
+                ) {
+                    SettingsSwitch(isOn: $settings.notchEnabled)
+                }
             }
 
             SettingsCard {

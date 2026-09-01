@@ -85,6 +85,7 @@ let project = Project(
                 .target(name: "Infrastructure"),
                 .external(name: "Sparkle"),
                 .external(name: "MenuBarExtraAccess"),
+                .external(name: "Matrix"),
             ],
             settings: .settings(
                 base: [
