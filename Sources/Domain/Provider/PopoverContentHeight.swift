@@ -28,4 +28,29 @@ public enum PopoverContentHeight {
         let available = max(visibleScreenHeight - chrome, usableFloor)
         return overviewMode ? min(overviewCeiling, available) : available
     }
+
+    /// The height the scrollable region should actually take: its content's,
+    /// capped so the action bar cannot be pushed off screen.
+    ///
+    /// A `ScrollView` is greedy — offered a tall frame it fills it — so a cap
+    /// alone is not enough. On a portrait display the cap is over 2000pt, and
+    /// a provider with a single card stretched the popover to match it.
+    ///
+    /// - Parameters:
+    ///   - contentHeight: The measured height of the content. Zero or less
+    ///     means it has not been measured yet, on the first layout pass.
+    ///   - visibleScreenHeight: `NSScreen.visibleFrame.height` of the
+    ///     screen hosting the popover.
+    ///   - overviewMode: whether the popover lists all providers.
+    public static func height(
+        contentHeight: CGFloat,
+        visibleScreenHeight: CGFloat,
+        overviewMode: Bool
+    ) -> CGFloat {
+        let cap = maxHeight(visibleScreenHeight: visibleScreenHeight, overviewMode: overviewMode)
+        // Before the first measurement, prefer the cap: a scrollable popover
+        // is recoverable, one collapsed to nothing is not.
+        guard contentHeight > 0 else { return cap }
+        return min(contentHeight, cap)
+    }
 }

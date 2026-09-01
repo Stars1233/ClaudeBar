@@ -28,6 +28,10 @@ struct MenuContentView: View {
     @State private var pillsContentWidth: CGFloat = 0
     @State private var pillsViewportWidth: CGFloat = 0
 
+    /// Measured height of the scrollable content. Zero until the first layout
+    /// pass reports it — see `PopoverContentHeight.height`.
+    @State private var metricsContentHeight: CGFloat = 0
+
     /// The currently selected provider ID (from monitor, which is @Observable)
     private var selectedProviderId: String {
         get { monitor.selectedProviderId }
@@ -89,8 +93,11 @@ struct MenuContentView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 16)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                        metricsContentHeight = height
+                    }
                 }
-                .frame(maxHeight: contentMaxHeight)
+                .frame(height: contentHeight)
                 // Recreate the scroll view when the shown content
                 // changes, so a newly selected provider starts at the
                 // top instead of inheriting the previous scroll offset.
@@ -166,13 +173,29 @@ struct MenuContentView: View {
         }
     }
 
-    /// Upper bound for the scrollable content region — see
-    /// `PopoverContentHeight` for the policy and its tests.
-    private var contentMaxHeight: CGFloat {
-        PopoverContentHeight.maxHeight(
-            visibleScreenHeight: NSScreen.main?.visibleFrame.height ?? 800,
+    /// Height for the scrollable content region — see `PopoverContentHeight`
+    /// for the policy and its tests. A `ScrollView` fills whatever frame it is
+    /// given, so this is a height rather than a maximum: without it, a single
+    /// card stretched the popover to the cap on a tall display.
+    private var contentHeight: CGFloat {
+        PopoverContentHeight.height(
+            contentHeight: metricsContentHeight,
+            visibleScreenHeight: popoverScreenHeight,
             overviewMode: settings.overviewModeEnabled
         )
+    }
+
+    /// Height of the screen the popover is on.
+    ///
+    /// `NSScreen.main` is the screen holding the *key window*, which on a
+    /// multi-display setup is often not the one the menu bar was clicked on.
+    /// The pointer is over the status item at that moment, so the screen under
+    /// it is the better answer.
+    private var popoverScreenHeight: CGFloat {
+        let pointerLocation = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { $0.frame.contains(pointerLocation) }
+            ?? NSScreen.main
+        return screen?.visibleFrame.height ?? 800
     }
 
     // MARK: - Background Orbs
