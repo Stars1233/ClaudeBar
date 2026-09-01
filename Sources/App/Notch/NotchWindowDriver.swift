@@ -122,7 +122,7 @@ final class NotchWindowDriver {
             quotas: Array(quotas.sorted { $0.percentRemaining < $1.percentRemaining }.prefix(3)),
             today: snapshots.compactMap(\.dailyUsageReport).first?.today,
             headline: headline,
-            isRefreshing: monitor.isRefreshing
+            isRefreshing: isRefreshing(headline)
         )
     }
 
@@ -133,6 +133,17 @@ final class NotchWindowDriver {
             providerId: settings.menuBarPercentageProviderId,
             quotaKey: settings.menuBarPercentageQuotaKey
         ) ?? monitor.lowestQuota()
+    }
+
+    /// Whether the number currently on screen is being refetched.
+    ///
+    /// Deliberately narrower than `QuotaMonitor.isRefreshing`, which is true if
+    /// *any* provider is syncing — including disabled ones. Across nineteen
+    /// providers that is true often enough, and stays true if any one of them
+    /// hangs, that the notch would glow permanently and mean nothing.
+    private func isRefreshing(_ headline: UsageQuota?) -> Bool {
+        guard let headline else { return false }
+        return monitor.provider(for: headline.providerId)?.isSyncing ?? false
     }
 
     private func refreshQuotas() {

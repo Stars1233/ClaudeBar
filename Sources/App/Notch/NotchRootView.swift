@@ -55,23 +55,27 @@ struct NotchRootView: View {
         }
         .fixedSize()
         .background {
+            // The glow is applied here, before the negative padding, so it
+            // traces the same rect the black shape is drawn in. Applied outside
+            // the background it would stroke the content frame instead — a
+            // silhouette 2×topCornerRadius narrower than the notch it outlines.
+            //
+            // peakScale stays at 1: the notch is anchored to the top edge of the
+            // screen and must not breathe against it.
             NotchShape(topCornerRadius: topCornerRadius, bottomCornerRadius: bottomCornerRadius)
                 .fill(.black)
+                .glowEffect(
+                    isActive: state.content.isRefreshing,
+                    shape: NotchShape(topCornerRadius: topCornerRadius, bottomCornerRadius: bottomCornerRadius),
+                    peakScale: 1.0,
+                    duration: 1.6,
+                    glowOpacity: 0.16,
+                    glowColors: [theme.accentPrimary, theme.accentSecondary, theme.accentPrimary],
+                    lineWidth: 2
+                )
                 // Extend past the content so the flares have somewhere to go.
                 .padding(.horizontal, -topCornerRadius)
         }
-        // A refresh is the one moment the numbers are known to be stale, so it
-        // gets said out loud. peakScale stays at 1 — the notch is anchored to
-        // the top edge of the screen and must not breathe against it.
-        .glowEffect(
-            isActive: state.content.isRefreshing,
-            shape: NotchShape(topCornerRadius: topCornerRadius, bottomCornerRadius: bottomCornerRadius),
-            peakScale: 1.0,
-            duration: 1.4,
-            glowOpacity: 0.30,
-            glowColors: [theme.accentPrimary, theme.accentSecondary, theme.accentPrimary],
-            lineWidth: 3
-        )
         // The notch is physical glass; it is black in every theme. Only the
         // panel hanging below it follows the app's theme.
         .environment(\.colorScheme, .dark)
