@@ -22,25 +22,26 @@ struct NotchRootView: View {
         )
     }
 
-    /// The refresh bloom.
+    /// The refresh bloom — GlowEffectKit's documented configuration, with the
+    /// line width from its own 160pt example since the notch is a comparable
+    /// size.
     ///
-    /// `glowOpacity` is passed at its floor on purpose: GlowEffectKit renders
-    /// the border at `max(glowOpacity, 0.72)`, so anything lower is silently
-    /// ignored. Spread is controlled by `lineWidth` (its blur radius is fixed
-    /// internally) and falloff by `amplitude` — those are the knobs that work.
+    /// `peakScale` is deliberately left above 1. It drives the only repeating
+    /// `.animation` in the modifier, and pinning it to 1 (to stop the notch
+    /// breathing against the screen edge) left the colour sweep looking frozen.
+    /// At 1.02 the notch widens by a couple of points at the peak.
     ///
-    /// The colours are the library's own defaults rather than the app accent:
-    /// a single hue reads as a flat outline, while the full sweep is what makes
-    /// it read as light rather than as a border.
-    ///
-    /// `peakScale` stays at 1 — the notch is anchored to the top edge of the
-    /// screen and must not breathe against it.
+    /// `glowOpacity` is the library's documented value, but note it cannot dim
+    /// the effect: the border renders at `max(glowOpacity, 0.72)`. Spread comes
+    /// from `lineWidth` — its blur radius is fixed internally — and falloff
+    /// from `amplitude`.
     private static let refreshGlow = GlowEffectConfiguration(
-        peakScale: 1.0,
-        duration: 1.9,
-        glowOpacity: 0.72,
-        lineWidth: 9,
-        amplitude: 3.4
+        peakScale: 1.02,
+        duration: 2.0,
+        glowOpacity: 0.24,
+        lineWidth: 8,
+        amplitude: 2.5,
+        minimumTimelineInterval: 1.0 / 30.0
     )
 
     private var topCornerRadius: CGFloat { state.isExpanded ? 12 : 6 }
