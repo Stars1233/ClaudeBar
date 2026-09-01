@@ -89,6 +89,10 @@ final class NotchWindowDriver {
 
     /// Reads everything the notch depends on. Every `@Observable` property
     /// touched here is tracked, so any change re-resolves the content.
+    ///
+    /// Scoped to the provider selected in the popover. The notch is a second
+    /// view onto that selection, not a separate one: showing an average across
+    /// nineteen providers would report a number the user never chose to watch.
     private func currentContent() -> NotchContent {
         let now = Date()
 
@@ -100,10 +104,11 @@ final class NotchWindowDriver {
                 return now.timeIntervalSince(finishedAt) < Self.recentSessionWindow
             }
 
-        let snapshots = monitor.enabledProviders.compactMap(\.snapshot)
-        let quotas = snapshots.flatMap(\.quotas)
+        let selected = monitor.selectedProvider
+        let snapshot = selected?.snapshot
+        let quotas = snapshot?.quotas ?? []
+        let headline = snapshot?.lowestQuota
 
-        let headline = headlineQuota()
         var activity = resolver.resolve(
             sessions: sessions,
             quotas: quotas,
@@ -118,36 +123,20 @@ final class NotchWindowDriver {
             activity: activity,
             sessions: Array(sessions.prefix(3)),
             // The panel is about what is nearly gone, so lead with the most
-            // depleted rather than whichever provider happens to be first.
+            // depleted rather than whichever quota happens to be first.
             quotas: Array(quotas.sorted { $0.percentRemaining < $1.percentRemaining }.prefix(3)),
-            today: snapshots.compactMap(\.dailyUsageReport).first?.today,
+            today: snapshot?.dailyUsageReport?.today,
             headline: headline,
-            isRefreshing: isRefreshing(headline)
+            isRefreshing: selected?.isSyncing ?? false
         )
     }
 
-    /// The quota the notch rests on: whichever one the user already chose to
-    /// watch in the menu bar, so the two surfaces never disagree.
-    private func headlineQuota() -> UsageQuota? {
-        monitor.quota(
-            providerId: settings.menuBarPercentageProviderId,
-            quotaKey: settings.menuBarPercentageQuotaKey
-        ) ?? monitor.lowestQuota()
-    }
-
-    /// Whether the number currently on screen is being refetched.
-    ///
-    /// Deliberately narrower than `QuotaMonitor.isRefreshing`, which is true if
-    /// *any* provider is syncing — including disabled ones. Across nineteen
-    /// providers that is true often enough, and stays true if any one of them
-    /// hangs, that the notch would glow permanently and mean nothing.
-    private func isRefreshing(_ headline: UsageQuota?) -> Bool {
-        guard let headline else { return false }
-        return monitor.provider(for: headline.providerId)?.isSyncing ?? false
-    }
-
+    /// Refreshes only what the notch is showing. Refreshing all nineteen
+    /// providers to update one reading is work the user did not ask for, and
+    /// leaves the loader stopping while other providers are still fetching.
     private func refreshQuotas() {
-        Task { await monitor.refreshAll() }
+        let providerId = monitor.selectedProviderId
+        Task { await monitor.refresh(providerId: providerId) }
     }
 
     private func snooze() {
