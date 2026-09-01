@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.4.86] - 2026-09-01
+
 ### Added
 - Claude Code's session and quota state can now be shown in the notch. With nothing running it reports the selected provider's most depleted quota, so the number the app exists for is readable without opening anything. A running session takes the notch over — repository, elapsed time, and how many subagents are fanned out — then hands it back when the turn ends. Hovering expands it into the session list, quota cards and today's usage, with buttons to refresh that provider or snooze the notch for 30 minutes. Off by default: turn it on in Settings → General → Notch Live Activity. Displays without a physical notch, including every external monitor, get a virtual one sized to the menu bar. (#274)
 - ClaudeBar now registers Claude Code's `Notification` hook alongside the session hooks it already installed, so it can tell that Claude is blocked waiting on a permission prompt instead of showing the session as merely active. That state outranks everything else in the notch and stays put until it is answered. (#274)
@@ -1014,7 +1018,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.85...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.86...HEAD
+[0.4.86]: https://github.com/tddworks/ClaudeBar/compare/v0.4.85...v0.4.86
 [0.4.85]: https://github.com/tddworks/ClaudeBar/compare/v0.4.84...v0.4.85
 [0.4.84]: https://github.com/tddworks/ClaudeBar/compare/v0.4.83...v0.4.84
 [0.4.83]: https://github.com/tddworks/ClaudeBar/compare/v0.4.82...v0.4.83
