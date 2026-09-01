@@ -138,6 +138,14 @@ public final class JSONSettingsRepository:
         store.write(value: show, key: "app.showDailyUsageCards")
     }
 
+    public func notchEnabled() -> Bool {
+        store.read(key: "app.notchEnabled") ?? false
+    }
+
+    public func setNotchEnabled(_ enabled: Bool) {
+        store.write(value: enabled, key: "app.notchEnabled")
+    }
+
     public func overviewModeEnabled() -> Bool {
         store.read(key: "app.overviewModeEnabled") ?? false
     }

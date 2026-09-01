@@ -45,6 +45,12 @@ public protocol AppSettingsRepository: Sendable {
     func showDailyUsageCards() -> Bool
     func setShowDailyUsageCards(_ show: Bool)
 
+    // MARK: - Notch
+
+    /// Whether the notch live activity is shown (default: false).
+    func notchEnabled() -> Bool
+    func setNotchEnabled(_ enabled: Bool)
+
     // MARK: - Overview
 
     func overviewModeEnabled() -> Bool
