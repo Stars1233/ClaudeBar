@@ -55,7 +55,6 @@ final class NotchWindowController {
         observeContentSize()
         observeMouse()
         reposition()
-        window.orderFrontRegardless()
 
         AppLog.ui.info("Notch window started")
     }
@@ -88,12 +87,31 @@ final class NotchWindowController {
     // MARK: - Content
 
     /// Hands the notch everything it draws, in one go.
+    ///
+    /// With nothing to say the window is ordered out rather than left on screen
+    /// drawing a closed notch. On a display with a real cutout that shape is
+    /// invisible, but on the virtual notch every other display gets it is a
+    /// black box sitting in the menu bar that cannot be opened.
     func update(content: NotchContent) {
         guard isRunning else { return }
         state.content = content
-        if content.activity == nil, state.isExpanded {
-            state.isExpanded = false
+
+        guard content.activity != nil else {
+            if state.isExpanded { state.isExpanded = false }
+            hide()
+            return
         }
+
+        // Re-pick the display each time the notch has something new to say, so
+        // it appears where the user is rather than wherever they were at launch.
+        reposition()
+        window?.orderFrontRegardless()
+    }
+
+    private func hide() {
+        window?.orderOut(nil)
+        isPointerOverNotch = false
+        window?.ignoresMouseEvents = true
     }
 
     /// Wires the panel's buttons to the app.

@@ -25,6 +25,16 @@ struct NotchRootView: View {
     private var barHeight: CGFloat { state.metrics.closedSize.height }
 
     var body: some View {
+        // Nothing to report draws nothing at all — not even the closed shape.
+        // See NotchWindowController.update(content:).
+        if state.activity == nil {
+            Color.clear.frame(width: 0, height: 0)
+        } else {
+            notch
+        }
+    }
+
+    private var notch: some View {
         VStack(spacing: 0) {
             collapsedBar
             if state.isExpanded {
