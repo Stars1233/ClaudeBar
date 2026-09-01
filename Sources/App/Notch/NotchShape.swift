@@ -27,25 +27,6 @@ struct NotchShape: Shape {
     }
 
     func path(in rect: CGRect) -> Path {
-        var path = Self.visibleContour(
-            in: rect,
-            topCornerRadius: topCornerRadius,
-            bottomCornerRadius: bottomCornerRadius
-        )
-        // Close it back along the top, which the fill needs and the silhouette
-        // does not.
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
-        return path
-    }
-
-    /// The contour a person can actually see: down the left flare, around the
-    /// bottom, back up the right. Open at the top, because that edge runs along
-    /// the screen bezel.
-    static func visibleContour(
-        in rect: CGRect,
-        topCornerRadius: CGFloat,
-        bottomCornerRadius: CGFloat
-    ) -> Path {
         var path = Path()
 
         path.move(to: CGPoint(x: rect.minX, y: rect.minY))
@@ -78,33 +59,9 @@ struct NotchShape: Shape {
             control: CGPoint(x: rect.maxX - topCornerRadius, y: rect.minY)
         )
 
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+
         return path
-    }
-}
-
-/// The notch's visible silhouette, as an open path.
-///
-/// Glowing the closed `NotchShape` lights the top edge too — an edge that runs
-/// along the screen bezel where nobody can see it, and which makes the effect
-/// read as a box drawn around the notch rather than light coming off it.
-struct NotchGlowContour: Shape {
-    var topCornerRadius: CGFloat
-    var bottomCornerRadius: CGFloat
-
-    var animatableData: AnimatablePair<CGFloat, CGFloat> {
-        get { AnimatablePair(topCornerRadius, bottomCornerRadius) }
-        set {
-            topCornerRadius = newValue.first
-            bottomCornerRadius = newValue.second
-        }
-    }
-
-    func path(in rect: CGRect) -> Path {
-        NotchShape.visibleContour(
-            in: rect,
-            topCornerRadius: topCornerRadius,
-            bottomCornerRadius: bottomCornerRadius
-        )
     }
 }
 

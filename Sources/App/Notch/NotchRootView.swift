@@ -1,6 +1,5 @@
 import SwiftUI
 import Domain
-import GlowEffectKit
 import Matrix
 
 /// The notch's contents: two lanes flanking the physical cutout when collapsed,
@@ -54,26 +53,13 @@ struct NotchRootView: View {
             }
         }
         .fixedSize()
+        // Room for the flares, so the notch's frame is the notch's silhouette.
+        // Everything downstream then lines up on one rect: the shape fills it
+        // and onGeometryChange measures it.
+        .padding(.horizontal, topCornerRadius)
         .background {
-            // Applied here, inside the background and before the negative
-            // padding, so the glow traces the same rect the black shape is
-            // drawn in. Outside it would stroke the content frame — a
-            // silhouette 2×topCornerRadius narrower than the notch it outlines.
-            //
-            // The glow follows the open contour, so light comes off the visible
-            // underside instead of boxing the notch in.
             NotchShape(topCornerRadius: topCornerRadius, bottomCornerRadius: bottomCornerRadius)
                 .fill(.black)
-                .glowEffect(
-                    isActive: state.content.isRefreshing,
-                    shape: NotchGlowContour(
-                        topCornerRadius: topCornerRadius,
-                        bottomCornerRadius: bottomCornerRadius
-                    ),
-                    lineWidth: 8
-                )
-                // Extend past the content so the flares have somewhere to go.
-                .padding(.horizontal, -topCornerRadius)
         }
         // The notch is physical glass; it is black in every theme. Only the
         // panel hanging below it follows the app's theme.
