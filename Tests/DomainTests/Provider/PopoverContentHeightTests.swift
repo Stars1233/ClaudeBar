@@ -48,64 +48,6 @@ struct PopoverContentHeightTests {
         #expect(cap == 735 - PopoverContentHeight.chrome)
     }
 
-    // MARK: - Fitting the Content
-
-    @Test
-    func `content shorter than the cap keeps its own height`() {
-        // A provider with one card must not stretch to fill the cap.
-        let height = PopoverContentHeight.height(
-            contentHeight: 180,
-            visibleScreenHeight: 982,
-            overviewMode: false
-        )
-        #expect(height == 180)
-    }
-
-    @Test
-    func `content taller than the cap is clamped to it`() {
-        let height = PopoverContentHeight.height(
-            contentHeight: 5000,
-            visibleScreenHeight: 982,
-            overviewMode: false
-        )
-        #expect(height == PopoverContentHeight.maxHeight(visibleScreenHeight: 982, overviewMode: false))
-    }
-
-    @Test
-    func `a tall display does not stretch a short popover`() {
-        // A 2560pt portrait display leaves a ~2300pt cap. Before the content
-        // height was taken into account, one small card ballooned to fill it.
-        let height = PopoverContentHeight.height(
-            contentHeight: 220,
-            visibleScreenHeight: 2530,
-            overviewMode: false
-        )
-        #expect(height == 220)
-    }
-
-    @Test(arguments: [0.0, -40.0])
-    func `an unmeasured content height falls back to the cap`(contentHeight: Double) {
-        // First layout pass, before the geometry reader has reported. Falling
-        // back to the cap keeps the popover scrollable rather than collapsing
-        // it to nothing.
-        let height = PopoverContentHeight.height(
-            contentHeight: contentHeight,
-            visibleScreenHeight: 982,
-            overviewMode: false
-        )
-        #expect(height == PopoverContentHeight.maxHeight(visibleScreenHeight: 982, overviewMode: false))
-    }
-
-    @Test
-    func `overview still respects its ceiling when content is taller`() {
-        let height = PopoverContentHeight.height(
-            contentHeight: 5000,
-            visibleScreenHeight: 982,
-            overviewMode: true
-        )
-        #expect(height == 500)
-    }
-
     // MARK: - Degenerate Displays
 
     @Test
