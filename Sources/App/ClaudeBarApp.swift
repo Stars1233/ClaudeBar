@@ -163,7 +163,7 @@ struct ClaudeBarApp: App {
             sessionMonitor: sessionMonitor,
             settings: AppSettings.shared
         )
-        notchDriver.start()
+        notchDriver.startWhenLaunched()
 
         // Load user extensions from ~/.claudebar/extensions/
         let extensionRegistry = ExtensionRegistry(

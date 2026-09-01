@@ -19,6 +19,7 @@ final class NotchWindowDriver {
 
     private var contentSync: ObservationRenderSync<NotchContent>?
     private var enabledSync: ObservationRenderSync<Bool>?
+    private var launchObserver: NSObjectProtocol?
 
     /// Re-resolves the content at a moment nothing else will: the end of the
     /// "done" flash, or the end of a snooze.
@@ -39,6 +40,36 @@ final class NotchWindowDriver {
         self.monitor = monitor
         self.sessionMonitor = sessionMonitor
         self.settings = settings
+    }
+
+    /// Defers `start()` until the app has finished launching.
+    ///
+    /// `ClaudeBarApp` builds this driver in `App.init()`, and starting there
+    /// would create an `NSWindow` and its `NSHostingView` before SwiftUI has
+    /// built a single scene. Doing so left `MenuBarExtra`'s popover sized to
+    /// roughly twice its content — 400x671 around 300pt of cards — for the
+    /// life of the process, and switching the notch off afterwards did not
+    /// undo it, because the damage was done at construction.
+    func startWhenLaunched() {
+        if NSApp?.isRunning == true {
+            start()
+            return
+        }
+
+        launchObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didFinishLaunchingNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if let observer = self.launchObserver {
+                    NotificationCenter.default.removeObserver(observer)
+                    self.launchObserver = nil
+                }
+                self.start()
+            }
+        }
     }
 
     /// Starts watching the setting, bringing the notch up and down with it.
