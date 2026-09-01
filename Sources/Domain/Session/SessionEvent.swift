@@ -15,16 +15,23 @@ public struct SessionEvent: Sendable, Equatable, Codable {
     /// When this event was received
     public let receivedAt: Date
 
+    /// Free-text payload carried by the event, when the hook provides one.
+    /// `Notification` uses it for what Claude Code is blocked on
+    /// (e.g. "Claude needs your permission to use Bash").
+    public let message: String?
+
     public init(
         sessionId: String,
         eventName: EventName,
         cwd: String,
-        receivedAt: Date = Date()
+        receivedAt: Date = Date(),
+        message: String? = nil
     ) {
         self.sessionId = sessionId
         self.eventName = eventName
         self.cwd = cwd
         self.receivedAt = receivedAt
+        self.message = message
     }
 
     /// Whether this event originates from ClaudeBar's own background quota probe.
@@ -52,5 +59,8 @@ public struct SessionEvent: Sendable, Equatable, Codable {
         /// Used to revive a session out of `.stopped` so the indicator tracks
         /// real activity instead of sticking on the end-of-turn `Stop`.
         case userPromptSubmit = "UserPromptSubmit"
+        /// Fires when Claude Code needs the user — most importantly a
+        /// permission prompt. The session is blocked until it is answered.
+        case notification = "Notification"
     }
 }

@@ -9,9 +9,16 @@ struct SessionMonitorTests {
         sessionId: String = "test-session",
         eventName: SessionEvent.EventName,
         cwd: String = "/tmp/project",
-        receivedAt: Date = Date()
+        receivedAt: Date = Date(),
+        message: String? = nil
     ) -> SessionEvent {
-        SessionEvent(sessionId: sessionId, eventName: eventName, cwd: cwd, receivedAt: receivedAt)
+        SessionEvent(
+            sessionId: sessionId,
+            eventName: eventName,
+            cwd: cwd,
+            receivedAt: receivedAt,
+            message: message
+        )
     }
 
     // MARK: - Session Lifecycle
@@ -260,5 +267,41 @@ struct SessionMonitorTests {
         #expect(monitor.activeSession == nil)
         #expect(monitor.recentSessions.count == 1)
         #expect(monitor.recentSessions.first?.completedTaskCount == 2)
+    }
+
+    // MARK: - Permission Prompts
+
+    @Test
+    func `Notification moves the active session to awaitingInput`() {
+        let monitor = SessionMonitor()
+        monitor.processEvent(makeEvent(eventName: .sessionStart))
+
+        monitor.processEvent(makeEvent(eventName: .notification, message: "Claude needs your permission to use Bash"))
+
+        #expect(monitor.activeSession?.phase == .awaitingInput)
+        #expect(monitor.activeSession?.pendingPrompt == "Claude needs your permission to use Bash")
+    }
+
+    @Test
+    func `Notification is ignored when it belongs to another session`() {
+        let monitor = SessionMonitor()
+        monitor.processEvent(makeEvent(eventName: .sessionStart))
+
+        monitor.processEvent(makeEvent(sessionId: "other", eventName: .notification, message: "blocked"))
+
+        #expect(monitor.activeSession?.phase == .active)
+        #expect(monitor.activeSession?.pendingPrompt == nil)
+    }
+
+    @Test
+    func `UserPromptSubmit releases a session waiting on input`() {
+        let monitor = SessionMonitor()
+        monitor.processEvent(makeEvent(eventName: .sessionStart))
+        monitor.processEvent(makeEvent(eventName: .notification, message: "blocked"))
+
+        monitor.processEvent(makeEvent(eventName: .userPromptSubmit))
+
+        #expect(monitor.activeSession?.phase == .active)
+        #expect(monitor.activeSession?.pendingPrompt == nil)
     }
 }

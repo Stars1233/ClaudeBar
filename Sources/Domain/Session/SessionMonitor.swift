@@ -39,6 +39,8 @@ public final class SessionMonitor {
             handleStop(event)
         case .userPromptSubmit:
             handleUserPromptSubmit(event)
+        case .notification:
+            handleNotification(event)
         }
     }
 
@@ -86,6 +88,11 @@ public final class SessionMonitor {
     private func handleStop(_ event: SessionEvent) {
         guard activeSession?.id == event.sessionId else { return }
         activeSession?.stop()
+    }
+
+    private func handleNotification(_ event: SessionEvent) {
+        guard activeSession?.id == event.sessionId else { return }
+        activeSession?.awaitInput(event.message, at: event.receivedAt)
     }
 
     private func handleUserPromptSubmit(_ event: SessionEvent) {
