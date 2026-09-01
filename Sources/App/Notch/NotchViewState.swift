@@ -19,6 +19,13 @@ struct NotchContent: Equatable {
     /// Today's usage, for the panel header.
     var today: DailyUsageStat?
 
+    /// The quota the user chose to watch. Kept even while a session has the
+    /// notch, so the gauge never disappears just because Claude is busy.
+    var headline: UsageQuota?
+
+    /// Whether a probe is in flight, which the notch shows rather than hides.
+    var isRefreshing = false
+
     static let empty = NotchContent()
 }
 

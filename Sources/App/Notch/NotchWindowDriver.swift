@@ -103,10 +103,11 @@ final class NotchWindowDriver {
         let snapshots = monitor.enabledProviders.compactMap(\.snapshot)
         let quotas = snapshots.flatMap(\.quotas)
 
+        let headline = headlineQuota()
         var activity = resolver.resolve(
             sessions: sessions,
             quotas: quotas,
-            headlineQuota: headlineQuota(),
+            headlineQuota: headline,
             now: now
         )
         if isSnoozed(at: now), !demandsAttentionThroughSnooze(activity) {
@@ -119,7 +120,9 @@ final class NotchWindowDriver {
             // The panel is about what is nearly gone, so lead with the most
             // depleted rather than whichever provider happens to be first.
             quotas: Array(quotas.sorted { $0.percentRemaining < $1.percentRemaining }.prefix(3)),
-            today: snapshots.compactMap(\.dailyUsageReport).first?.today
+            today: snapshots.compactMap(\.dailyUsageReport).first?.today,
+            headline: headline,
+            isRefreshing: monitor.isRefreshing
         )
     }
 

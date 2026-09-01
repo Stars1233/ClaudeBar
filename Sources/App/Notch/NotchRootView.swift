@@ -1,5 +1,7 @@
 import SwiftUI
 import Domain
+import GlowEffectKit
+import Matrix
 
 /// The notch's contents: two lanes flanking the physical cutout when collapsed,
 /// a panel underneath when expanded.
@@ -58,6 +60,18 @@ struct NotchRootView: View {
                 // Extend past the content so the flares have somewhere to go.
                 .padding(.horizontal, -topCornerRadius)
         }
+        // A refresh is the one moment the numbers are known to be stale, so it
+        // gets said out loud. peakScale stays at 1 — the notch is anchored to
+        // the top edge of the screen and must not breathe against it.
+        .glowEffect(
+            isActive: state.content.isRefreshing,
+            shape: NotchShape(topCornerRadius: topCornerRadius, bottomCornerRadius: bottomCornerRadius),
+            peakScale: 1.0,
+            duration: 1.4,
+            glowOpacity: 0.30,
+            glowColors: [theme.accentPrimary, theme.accentSecondary, theme.accentPrimary],
+            lineWidth: 3
+        )
         // The notch is physical glass; it is black in every theme. Only the
         // panel hanging below it follows the app's theme.
         .environment(\.colorScheme, .dark)
@@ -93,7 +107,7 @@ struct NotchRootView: View {
             }
         case .agentsWorking(let session):
             NotchLane {
-                AgentDots()
+                DotmSquare3(size: 15, color: .blue)
                 NotchLabel(session.repoName)
             }
         case .awaitingInput:
@@ -127,11 +141,15 @@ struct NotchRootView: View {
     private var trailing: some View {
         switch state.activity {
         case .working(let session):
-            ElapsedLabel(session: session)
+            NotchLane {
+                ElapsedLabel(session: session).fixedSize()
+                headlineGauge
+            }
         case .agentsWorking(let session):
             NotchLane {
                 NotchMeta("\(session.activeSubagentCount) agents")
                 ElapsedLabel(session: session)
+                headlineGauge
             }
         case .awaitingInput(let session):
             NotchMeta(session.pendingPrompt ?? "Waiting for you")
@@ -144,16 +162,43 @@ struct NotchRootView: View {
                     NotchMeta("\(session.completedTaskCount) tasks")
                 }
                 NotchMeta(session.durationDescription)
+                headlineGauge
             }
         case .quotaThreshold(let quota), .quotaGlance(let quota):
             NotchLane {
-                QuotaBar(percentRemaining: quota.percentRemaining, color: quotaColor(quota))
+                if state.content.isRefreshing {
+                    DotmSquare3(size: 12, color: quotaColor(quota))
+                } else {
+                    QuotaBar(percentRemaining: quota.percentRemaining, color: quotaColor(quota))
+                }
                 if let reset = quota.compactResetTime {
-                    NotchMeta(reset)
+                    NotchMeta(reset).fixedSize()
                 }
             }
         case nil:
             EmptyView()
+        }
+    }
+
+    /// The quota reading, carried alongside whatever else the notch is saying.
+    /// A session running is not a reason to stop showing how much is left.
+    @ViewBuilder
+    private var headlineGauge: some View {
+        if let quota = state.content.headline {
+            HStack(spacing: 6) {
+                Rectangle()
+                    .fill(.white.opacity(0.18))
+                    .frame(width: 1, height: 11)
+
+                NotchMeta("\(quota.compactTitle ?? quota.quotaType.shortLabel) \(Int(quota.percentRemaining))%")
+                    .fixedSize()
+
+                if state.content.isRefreshing {
+                    DotmSquare3(size: 11, color: quotaColor(quota))
+                } else {
+                    QuotaBar(percentRemaining: quota.percentRemaining, color: quotaColor(quota))
+                }
+            }
         }
     }
 
@@ -232,28 +277,6 @@ private struct PhaseDot: View {
                     isBreathing = true
                 }
             }
-    }
-}
-
-private struct AgentDots: View {
-    @State private var phase = false
-
-    var body: some View {
-        HStack(spacing: 3) {
-            ForEach(0..<3, id: \.self) { index in
-                Circle()
-                    .fill(.blue)
-                    .frame(width: 5, height: 5)
-                    .offset(y: phase ? -1.5 : 1.5)
-                    .animation(
-                        .easeInOut(duration: 0.55)
-                            .repeatForever(autoreverses: true)
-                            .delay(Double(index) * 0.15),
-                        value: phase
-                    )
-            }
-        }
-        .onAppear { phase = true }
     }
 }
 

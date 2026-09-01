@@ -12,11 +12,16 @@ let packageSettings = PackageSettings(
     // Metal shaders into both Sources and Resources for staticFramework SPM bundles.
     productTypes: [
         "SwiftTerm": .framework,
+        // Same Metal-shader duplication as SwiftTerm: GlowEffectKit bundles
+        // GlowEffect.metal under Sources/, which Tuist copies into both Sources
+        // and Resources for a staticFramework SPM bundle (tuist/tuist#9111).
+        "GlowEffectKit": .framework,
     ],
     targetSettings: [
         "IssueReporting": ["SWIFT_PACKAGE_NAME": "xctest-dynamic-overlay"],
         "IssueReportingPackageSupport": ["SWIFT_PACKAGE_NAME": "xctest-dynamic-overlay"],
         "SwiftTerm": ["EXCLUDED_SOURCE_FILE_NAMES": "Shaders.metal"],
+        "GlowEffectKit": ["EXCLUDED_SOURCE_FILE_NAMES": "GlowEffect.metal"],
     ]
 )
 #endif
@@ -41,5 +46,11 @@ let package = Package(
         // Foundation.Process — Subprocess has no pseudo-terminal support as of
         // 1.0.0 (swiftlang/swift-subprocess#227 is post-1.0).
         .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "1.0.0"),
+        // Metal-shader glow, used to make a refresh visible on the notch.
+        .package(url: "https://github.com/didisouzacosta/GlowEffectKit", from: "1.1.0"),
+        // Dot-matrix loaders. Custom licence: commercial use is granted, but
+        // republishing the components as a reusable library is not — fine for
+        // consuming it here, so long as the source is never vendored.
+        .package(url: "https://github.com/mana-am/matrix-swift", from: "0.2.0"),
     ]
 )
