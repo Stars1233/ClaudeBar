@@ -22,28 +22,6 @@ struct NotchRootView: View {
         )
     }
 
-    /// The refresh bloom — GlowEffectKit's documented configuration, with the
-    /// line width from its own 160pt example since the notch is a comparable
-    /// size.
-    ///
-    /// `peakScale` is deliberately left above 1. It drives the only repeating
-    /// `.animation` in the modifier, and pinning it to 1 (to stop the notch
-    /// breathing against the screen edge) left the colour sweep looking frozen.
-    /// At 1.02 the notch widens by a couple of points at the peak.
-    ///
-    /// `glowOpacity` is the library's documented value, but note it cannot dim
-    /// the effect: the border renders at `max(glowOpacity, 0.72)`. Spread comes
-    /// from `lineWidth` — its blur radius is fixed internally — and falloff
-    /// from `amplitude`.
-    private static let refreshGlow = GlowEffectConfiguration(
-        peakScale: 1.02,
-        duration: 2.0,
-        glowOpacity: 0.24,
-        lineWidth: 8,
-        amplitude: 2.5,
-        minimumTimelineInterval: 1.0 / 30.0
-    )
-
     private var topCornerRadius: CGFloat { state.isExpanded ? 12 : 6 }
     private var bottomCornerRadius: CGFloat { state.isExpanded ? 22 : 14 }
     private var barHeight: CGFloat { state.metrics.closedSize.height }
@@ -92,7 +70,7 @@ struct NotchRootView: View {
                         topCornerRadius: topCornerRadius,
                         bottomCornerRadius: bottomCornerRadius
                     ),
-                    configuration: Self.refreshGlow
+                    lineWidth: 8
                 )
                 // Extend past the content so the flares have somewhere to go.
                 .padding(.horizontal, -topCornerRadius)
