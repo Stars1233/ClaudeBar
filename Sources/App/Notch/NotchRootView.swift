@@ -22,6 +22,27 @@ struct NotchRootView: View {
         )
     }
 
+    /// The refresh bloom.
+    ///
+    /// `glowOpacity` is passed at its floor on purpose: GlowEffectKit renders
+    /// the border at `max(glowOpacity, 0.72)`, so anything lower is silently
+    /// ignored. Spread is controlled by `lineWidth` (its blur radius is fixed
+    /// internally) and falloff by `amplitude` — those are the knobs that work.
+    ///
+    /// The colours are the library's own defaults rather than the app accent:
+    /// a single hue reads as a flat outline, while the full sweep is what makes
+    /// it read as light rather than as a border.
+    ///
+    /// `peakScale` stays at 1 — the notch is anchored to the top edge of the
+    /// screen and must not breathe against it.
+    private static let refreshGlow = GlowEffectConfiguration(
+        peakScale: 1.0,
+        duration: 1.9,
+        glowOpacity: 0.72,
+        lineWidth: 9,
+        amplitude: 3.4
+    )
+
     private var topCornerRadius: CGFloat { state.isExpanded ? 12 : 6 }
     private var bottomCornerRadius: CGFloat { state.isExpanded ? 22 : 14 }
     private var barHeight: CGFloat { state.metrics.closedSize.height }
@@ -55,23 +76,22 @@ struct NotchRootView: View {
         }
         .fixedSize()
         .background {
-            // The glow is applied here, before the negative padding, so it
-            // traces the same rect the black shape is drawn in. Applied outside
-            // the background it would stroke the content frame instead — a
+            // Applied here, inside the background and before the negative
+            // padding, so the glow traces the same rect the black shape is
+            // drawn in. Outside it would stroke the content frame — a
             // silhouette 2×topCornerRadius narrower than the notch it outlines.
             //
-            // peakScale stays at 1: the notch is anchored to the top edge of the
-            // screen and must not breathe against it.
+            // The glow follows the open contour, so light comes off the visible
+            // underside instead of boxing the notch in.
             NotchShape(topCornerRadius: topCornerRadius, bottomCornerRadius: bottomCornerRadius)
                 .fill(.black)
                 .glowEffect(
                     isActive: state.content.isRefreshing,
-                    shape: NotchShape(topCornerRadius: topCornerRadius, bottomCornerRadius: bottomCornerRadius),
-                    peakScale: 1.0,
-                    duration: 1.6,
-                    glowOpacity: 0.16,
-                    glowColors: [theme.accentPrimary, theme.accentSecondary, theme.accentPrimary],
-                    lineWidth: 2
+                    shape: NotchGlowContour(
+                        topCornerRadius: topCornerRadius,
+                        bottomCornerRadius: bottomCornerRadius
+                    ),
+                    configuration: Self.refreshGlow
                 )
                 // Extend past the content so the flares have somewhere to go.
                 .padding(.horizontal, -topCornerRadius)
