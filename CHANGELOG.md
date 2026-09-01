@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Claude no longer reports "Failed to parse output: Could not find session usage" when the CLI is simply slow to answer. `claude /usage` paints its cost panel and a "Loading usage data…" placeholder immediately, then fills the quota bars in from a separate request; the probe stopped at the first 3-second lull and captured the placeholder. It now waits for the screen to settle — quota bars, or the error that replaced them. A capture that still ends on the placeholder says the usage endpoint may be rate limited instead of blaming the parser, and a `/usage` screen that renders an API-billing cost panel with no quota at all falls back to `/cost`. (#271, #253)
 - The quota bar no longer contradicts the number above it. In "Remaining" mode an 87% card drew a 13% bar, because the bar tracked usage while the headline tracked what was left. The bar again shares the headline's scale: it starts full and drains as quota is consumed, inverting only in "Used" mode. The pace tick moves back onto the same scale. (#268)
 
 ---

@@ -291,6 +291,54 @@ struct ClaudeUsageProbeTests {
         #expect(snapshot.quotas.count >= 1)
     }
 
+    @Test
+    func `probe falls back to cost when usage renders the API billing panel`() async throws {
+        // Given — issue #271: the Usage tab paints a cost panel with no quota bars
+        let mockExecutor = MockCLIExecutor()
+
+        let usageOutput = """
+        Opus 5 (1M context) · API Usage Billing
+
+          Session
+            Total cost:            $0.0000
+            Total duration (API):  0s
+            Usage:                 0 input, 0 output, 0 cache read, 0 cache write
+        """
+
+        let costOutput = """
+        Total cost:            $1.25
+        Total duration (API):  6m 19.7s
+        Total duration (wall): 1h 2m
+        """
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .matching { $0.first == "/usage" },
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: usageOutput, exitCode: 0))
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .matching { $0.first == "/cost" },
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: costOutput, exitCode: 0))
+
+        let probe = ClaudeUsageProbe(cliExecutor: mockExecutor)
+
+        // When
+        let snapshot = try await probe.probe()
+
+        // Then
+        #expect(snapshot.costUsage?.totalCost == Decimal(string: "1.25"))
+        #expect(snapshot.accountTier == .claudeApi)
+    }
+
     // MARK: - Account Info from ClaudeAccountInfoResolver
 
     @Test

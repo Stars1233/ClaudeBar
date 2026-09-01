@@ -75,6 +75,40 @@ struct InteractiveRunnerTests {
 
         #expect(result.output.contains("CLAUDEBAR_TEST_PRESERVE_VAR=should_be_present"))
     }
+
+    // MARK: - Completion Rule (issue #271)
+
+    @Test
+    func `Options defaults completionRule to nil`() {
+        #expect(InteractiveRunner.Options().completionRule == nil)
+    }
+
+    @Test
+    func `Options stores completionRule`() {
+        let options = InteractiveRunner.Options(completionRule: .claudeUsage)
+        #expect(options.completionRule == .claudeUsage)
+    }
+
+    @Test
+    func `run keeps waiting while the output is still a pending placeholder`() throws {
+        let runner = InteractiveRunner()
+        // Paints a placeholder, then goes quiet for longer than the 3s idle
+        // cutoff before the real content arrives — exactly how `claude /usage`
+        // fills its quota bars in asynchronously.
+        let script = "printf 'Loading usage data...'; sleep 5; printf 'Current session 1%% used'"
+
+        let result = try runner.run(
+            binary: "/bin/sh",
+            input: "",
+            options: .init(
+                timeout: 20.0,
+                arguments: ["-c", script],
+                completionRule: .claudeUsage
+            )
+        )
+
+        #expect(result.output.contains("Current session"))
+    }
 }
 
 // MARK: - hasMeaningfulContent Tests

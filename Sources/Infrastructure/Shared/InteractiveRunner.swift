@@ -39,6 +39,10 @@ public struct InteractiveRunner: Sendable {
         /// Use this to prevent env vars like `CLAUDE_CODE_OAUTH_TOKEN` from being
         /// inherited by the subprocess, forcing it to use stored credentials instead.
         public var environmentExclusions: [String]
+        /// Optional rule that tells the runner when the screen has settled.
+        /// Without it, any idle gap ends the capture — which truncates TUIs that
+        /// paint a placeholder first and fill it in asynchronously (issue #271).
+        public var completionRule: CLICompletionRule?
         /// Quality of service for the spawned process tree.
         ///
         /// Defaults to the ambient `ProbeExecutionContext` value. Because default
@@ -53,6 +57,7 @@ public struct InteractiveRunner: Sendable {
             arguments: [String] = [],
             autoResponses: [String: String] = [:],
             environmentExclusions: [String] = [],
+            completionRule: CLICompletionRule? = nil,
             qualityOfService: QualityOfService = ProbeExecutionContext.qualityOfService
         ) {
             self.timeout = timeout
@@ -60,6 +65,7 @@ public struct InteractiveRunner: Sendable {
             self.arguments = arguments
             self.autoResponses = autoResponses
             self.environmentExclusions = environmentExclusions
+            self.completionRule = completionRule
             self.qualityOfService = qualityOfService
         }
     }
@@ -284,8 +290,12 @@ public struct InteractiveRunner: Sendable {
             // Exit if process stopped
             if !process.isRunning { break }
 
-            // Exit if we have meaningful output and no new meaningful data for idleTimeout
-            if hasMeaningfulContent(buffer) && Date().timeIntervalSince(lastMeaningfulDataTime) > idleTimeout {
+            // Exit if we have meaningful output and no new meaningful data for
+            // idleTimeout — unless the screen says it is still filling in, in
+            // which case idle means "waiting on the network", not "done".
+            if hasMeaningfulContent(buffer),
+               Date().timeIntervalSince(lastMeaningfulDataTime) > idleTimeout,
+               !isAwaitingCompletion(buffer, rule: options.completionRule) {
                 break
             }
 
@@ -351,6 +361,13 @@ public struct InteractiveRunner: Sendable {
     /// - Parameter data: The raw data buffer to check
     /// - Returns: `true` if visible text content remains after stripping escapes,
     ///            `true` if data is non-UTF8 (binary data), `false` otherwise
+    /// Whether the captured screen is still filling in under `rule`.
+    /// Returns false when there is no rule, so runs without one are unchanged.
+    internal func isAwaitingCompletion(_ data: Data, rule: CLICompletionRule?) -> Bool {
+        guard let rule, let text = String(data: data, encoding: .utf8) else { return false }
+        return rule.isPending(text)
+    }
+
     internal func hasMeaningfulContent(_ data: Data) -> Bool {
         guard let text = String(data: data, encoding: .utf8) else {
             // Non-UTF8 binary data is considered meaningful

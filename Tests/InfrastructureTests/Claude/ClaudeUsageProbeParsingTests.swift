@@ -1078,6 +1078,80 @@ struct ClaudeUsageProbeParsingTests {
         #expect(resetsCount == 1, "Should contain 'Resets' exactly once, got \(resetsCount) in: \(unwrapped)")
     }
 
+    // MARK: - Unfinished / API-billing Screens (issue #271)
+
+    /// The Usage tab as it looks before the quota request comes back.
+    static let stillLoadingOutput = """
+    Claude Code v2.1.251
+    Opus 5 (1M context) · Claude Max
+
+      Settings  Status  Config  Usage  Stats
+
+      Session
+        Total cost:            $0.0000
+        Total duration (API):  0s
+        Usage:                 0 input, 0 output, 0 cache read, 0 cache write
+
+        Loading usage data…
+
+      Esc to cancel
+    """
+
+    /// The Usage tab for a session the CLI resolved to API billing: a cost panel,
+    /// no quota bars, and nothing left to wait for.
+    static let apiBillingCostPanelOutput = """
+    Claude Code v2.1.251
+    Opus 5 (1M context) · API Usage Billing
+
+      Settings  Status  Config  Usage  Stats
+
+      Session
+        Total cost:            $0.0000
+        Total duration (API):  0s
+        Total duration (wall): 0s
+        Total code changes:    0 lines added, 0 lines removed
+        Usage:                 0 input, 0 output, 0 cache read, 0 cache write
+
+      Esc to cancel
+    """
+
+    @Test
+    func `still-loading output reports that usage data never arrived`() {
+        #expect(throws: ProbeError.executionFailed(
+            "Claude usage data did not finish loading — the usage endpoint may be rate limited. Try again in a moment."
+        )) {
+            try simulateParse(text: Self.stillLoadingOutput)
+        }
+    }
+
+    @Test
+    func `API billing cost panel routes to the cost fallback instead of a parse error`() {
+        #expect(throws: ProbeError.subscriptionRequired) {
+            try simulateParse(text: Self.apiBillingCostPanelOutput)
+        }
+    }
+
+    @Test
+    func `subscription output that mentions API usage billing alongside quotas still parses`() throws {
+        // Extra Usage credits put "API Usage Billing" in a subscription header —
+        // the quota bars are what decide, not the header.
+        let output = """
+        Claude Code v2.1.251
+        Opus 5 (1M context) · API Usage Billing
+
+        Current session
+        ████ 25% used
+
+        Current week (all models)
+        ████ 60% used
+        """
+
+        let snapshot = try simulateParse(text: output)
+
+        #expect(snapshot.sessionQuota?.percentRemaining == 75)
+        #expect(snapshot.weeklyQuota?.percentRemaining == 40)
+    }
+
     // MARK: - Helper
 
     private func simulateParse(text: String) throws -> UsageSnapshot {

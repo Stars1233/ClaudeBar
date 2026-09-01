@@ -31,7 +31,10 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
     ) {
         self.claudeBinary = claudeBinary
         self.timeout = timeout
-        self.cliExecutor = cliExecutor ?? DefaultCLIExecutor(environmentExclusions: Self.envExclusions)
+        self.cliExecutor = cliExecutor ?? DefaultCLIExecutor(
+            environmentExclusions: Self.envExclusions,
+            completionRule: .claudeUsage
+        )
         self.terminalRenderer = TerminalRenderer(cols: 160, rows: 50)
         self.accountInfoResolver = accountInfoResolver
     }
@@ -300,6 +303,27 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
         let fablePct = extractPercent(labelSubstring: "Current week (Fable", text: clean)
 
         guard let sessionPct else {
+            // The Usage tab paints its cost panel first and fills the quota bars
+            // in from a separate request. A capture that stopped at the
+            // placeholder has nothing to parse — that is a stalled or
+            // rate-limited endpoint, not a changed output format (#271).
+            if clean.range(of: "Loading usage data", options: .caseInsensitive) != nil {
+                AppLog.probes.error("Claude parse failed: /usage was captured while usage data was still loading")
+                throw ProbeError.executionFailed(
+                    "Claude usage data did not finish loading — the usage endpoint may be rate limited. Try again in a moment."
+                )
+            }
+
+            // A settled cost panel with no quota bars means the CLI resolved this
+            // session to API billing (seen on subscriptions billed via Apple too).
+            // The header alone never classifies — subscriptions with Extra Usage
+            // carry it beside real quota bars, which is why this sits behind the
+            // "no percentages anywhere" guard.
+            if isApiUsageBillingPanel(clean) {
+                AppLog.probes.info("Claude /usage rendered the API billing cost panel, falling back to /cost")
+                throw ProbeError.subscriptionRequired
+            }
+
             AppLog.probes.error("Claude parse failed: could not find 'Current session' percentage in output")
             AppLog.probes.debug("Raw output (original, \(text.count) chars): \(text.debugDescription)")
             AppLog.probes.debug("Raw output (cleaned, \(clean.count) chars): \(clean)")
@@ -840,6 +864,13 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
     }
 
     // MARK: - Error Detection
+
+    /// True when `/usage` rendered the cost/stats panel of an API-billing session:
+    /// the billing header plus a total cost, and (checked by the caller) no quota.
+    internal func isApiUsageBillingPanel(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return lower.contains("api usage billing") && lower.contains("total cost:")
+    }
 
     internal func extractUsageError(_ text: String) -> ProbeError? {
         let lower = text.lowercased()

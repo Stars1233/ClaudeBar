@@ -8,8 +8,17 @@ public struct DefaultCLIExecutor: CLIExecutor {
     /// preventing tokens like `CLAUDE_CODE_OAUTH_TOKEN` from being inherited.
     private let environmentExclusions: [String]
 
-    public init(environmentExclusions: [String] = []) {
+    /// Rule that tells the PTY run when the screen has settled. Without one, any
+    /// idle gap ends the capture, truncating TUIs that fill in asynchronously
+    /// (issue #271).
+    private let completionRule: CLICompletionRule?
+
+    public init(
+        environmentExclusions: [String] = [],
+        completionRule: CLICompletionRule? = nil
+    ) {
         self.environmentExclusions = environmentExclusions
+        self.completionRule = completionRule
     }
 
     public func locate(_ binary: String) -> String? {
@@ -33,7 +42,8 @@ public struct DefaultCLIExecutor: CLIExecutor {
             workingDirectory: workingDirectory,
             arguments: args,
             autoResponses: autoResponses,
-            environmentExclusions: environmentExclusions
+            environmentExclusions: environmentExclusions,
+            completionRule: completionRule
         )
         let inputText = input ?? ""
 

@@ -25,6 +25,22 @@ struct DefaultCLIExecutorTests {
         #expect(result.exitCode == 0)
     }
 
+    @Test("Waits past an idle gap while the screen is still filling in")
+    func waitsForPendingScreen() async throws {
+        // issue #271: `claude /usage` paints a placeholder, goes quiet longer
+        // than the idle cutoff, then appends the quota bars.
+        let result = try await DefaultCLIExecutor(completionRule: .claudeUsage).execute(
+            binary: "/bin/sh",
+            args: ["-c", "printf 'Loading usage data...'; sleep 5; printf 'Current session 1%% used'"],
+            input: "",
+            timeout: 20,
+            workingDirectory: nil,
+            autoResponses: [:]
+        )
+
+        #expect(result.output.contains("Current session"))
+    }
+
     @Test("Throws when the binary cannot be located")
     func throwsForMissingBinary() async {
         await #expect(throws: (any Error).self) {
