@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.4.87] - 2026-09-02
+
 ### Fixed
 - Quota cards no longer draw their text mirrored. After a refresh, the fields whose value had just changed could come back upside down — a different set each time. The rolling digit animation on card headline numbers, which renders them through a separate morphing text layer, is gone; the numbers now update in place. Card rows also get ids that stay unique when a provider reports two cards of the same quota type, so no row can borrow another's drawing. (#272)
 
@@ -1021,7 +1025,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.86...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.87...HEAD
+[0.4.87]: https://github.com/tddworks/ClaudeBar/compare/v0.4.86...v0.4.87
 [0.4.86]: https://github.com/tddworks/ClaudeBar/compare/v0.4.85...v0.4.86
 [0.4.85]: https://github.com/tddworks/ClaudeBar/compare/v0.4.84...v0.4.85
 [0.4.84]: https://github.com/tddworks/ClaudeBar/compare/v0.4.83...v0.4.84
