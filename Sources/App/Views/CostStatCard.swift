@@ -87,7 +87,6 @@ struct CostStatCard: View {
                 Text(costUsage.formattedCost)
                     .font(.system(size: 28, weight: .heavy, design: theme.fontDesign))
                     .foregroundStyle(theme.textPrimary)
-                    .contentTransition(.numericText())
 
                 if let budget = effectiveBudget {
                     Text("of \(formatBudget(budget))")
