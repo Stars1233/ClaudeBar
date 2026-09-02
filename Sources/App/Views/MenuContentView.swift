@@ -1059,15 +1059,32 @@ struct TwoColumnCardGrid<Item, ID: Hashable, Cell: View>: View {
         self.cell = cell
     }
 
-    /// Rows are keyed by their leading item so a stable card list keeps
-    /// stable row identity across refreshes (no re-run of card appear
-    /// animations); when the list itself changes, affected rows rebuild.
-    private var rows: [(id: ID, leading: Item, trailing: Item?)] {
+    /// A row's identity: its position plus the ids of the cards it holds.
+    ///
+    /// Keying a row on its leading card's id alone (the original form) is not
+    /// unique: providers can report two cards of the same `QuotaType` — one
+    /// `.session` per account, say — and two rows then claim the same `ForEach`
+    /// id. Duplicate ids leave SwiftUI free to recycle one row's backing layer
+    /// for another's content, which is one way cards end up drawing garbled
+    /// (see #272). The position keeps ids unique whatever the cards contain,
+    /// and the card ids keep a row's identity tied to what it actually shows.
+    private struct RowID: Hashable {
+        let index: Int
+        let leading: ID
+        let trailing: ID?
+    }
+
+    private var rows: [(id: RowID, leading: Item, trailing: Item?)] {
         stride(from: 0, to: items.count, by: 2).map { start in
-            (
-                id: items[start][keyPath: id],
+            let trailing = start + 1 < items.count ? items[start + 1] : nil
+            return (
+                id: RowID(
+                    index: start,
+                    leading: items[start][keyPath: id],
+                    trailing: trailing?[keyPath: id]
+                ),
                 leading: items[start],
-                trailing: start + 1 < items.count ? items[start + 1] : nil
+                trailing: trailing
             )
         }
     }
@@ -1166,7 +1183,14 @@ struct WrappedStatCard: View {
                 }
             }
 
-            // Large value display with label (end-aligned)
+            // Large value display with label (end-aligned).
+            //
+            // The headline number deliberately carries no
+            // `.contentTransition(.numericText())`: that modifier hands the
+            // digits to a separate morphing text layer, and those layers are
+            // what users see come back mirrored after a refresh (#272) — the
+            // flipped fields are the ones whose value just changed. A number
+            // that reads correctly is worth more than a rolling animation.
             HStack(alignment: .firstTextBaseline) {
                 if let dollarUsed = quota.formattedDollarUsed,
                    let dollarCap = quota.formattedDollarCap {
@@ -1174,7 +1198,6 @@ struct WrappedStatCard: View {
                         Text(dollarUsed)
                             .font(.system(size: 20, weight: .heavy, design: theme.fontDesign))
                             .foregroundStyle(theme.textPrimary)
-                            .contentTransition(.numericText())
 
                         Text("of \(dollarCap)")
                             .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
@@ -1187,13 +1210,11 @@ struct WrappedStatCard: View {
                     Text(dollarText)
                         .font(.system(size: 18, weight: .bold, design: theme.fontDesign))
                         .foregroundStyle(theme.textPrimary)
-                        .contentTransition(.numericText())
                 } else {
                     HStack(alignment: .firstTextBaseline, spacing: 1) {
                         Text("\(Int(quota.displayPercent(mode: effectiveDisplayMode)))")
                             .font(.system(size: 26, weight: .bold, design: theme.fontDesign))
                             .foregroundStyle(effectiveDisplayMode == .pace ? paceColor : theme.textPrimary)
-                            .contentTransition(.numericText())
 
                         Text("%")
                             .font(.system(size: 13, weight: .medium, design: theme.fontDesign))
@@ -1622,7 +1643,6 @@ struct BedrockUsageCard: View {
                     Text(usage.formattedTotalCost)
                         .font(.system(size: 36, weight: .bold, design: theme.fontDesign))
                         .foregroundStyle(theme.textPrimary)
-                        .contentTransition(.numericText())
                 }
 
                 Spacer()

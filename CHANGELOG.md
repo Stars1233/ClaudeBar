@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Quota cards no longer draw their text mirrored. After a refresh, the fields whose value had just changed could come back upside down — a different set each time. The rolling digit animation on card headline numbers, which renders them through a separate morphing text layer, is gone; the numbers now update in place. Card rows also get ids that stay unique when a provider reports two cards of the same quota type, so no row can borrow another's drawing. (#272)
+
 ---
 
 ## [0.4.86] - 2026-09-01
