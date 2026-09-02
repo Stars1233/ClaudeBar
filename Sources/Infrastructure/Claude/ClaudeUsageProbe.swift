@@ -20,6 +20,13 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
     /// `user:inference` scope and cannot access quota data via `/usage`.
     static let envExclusions = ["CLAUDE_CODE_OAUTH_TOKEN"]
 
+    /// Reported when `claude /usage` shows the API-billing cost panel for an
+    /// account the config file says is a subscription. Surfaced only if the
+    /// usage API cannot answer either, so it names both ways out (#271).
+    public static let subscriptionMisreadAsApiBilling =
+        "The Claude CLI did not see this account's subscription — its usage screen showed API billing only. "
+        + "Run `claude login` again, or switch Claude to API mode in Settings."
+
     /// Resolves account info from `~/.claude.json`
     private let accountInfoResolver: any AccountInfoResolving
 
@@ -320,6 +327,19 @@ public final class ClaudeUsageProbe: UsageProbe, @unchecked Sendable {
             // carry it beside real quota bars, which is why this sits behind the
             // "no percentages anywhere" guard.
             if isApiUsageBillingPanel(clean) {
+                // ...but `~/.claude.json` still knows the account pays by
+                // subscription, and a subscription has quota the CLI simply
+                // could not see. Answering with /cost would report $0.00 and no
+                // quota bars — and because that path *succeeds*, it would stop
+                // ClaudeProvider from falling back to the usage API, which can
+                // still read the real numbers. Fail instead so that runs (#271).
+                if let accountInfo, accountInfo.isSubscriptionBilled {
+                    AppLog.probes.error(
+                        "Claude /usage rendered the API billing cost panel for a \(accountInfo.billingType ?? "subscription") account — not falling back to /cost"
+                    )
+                    throw ProbeError.executionFailed(Self.subscriptionMisreadAsApiBilling)
+                }
+
                 AppLog.probes.info("Claude /usage rendered the API billing cost panel, falling back to /cost")
                 throw ProbeError.subscriptionRequired
             }

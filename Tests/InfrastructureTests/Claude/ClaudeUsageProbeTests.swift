@@ -329,7 +329,12 @@ struct ClaudeUsageProbeTests {
             autoResponses: .any
         ).willReturn(CLIResult(output: costOutput, exitCode: 0))
 
-        let probe = ClaudeUsageProbe(cliExecutor: mockExecutor)
+        // A genuine pay-as-you-go account: nothing in the config claims a
+        // subscription, so the cost panel is the truth and /cost answers it.
+        let resolver = MockAccountInfoResolving()
+        given(resolver).resolve().willReturn(AccountInfo(email: "user@example.com", billingType: "api"))
+
+        let probe = ClaudeUsageProbe(cliExecutor: mockExecutor, accountInfoResolver: resolver)
 
         // When
         let snapshot = try await probe.probe()
@@ -337,6 +342,46 @@ struct ClaudeUsageProbeTests {
         // Then
         #expect(snapshot.costUsage?.totalCost == Decimal(string: "1.25"))
         #expect(snapshot.accountTier == .claudeApi)
+    }
+
+    @Test
+    func `probe fails instead of costing out a subscription the CLI could not see`() async throws {
+        // Given — issue #271: a Max plan billed through Apple renders the same
+        // cost panel, but the config still says it is a subscription. /cost
+        // would answer $0.00 with no quota, and its success would keep
+        // ClaudeProvider from trying the usage API, which can still read the
+        // real numbers. So the probe fails and lets that fallback run.
+        let mockExecutor = MockCLIExecutor()
+
+        let usageOutput = """
+        Opus 5 (1M context) · API Usage Billing
+
+          Session
+            Total cost:            $0.0000
+            Total duration (API):  0s
+            Usage:                 0 input, 0 output, 0 cache read, 0 cache write
+        """
+
+        given(mockExecutor).execute(
+            binary: .any,
+            args: .any,
+            input: .any,
+            timeout: .any,
+            workingDirectory: .any,
+            autoResponses: .any
+        ).willReturn(CLIResult(output: usageOutput, exitCode: 0))
+
+        let resolver = MockAccountInfoResolving()
+        given(resolver).resolve().willReturn(
+            AccountInfo(email: "user@example.com", billingType: "apple_subscription")
+        )
+
+        let probe = ClaudeUsageProbe(cliExecutor: mockExecutor, accountInfoResolver: resolver)
+
+        // When / Then
+        await #expect(throws: ProbeError.executionFailed(ClaudeUsageProbe.subscriptionMisreadAsApiBilling)) {
+            try await probe.probe()
+        }
     }
 
     // MARK: - Account Info from ClaudeAccountInfoResolver

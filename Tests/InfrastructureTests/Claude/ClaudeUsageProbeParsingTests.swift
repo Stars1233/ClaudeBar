@@ -1132,6 +1132,33 @@ struct ClaudeUsageProbeParsingTests {
     }
 
     @Test
+    func `API billing cost panel on a subscription account refuses the cost fallback`() {
+        // A Max plan billed through Apple still renders the API-billing cost
+        // panel when the CLI cannot see the subscription (#271). Answering with
+        // `/cost` would report $0.00 and no quota, and — because it succeeds —
+        // would stop ClaudeProvider from trying the usage API, which can still
+        // read the real quota. Fail instead, so that fallback runs.
+        let resolver = MockAccountInfoResolving()
+        given(resolver).resolve().willReturn(
+            AccountInfo(email: "user@example.com", billingType: "apple_subscription")
+        )
+
+        #expect(throws: ProbeError.executionFailed(ClaudeUsageProbe.subscriptionMisreadAsApiBilling)) {
+            try ClaudeUsageProbe.parse(Self.apiBillingCostPanelOutput, accountInfoResolver: resolver)
+        }
+    }
+
+    @Test
+    func `API billing cost panel on a pay-as-you-go account still routes to cost`() {
+        let resolver = MockAccountInfoResolving()
+        given(resolver).resolve().willReturn(AccountInfo(email: "user@example.com", billingType: "api"))
+
+        #expect(throws: ProbeError.subscriptionRequired) {
+            try ClaudeUsageProbe.parse(Self.apiBillingCostPanelOutput, accountInfoResolver: resolver)
+        }
+    }
+
+    @Test
     func `subscription output that mentions API usage billing alongside quotas still parses`() throws {
         // Extra Usage credits put "API Usage Billing" in a subscription header —
         // the quota bars are what decide, not the header.

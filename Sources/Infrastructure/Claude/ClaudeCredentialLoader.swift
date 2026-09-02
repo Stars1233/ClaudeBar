@@ -275,25 +275,48 @@ public struct ClaudeCredentialLoader: Sendable {
         process.arguments = ["find-generic-password", "-s", keychainService, "-w"]
 
         let pipe = Pipe()
+        let errorPipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = Pipe()
+        process.standardError = errorPipe
 
         do {
             try process.run()
             // Drain before waiting: `waitUntilExit()` first would deadlock if the
             // child ever filled the pipe buffer, since nothing is reading it.
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
-            guard process.terminationStatus == 0 else { return nil }
+
+            // On macOS the Keychain is the only place `claude login` leaves
+            // credentials — there is no `~/.claude/.credentials.json` to fall
+            // back to. A silent nil here surfaces as "Authentication required.
+            // Please log in." to someone who is already logged in, with nothing
+            // in the log to say the read was denied rather than empty (#271).
+            guard process.terminationStatus == 0 else {
+                let stderr = String(data: errorData, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                AppLog.credentials.error(
+                    "Keychain read of '\(keychainService)' failed: security exited \(process.terminationStatus)"
+                    + (stderr.isEmpty ? "" : " — \(stderr)")
+                )
+                return nil
+            }
 
             guard let jsonString = String(data: data, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
-                  !jsonString.isEmpty else { return nil }
+                  !jsonString.isEmpty else {
+                AppLog.credentials.error("Keychain item '\(keychainService)' held an empty password")
+                return nil
+            }
 
             guard let jsonData = Self.decodeKeychainPayload(jsonString),
                   let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
                   let oauthDict = json["claudeAiOauth"] as? [String: Any],
                   let rawAccessToken = oauthDict["accessToken"] as? String else {
+                // Shape only — never the payload, which is the token itself.
+                AppLog.credentials.error(
+                    "Keychain item '\(keychainService)' did not hold a readable claudeAiOauth access token"
+                )
                 return nil
             }
 
