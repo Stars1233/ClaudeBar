@@ -193,7 +193,12 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
         // 仅在从文件加载时更新缓存，避免滑动续期导致 TTL 永不过期
         let fromCache = cache.get()
         guard var credentials = fromCache ?? credentialLoader.loadCredentials() else {
-            AppLog.probes.error("Claude API: No credentials found")
+            // Name both places we looked. On macOS `claude login` writes only
+            // the Keychain, so "no credentials" almost always means the
+            // Keychain read failed — and `loadFromKeychain` logs why (#271).
+            AppLog.probes.error(
+                "Claude API: no credentials in \(credentialLoader.credentialsFilePath) or the 'Claude Code-credentials' Keychain item"
+            )
             throw ProbeError.authenticationRequired
         }
         if fromCache == nil {

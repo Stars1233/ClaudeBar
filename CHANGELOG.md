@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Claude no longer reports a $0.00 cost card instead of quota on a subscription the CLI could not see. A Max plan billed through Apple renders `/usage` as the API-billing cost panel, and ClaudeBar answered it with `/cost` — which succeeds, so the app never tried the usage API that can still read the real quota. `~/.claude.json` knows the account is a subscription (`billingType`), and that now vetoes the `/cost` route: genuine pay-as-you-go accounts still get their cost card, subscriptions fall through to the API probe. (#271)
+- A failed Keychain read no longer passes for "no credentials". On macOS `claude login` writes only the Keychain, so a denied read surfaced as "Authentication required. Please log in." to someone already logged in, with nothing in the log to say why. The `security` exit status and its error are now logged, along with which places were searched. (#271)
+
 ---
 
 ## [0.4.87] - 2026-09-02
