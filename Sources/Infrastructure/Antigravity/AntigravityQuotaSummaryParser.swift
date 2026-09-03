@@ -13,11 +13,15 @@ enum AntigravityQuotaSummaryParser {
     private static let claudeGroup = "Claude & others"
 
     /// Known buckets, matched by exact `bucketId` only, in display order.
-    private static let buckets: [(id: String, quotaType: QuotaType, group: String, compactTitle: String)] = [
-        ("gemini-5h", .session, geminiGroup, "5h"),
-        ("gemini-weekly", .weekly, geminiGroup, "7d"),
-        ("3p-5h", .modelSpecific("Claude"), claudeGroup, "5h"),
-        ("3p-weekly", .modelSpecific("Claude Weekly"), claudeGroup, "7d")
+    ///
+    /// `menuBarTitle` is the prefix shown in the dual-window menu bar label
+    /// (e.g. "Gemini 80%" or "Claude Weekly 20%"). It is kept separate from
+    /// `compactTitle`, which is used inside the popover quota card header.
+    private static let buckets: [(id: String, quotaType: QuotaType, group: String, compactTitle: String, menuBarTitle: String)] = [
+        ("gemini-5h",    .session,                   geminiGroup,  "5h", "Gemini"),
+        ("gemini-weekly",.weekly,                    geminiGroup,  "7d", "Gemini Weekly"),
+        ("3p-5h",        .modelSpecific("Claude"),   claudeGroup,  "5h", "Claude"),
+        ("3p-weekly",    .modelSpecific("Claude Weekly"), claudeGroup, "7d", "Claude Weekly")
     ]
 
     /// Returns nil when the payload is not a quota summary at all (caller may fall back to
@@ -47,7 +51,8 @@ enum AntigravityQuotaSummaryParser {
                 providerId: providerId,
                 resetsAt: bucket.resetTime.flatMap(parseDate),
                 group: spec.group,
-                compactTitle: spec.compactTitle
+                compactTitle: spec.compactTitle,
+                menuBarTitle: spec.menuBarTitle
             )
         }
     }

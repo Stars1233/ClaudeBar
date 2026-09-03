@@ -50,6 +50,19 @@ struct AntigravityQuotaSummaryParserTests {
     }
 
     @Test
+    func `assigns consistent menu bar titles so Gemini mirrors Claude format`() throws {
+        let quotas = try #require(AntigravityQuotaSummaryParser.parse(Data(Self.remoteSummary.utf8), providerId: "antigravity"))
+
+        // Gemini pool: should show "Gemini" / "Gemini Weekly" — not the generic "5h" / "7d"
+        #expect(quotas[0].menuBarTitle == "Gemini",        "gemini-5h should use 'Gemini' as menu bar prefix")
+        #expect(quotas[1].menuBarTitle == "Gemini Weekly", "gemini-weekly should use 'Gemini Weekly' as menu bar prefix")
+
+        // Claude pool: already correct, verified here for symmetry
+        #expect(quotas[2].menuBarTitle == "Claude",        "3p-5h should use 'Claude' as menu bar prefix")
+        #expect(quotas[3].menuBarTitle == "Claude Weekly", "3p-weekly should use 'Claude Weekly' as menu bar prefix")
+    }
+
+    @Test
     func `accepts the language server response envelope`() throws {
         let quotas = try #require(AntigravityQuotaSummaryParser.parse(Data(Self.languageServerSummary.utf8), providerId: "antigravity"))
 
