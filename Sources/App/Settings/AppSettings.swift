@@ -117,6 +117,47 @@ public final class AppSettings {
         }
     }
 
+    // MARK: - Notify Settings
+
+    /// Whether quota state is published to a linked Notify! device
+    /// (default: false). The feature sends data to a third party service, so it
+    /// can never come up switched on.
+    public var notifyEnabled: Bool {
+        didSet {
+            repository.setNotifyEnabled(notifyEnabled)
+        }
+    }
+
+    /// Whether the Lock Screen Live Activity is one of the surfaces published.
+    public var notifyLiveActivityEnabled: Bool {
+        didSet {
+            repository.setNotifyLiveActivityEnabled(notifyLiveActivityEnabled)
+        }
+    }
+
+    /// Whether the Lock Screen widget gauge is one of the surfaces published.
+    public var notifyWidgetEnabled: Bool {
+        didSet {
+            repository.setNotifyWidgetEnabled(notifyWidgetEnabled)
+        }
+    }
+
+    /// Provider whose quota the widget gauge shows. Empty means "whichever
+    /// quota needs attention most", which is what a glance wants before the
+    /// user has picked anything.
+    public var notifyGaugeProviderId: String {
+        didSet {
+            repository.setNotifyGaugeProviderId(notifyGaugeProviderId)
+        }
+    }
+
+    /// Quota window the widget gauge shows. Empty is automatic, as above.
+    public var notifyGaugeQuotaKey: String {
+        didSet {
+            repository.setNotifyGaugeQuotaKey(notifyGaugeQuotaKey)
+        }
+    }
+
     // MARK: - Overview Mode Settings
 
     /// Whether to show all enabled providers at once instead of one at a time
@@ -243,6 +284,11 @@ public final class AppSettings {
         self.burnRateThreshold = repository.burnRateThreshold()
         self.showDailyUsageCards = repository.showDailyUsageCards()
         self.notchEnabled = repository.notchEnabled()
+        self.notifyEnabled = repository.isNotifyEnabled()
+        self.notifyLiveActivityEnabled = repository.isNotifyLiveActivityEnabled()
+        self.notifyWidgetEnabled = repository.isNotifyWidgetEnabled()
+        self.notifyGaugeProviderId = repository.notifyGaugeProviderId()
+        self.notifyGaugeQuotaKey = repository.notifyGaugeQuotaKey()
         self.overviewModeEnabled = repository.overviewModeEnabled()
         self.backgroundSyncEnabled = repository.backgroundSyncEnabled()
         self.backgroundSyncInterval = repository.backgroundSyncInterval()
@@ -309,6 +355,7 @@ public final class AppSettings {
     public var alibaba: AlibabaSettingsRepository { repository }
     public var vercel: VercelSettingsRepository { repository }
     public var hook: HookSettingsRepository { repository }
+    public var notify: NotifySettingsRepository { repository }
 
     /// Extension config repository for dynamic extension provider settings.
     public let extensionConfig: any ExtensionConfigRepository = JSONExtensionConfigRepository(
