@@ -603,3 +603,79 @@ extension JSONSettingsRepository: DeepSeekSettingsRepository {
         getDeepSeekApiKey() != nil
     }
 }
+
+// MARK: - MultiAccountSettingsRepository
+
+extension JSONSettingsRepository: MultiAccountSettingsRepository {
+
+    public func accounts(forProvider id: String) -> [ProviderAccountConfig] {
+        guard let raw: [Any] = store.read(key: Self.accountsKey(id)) else { return [] }
+        return raw.compactMap(Self.decodeAccount)
+    }
+
+    public func addAccount(_ config: ProviderAccountConfig, forProvider id: String) {
+        var configs = accounts(forProvider: id)
+        if let index = configs.firstIndex(where: { $0.accountId == config.accountId }) {
+            configs[index] = config
+        } else {
+            configs.append(config)
+        }
+        writeAccounts(configs, forProvider: id)
+    }
+
+    public func removeAccount(accountId: String, forProvider id: String) {
+        let remaining = accounts(forProvider: id).filter { $0.accountId != accountId }
+        writeAccounts(remaining, forProvider: id)
+
+        // The active pointer must not outlive the account it points at.
+        if activeAccountId(forProvider: id) == accountId {
+            setActiveAccountId(nil, forProvider: id)
+        }
+    }
+
+    public func updateAccount(_ config: ProviderAccountConfig, forProvider id: String) {
+        var configs = accounts(forProvider: id)
+        guard let index = configs.firstIndex(where: { $0.accountId == config.accountId }) else { return }
+        configs[index] = config
+        writeAccounts(configs, forProvider: id)
+    }
+
+    public func activeAccountId(forProvider id: String) -> String? {
+        store.read(key: Self.activeAccountKey(id))
+    }
+
+    public func setActiveAccountId(_ accountId: String?, forProvider id: String) {
+        store.write(value: accountId, key: Self.activeAccountKey(id))
+    }
+
+    // MARK: Storage helpers
+
+    private static func accountsKey(_ id: String) -> String { "providers.\(id).accounts" }
+    private static func activeAccountKey(_ id: String) -> String { "providers.\(id).activeAccountId" }
+
+    private func writeAccounts(_ configs: [ProviderAccountConfig], forProvider id: String) {
+        // Persist an empty list as a removal so the file stays free of empty arrays,
+        // which keeps `accounts(forProvider:)` on its single-account path.
+        let value = configs.isEmpty ? nil : configs.compactMap(Self.encodeAccount)
+        store.write(value: value, key: Self.accountsKey(id))
+    }
+
+    /// `JSONSettingsStore` persists via `JSONSerialization`, so configs travel as
+    /// plain dictionaries rather than as `Codable` values.
+    private static func encodeAccount(_ config: ProviderAccountConfig) -> [String: Any]? {
+        guard let data = try? JSONEncoder().encode(config),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return object
+    }
+
+    private static func decodeAccount(_ raw: Any) -> ProviderAccountConfig? {
+        guard let object = raw as? [String: Any],
+              let data = try? JSONSerialization.data(withJSONObject: object),
+              let config = try? JSONDecoder().decode(ProviderAccountConfig.self, from: data) else {
+            return nil
+        }
+        return config
+    }
+}
