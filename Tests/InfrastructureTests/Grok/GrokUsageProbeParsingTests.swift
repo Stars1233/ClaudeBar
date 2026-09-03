@@ -152,6 +152,32 @@ struct GrokUsageProbeParsingTests {
     }
 
     @Test
+    func `shows full remaining when billing has a period but no usage percentages`() throws {
+        let json = """
+        {
+          "config": {
+            "currentPeriod": {
+              "type": "USAGE_PERIOD_TYPE_WEEKLY",
+              "start": "2026-09-03T10:51:20.845630+00:00",
+              "end": "2026-09-10T10:51:20.845630+00:00"
+            },
+            "onDemandCap": {"val": 0},
+            "onDemandUsed": {"val": 0},
+            "isUnifiedBillingUser": true,
+            "prepaidBalance": {"val": 0}
+          }
+        }
+        """
+
+        let snapshot = try GrokUsageProbe.parseResponse(Data(json.utf8), providerId: "grok")
+
+        let weekly = try #require(snapshot.quota(for: .weekly))
+        #expect(weekly.percentRemaining == 100)
+        let expectedEnd = try #require(GrokCredentialLoader.parseDate("2026-09-10T10:51:20.845630+00:00"))
+        #expect(weekly.resetsAt == expectedEnd)
+    }
+
+    @Test
     func `throws parseFailed on invalid JSON`() {
         #expect(throws: ProbeError.parseFailed("Failed to parse billing response as JSON")) {
             try GrokUsageProbe.parseResponse(Data("not json".utf8), providerId: "grok")
