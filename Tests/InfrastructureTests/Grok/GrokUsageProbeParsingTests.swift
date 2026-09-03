@@ -175,6 +175,7 @@ struct GrokUsageProbeParsingTests {
         #expect(weekly.percentRemaining == 100)
         let expectedEnd = try #require(GrokCredentialLoader.parseDate("2026-09-10T10:51:20.845630+00:00"))
         #expect(weekly.resetsAt == expectedEnd)
+        #expect(weekly.windowDuration == 604_800)
     }
 
     @Test
