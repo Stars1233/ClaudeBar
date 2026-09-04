@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.4.89] - 2026-09-04
+
 ### Added
 - Quota state can now be published to an iPhone Lock Screen through [Notify!](https://getnotifyapp.com), so the number the app exists for is readable without opening the laptop. ClaudeBar keeps two things on the phone: a Live Activity showing up to six quota windows with a progress bar, and a Lock Screen widget whose gauge is one quota you pick (or whichever needs attention most). Percentages are remaining, the same as everywhere else in the app, so a full ring means a full quota. To set it up, get Notify! (https://getnotifyapp.com), open it once on the phone so Live Activities are allowed to start, then copy the device ID and token out of the app into Settings → Notify!. The Live Activity needs an iPhone or iPad ID. A Mac or browser ID keeps the widget gauge perfectly well, but Notify! cannot start a Live Activity on one, so ClaudeBar disables that switch and says why instead of publishing into nothing; a group ID owns no Lock Screen at all and gets neither. Either surface can be switched off on its own. This is off by default and sends provider names, window labels and remaining percentages to a third-party service; the device token is stored in the Keychain, never in `settings.json`, falling back to ClaudeBar's app credentials on a self-built copy whose ad-hoc signature the Keychain will not accept.
 - `JSONSettingsRepository` now conforms to `MultiAccountSettingsRepository`, persisting per-provider accounts under `providers.{id}.accounts` and the active account under `providers.{id}.activeAccountId`. Nothing changes for existing installs: a provider with no `accounts` key reads back an empty list, which is the single-account path, so no migration runs. Removing the active account clears the active pointer rather than leaving it dangling at an account that is gone. (#164)
@@ -1037,7 +1041,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.88...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.89...HEAD
+[0.4.89]: https://github.com/tddworks/ClaudeBar/compare/v0.4.88...v0.4.89
 [0.4.88]: https://github.com/tddworks/ClaudeBar/compare/v0.4.87...v0.4.88
 [0.4.87]: https://github.com/tddworks/ClaudeBar/compare/v0.4.86...v0.4.87
 [0.4.86]: https://github.com/tddworks/ClaudeBar/compare/v0.4.85...v0.4.86
