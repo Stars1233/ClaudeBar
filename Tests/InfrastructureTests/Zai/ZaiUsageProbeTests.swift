@@ -456,7 +456,8 @@ struct ZaiUsageProbeTests {
         let timestamp: Int64 = 1767195236777
         let date = ZaiUsageProbe.parseResetDate(.timestamp(timestamp))
         #expect(date != nil)
-        #expect(Calendar.current.component(.year, from: date!) == 2025 || Calendar.current.component(.year, from: date!) == 2026)
+        let calendar = Calendar(identifier: .gregorian)
+        #expect(calendar.component(.year, from: date!) == 2025 || calendar.component(.year, from: date!) == 2026)
     }
 
     @Test

@@ -123,6 +123,9 @@ public final class AppSettings {
     public var touchBarEnabled: Bool {
         didSet {
             repository.setTouchBarEnabled(touchBarEnabled)
+        }
+    }
+
     // MARK: - Notify Settings
 
     /// Whether quota state is published to a linked Notify! device
