@@ -91,7 +91,16 @@ ProviderSettingsRepository (base)
 └── KimiSettingsRepository: ProviderSettingsRepository
     ├── kimiProbeMode(), setKimiProbeMode()
     └── Probe mode: CLI (interactive kimi CLI) or API (HTTP with cookie auth)
+
+NotifySettingsRepository (standalone, NOT a provider sub-protocol)
+├── isNotifyEnabled(), setNotifyEnabled()
+├── Device link: notifyDeviceId() + token in the secure credential store
+├── Surfaces: isNotifyLiveActivityEnabled(), isNotifyWidgetEnabled()
+├── Gauge selection: notifyGaugeProviderId(), notifyGaugeQuotaKey()
+└── Handles: notifyActivityId(), notifyWidgetId()
 ```
+
+Notify! is a publish **destination**, not a provider: ClaudeBar writes quota state to it rather than reading a quota from it, so it sits beside `HookSettingsRepository` rather than under `ProviderSettingsRepository`. See [docs/features/notify.md](docs/features/notify.md).
 
 **Provider Dependencies:**
 | Provider | Repository Type |
@@ -131,6 +140,7 @@ Sources/App/Settings/
 | `copilot.*` | `copilot.probeMode`, `copilot.authEnvVar` |
 | `bedrock.*` | `bedrock.awsProfile`, `bedrock.regions` |
 | `hook.*` | `hook.enabled`, `hook.port` |
+| `notify.*` | `notify.enabled`, `notify.deviceId`, `notify.activityId` (token goes to the credential store) |
 
 ### Theme System
 

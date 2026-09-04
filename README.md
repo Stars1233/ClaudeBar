@@ -52,6 +52,7 @@ Some companies support ClaudeBar's open source development through [GitHub Spons
 - **Automatic Adaptation** - System theme follows your macOS appearance; Christmas auto-enables during the holiday season
 - **Visual Status Indicators** - Color-coded progress bars (green/yellow/red) show quota health
 - **System Notifications** - Get alerted when quota status changes to warning or critical
+- **Notify! Lock Screen Publishing** - Push quota state to your iPhone Lock Screen via [Notify!](https://getnotifyapp.com) as a Live Activity showing up to six quota windows plus a widget gauge for one chosen quota (off by default, see below)
 - **Auto-Refresh** - Automatically updates quotas at configurable intervals
 - **Keyboard Shortcuts** - Quick access with `⌘D` (Dashboard) and `⌘R` (Refresh)
 
@@ -104,6 +105,21 @@ Kiro monitors AWS Kiro (formerly CodeWhisperer) usage through the `kiro-cli` com
 **Authentication**: Run `kiro-cli` and follow the login prompts.
 
 **Kiro IDE Users**: If you use Kiro IDE, simply install kiro-cli. Both share the same authentication, so no additional login is required.
+
+### Notify! Setup
+
+Publishing quota state to your iPhone Lock Screen is optional and off by default. It is configured in **Settings > Notify!**.
+
+1. Get [Notify!](https://getnotifyapp.com). It runs on Mac, on iOS, and on any device through web push.
+2. **Open it once on the iPhone or iPad you want to publish to.** A Live Activity cannot be started until that device has registered with the push service, and only opening the app does that.
+3. In Notify!, copy your device ID and device token.
+4. Put them in the **Device ID** and **Token** fields in ClaudeBar's Notify! settings pane and press **Save Link**. Pasting a whole notification URL into the Device ID field works too, ClaudeBar splits it across both. **Verify Device** confirms the pair against Notify! and names the phone it belongs to. Then turn **Publish to Notify!** on.
+
+The Live Activity needs an iPhone or iPad ID. Notify! also issues IDs for Macs and browsers, and those keep the widget gauge perfectly well, but Notify! cannot start a Live Activity on one, so ClaudeBar disables just that switch and says why. A group ID receives notifications but owns no Lock Screen of its own, so it gets neither.
+
+The Live Activity and the widget gauge can each be turned off separately, and you can choose which quota the gauge shows. Note that this sends provider names, quota window labels and remaining percentages to a third-party service. The device token is stored in the Keychain, not in `~/.claudebar/settings.json`. A build you compile yourself is ad-hoc signed and the Keychain refuses it, so on those the token falls back to ClaudeBar's app credentials and the pane says so.
+
+Full details: [docs/features/notify.md](docs/features/notify.md).
 
 ## Installation
 

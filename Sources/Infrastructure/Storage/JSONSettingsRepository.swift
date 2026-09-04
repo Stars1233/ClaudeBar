@@ -3,11 +3,11 @@ import Domain
 
 /// Unified JSON-backed settings repository.
 /// Implements all settings protocols: AppSettingsRepository + ProviderSettingsRepository
-/// (including all sub-protocols) + HookSettingsRepository.
+/// (including all sub-protocols) + HookSettingsRepository + NotifySettingsRepository.
 ///
 /// Backed by `JSONSettingsStore` reading/writing `~/.claudebar/settings.json`.
-/// Vercel credentials use the injected secure store; legacy provider credentials
-/// remain in UserDefaults pending their own migrations.
+/// Vercel and Notify! credentials use the injected secure store; legacy provider
+/// credentials remain in UserDefaults pending their own migrations.
 public final class JSONSettingsRepository:
     AppSettingsRepository,
     ZaiSettingsRepository,
@@ -20,6 +20,7 @@ public final class JSONSettingsRepository:
     AlibabaSettingsRepository,
     VercelSettingsRepository,
     HookSettingsRepository,
+    NotifySettingsRepository,
     @unchecked Sendable
 {
     /// Shared instance using the default settings file
@@ -502,6 +503,146 @@ public final class JSONSettingsRepository:
 
     public func setHookPort(_ port: Int) {
         store.write(value: port, key: "hook.port")
+    }
+
+    // MARK: - NotifySettingsRepository
+
+    public func isNotifyEnabled() -> Bool {
+        store.read(key: "notify.enabled") ?? NotifyConstants.defaultEnabled
+    }
+
+    public func setNotifyEnabled(_ enabled: Bool) {
+        store.write(value: enabled, key: "notify.enabled")
+    }
+
+    public func notifyDeviceId() -> String {
+        store.read(key: "notify.deviceId") ?? ""
+    }
+
+    public func setNotifyDeviceId(_ deviceId: String) {
+        store.write(value: deviceId, key: "notify.deviceId")
+    }
+
+    // Notify! device token: straight to the secure store, with no
+    // `SecureCredentialMigration` wrapper. That wrapper exists to rescue a
+    // plaintext UserDefaults value shipped by an earlier release, and Notify! has
+    // never had one, so there is nothing to migrate away from.
+
+    public func saveNotifyDeviceToken(_ token: String) {
+        // Tokens arrive pasted, so they arrive with stray whitespace. An empty
+        // field is the user clearing the link rather than a request to store a
+        // blank secret, which would look linked and then fail with a 403.
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            deleteNotifyDeviceToken()
+            return
+        }
+        secureCredentials.save(trimmed, forKey: CredentialKey.notifyDeviceToken)
+
+        // Prove it landed, rather than assume. `CredentialRepository.save` has no
+        // way to report a refusal, and the Keychain does refuse: a locally built
+        // ClaudeBar is ad-hoc signed (`CODE_SIGN_IDENTITY` is "-"), so it has no
+        // stable identity for a Keychain item's access control to name, and both
+        // the read and the write come back errSecAuthFailed (-25293). A release
+        // build signed with a Developer ID is unaffected. Without this check the
+        // user presses Save, every call reports success, and nothing is stored.
+        if secureCredentials.get(forKey: CredentialKey.notifyDeviceToken) == trimmed {
+            // Clear any earlier fallback copy, so a build that regains the
+            // Keychain stops leaving a plaintext one behind.
+            notifyFallbackCredentials.delete(forKey: CredentialKey.notifyDeviceToken)
+            return
+        }
+
+        AppLog.credentials.warning(
+            "Notify! token could not be stored in the Keychain, keeping it in the app credential store instead"
+        )
+        notifyFallbackCredentials.save(trimmed, forKey: CredentialKey.notifyDeviceToken)
+    }
+
+    public func notifyDeviceToken() -> String? {
+        secureCredentials.get(forKey: CredentialKey.notifyDeviceToken)
+            ?? notifyFallbackCredentials.get(forKey: CredentialKey.notifyDeviceToken)
+    }
+
+    public func notifyDeviceTokenIsSecure() -> Bool {
+        secureCredentials.get(forKey: CredentialKey.notifyDeviceToken) != nil
+    }
+
+    /// Where the token goes when the Keychain will not take it.
+    ///
+    /// The same UserDefaults credential store that already holds the GitHub,
+    /// MiniMax, DeepSeek and Alibaba tokens, so this is the app's existing bar
+    /// rather than a new low. It is a fallback and never the first choice: a
+    /// signed build stores the token in the Keychain and this store stays empty.
+    private var notifyFallbackCredentials: UserDefaultsCredentialRepository {
+        UserDefaultsCredentialRepository(defaults: credentials)
+    }
+
+    @discardableResult
+    public func deleteNotifyDeviceToken() -> Bool {
+        // Both stores, unconditionally. Removing a link has to remove it,
+        // and leaving a copy in whichever store this build does not read from
+        // would resurrect it the day the other one starts working.
+        let secure = secureCredentials.delete(forKey: CredentialKey.notifyDeviceToken)
+        let fallback = notifyFallbackCredentials.delete(forKey: CredentialKey.notifyDeviceToken)
+        return secure && fallback
+    }
+
+    public func hasNotifyDeviceToken() -> Bool {
+        notifyDeviceToken() != nil
+    }
+
+    public func isNotifyLiveActivityEnabled() -> Bool {
+        store.read(key: "notify.liveActivityEnabled") ?? NotifyConstants.defaultLiveActivityEnabled
+    }
+
+    public func setNotifyLiveActivityEnabled(_ enabled: Bool) {
+        store.write(value: enabled, key: "notify.liveActivityEnabled")
+    }
+
+    public func isNotifyWidgetEnabled() -> Bool {
+        store.read(key: "notify.widgetEnabled") ?? NotifyConstants.defaultWidgetEnabled
+    }
+
+    public func setNotifyWidgetEnabled(_ enabled: Bool) {
+        store.write(value: enabled, key: "notify.widgetEnabled")
+    }
+
+    public func notifyGaugeProviderId() -> String {
+        store.read(key: "notify.gauge.providerId") ?? ""
+    }
+
+    public func setNotifyGaugeProviderId(_ providerId: String) {
+        store.write(value: providerId, key: "notify.gauge.providerId")
+    }
+
+    public func notifyGaugeQuotaKey() -> String {
+        store.read(key: "notify.gauge.quotaKey") ?? ""
+    }
+
+    public func setNotifyGaugeQuotaKey(_ quotaKey: String) {
+        store.write(value: quotaKey, key: "notify.gauge.quotaKey")
+    }
+
+    public func notifyActivityId() -> String? {
+        store.read(key: "notify.activityId")
+    }
+
+    /// The optional is passed through untouched: `JSONSettingsStore.write` removes
+    /// the key when the value is nil, and removal is exactly what forgetting a tile
+    /// has to mean. A stored empty string would read back as a handle and send every
+    /// later update to a tile that no longer exists.
+    public func setNotifyActivityId(_ activityId: String?) {
+        store.write(value: activityId, key: "notify.activityId")
+    }
+
+    public func notifyWidgetId() -> String? {
+        store.read(key: "notify.widgetId")
+    }
+
+    /// Passed through for the same reason as the activity handle above.
+    public func setNotifyWidgetId(_ widgetId: String?) {
+        store.write(value: widgetId, key: "notify.widgetId")
     }
 
     // MARK: - MiniMaxSettingsRepository

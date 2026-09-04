@@ -8,6 +8,11 @@ import Sparkle
 
 extension Notification.Name {
     static let hookSettingsChanged = Notification.Name("com.tddworks.claudebar.hookSettingsChanged")
+
+    /// Posted by the Notify! pane when the device link or a stored surface
+    /// handle changes. Those live outside observable state, so nothing the
+    /// publish driver watches would otherwise tell it to try again.
+    static let notifySettingsChanged = Notification.Name("com.tddworks.claudebar.notifySettingsChanged")
 }
 
 @main
@@ -27,6 +32,10 @@ struct ClaudeBarApp: App {
     /// Draws Claude Code session and quota state into the notch. Comes up and
     /// goes down with `app.notchEnabled`; does nothing until it is turned on.
     private let notchDriver: NotchWindowDriver
+
+    /// Publishes quota state to a linked Notify! device. Comes up and goes down
+    /// with `notify.enabled`; does nothing until a device is linked.
+    private let notifyDriver: NotifyPublishDriver
 
     /// Binding required by `.menuBarExtraAccess`; also enables programmatic
     /// dropdown control if ever needed.
@@ -164,6 +173,15 @@ struct ClaudeBarApp: App {
             settings: AppSettings.shared
         )
         notchDriver.startWhenLaunched()
+
+        // Started here rather than deferred to `didFinishLaunching` like the
+        // notch driver: the surface it drives is on the user's phone, so it
+        // touches no AppKit window and has nothing to wait for.
+        notifyDriver = NotifyPublishDriver(
+            monitor: monitor,
+            settings: AppSettings.shared
+        )
+        notifyDriver.start()
 
         // Load user extensions from ~/.claudebar/extensions/
         let extensionRegistry = ExtensionRegistry(
@@ -303,13 +321,13 @@ struct ClaudeBarApp: App {
         Window("ClaudeBar Settings", id: "settings") {
             Group {
                 #if ENABLE_SPARKLE
-                SettingsWindowView(monitor: monitor) { enabled in
+                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver) { enabled in
                     if enabled { startHookServer() } else { stopHookServer() }
                 }
                 .appThemeProvider(themeModeId: settings.themeMode)
                 .environment(\.sparkleUpdater, sparkleUpdater)
                 #else
-                SettingsWindowView(monitor: monitor) { enabled in
+                SettingsWindowView(monitor: monitor, notifyDriver: notifyDriver) { enabled in
                     if enabled { startHookServer() } else { stopHookServer() }
                 }
                 .appThemeProvider(themeModeId: settings.themeMode)
