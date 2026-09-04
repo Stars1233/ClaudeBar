@@ -215,6 +215,25 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo.showDailyUsageCards() == false)
     }
 
+    // MARK: - Touch Bar
+
+    @Test
+    func `touchBarEnabled defaults to true`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        #expect(repo.touchBarEnabled() == true)
+    }
+
+    @Test
+    func `setTouchBarEnabled persists value`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+
+        repo.setTouchBarEnabled(false)
+        #expect(repo.touchBarEnabled() == false)
+    }
+
     // MARK: - Overview
 
     @Test
@@ -321,6 +340,7 @@ struct JSONSettingsRepositoryAppTests {
         let repo1 = JSONSettingsRepository(store: store)
         repo1.setThemeMode("cli")
         repo1.setShowDailyUsageCards(false)
+        repo1.setTouchBarEnabled(false)
         repo1.setOverviewModeEnabled(true)
         repo1.setMenuBarPercentageEnabled(true)
         repo1.setMenuBarPercentageProviderId("codex")
@@ -330,6 +350,7 @@ struct JSONSettingsRepositoryAppTests {
         let repo2 = JSONSettingsRepository(store: store)
         #expect(repo2.themeMode() == "cli")
         #expect(repo2.showDailyUsageCards() == false)
+        #expect(repo2.touchBarEnabled() == false)
         #expect(repo2.overviewModeEnabled() == true)
         #expect(repo2.menuBarPercentageEnabled() == true)
         #expect(repo2.menuBarPercentageProviderId() == "codex")

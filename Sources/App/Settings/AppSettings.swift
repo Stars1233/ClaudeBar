@@ -117,6 +117,15 @@ public final class AppSettings {
         }
     }
 
+    // MARK: - Touch Bar Settings
+
+    /// Whether Touch Bar status integration is enabled (default: true).
+    public var touchBarEnabled: Bool {
+        didSet {
+            repository.setTouchBarEnabled(touchBarEnabled)
+        }
+    }
+
     // MARK: - Notify Settings
 
     /// Whether quota state is published to a linked Notify! device
@@ -284,6 +293,7 @@ public final class AppSettings {
         self.burnRateThreshold = repository.burnRateThreshold()
         self.showDailyUsageCards = repository.showDailyUsageCards()
         self.notchEnabled = repository.notchEnabled()
+        self.touchBarEnabled = repository.touchBarEnabled()
         self.notifyEnabled = repository.isNotifyEnabled()
         self.notifyLiveActivityEnabled = repository.isNotifyLiveActivityEnabled()
         self.notifyWidgetEnabled = repository.isNotifyWidgetEnabled()

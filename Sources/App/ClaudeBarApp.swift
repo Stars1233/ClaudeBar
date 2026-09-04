@@ -33,6 +33,8 @@ struct ClaudeBarApp: App {
     /// goes down with `app.notchEnabled`; does nothing until it is turned on.
     private let notchDriver: NotchWindowDriver
 
+    /// Exports quota and menu-bar status to ~/.claudebar/status.json for Touch Bar, BTT, and external scripts.
+    private let statusExportDriver: StatusExportDriver
     /// Publishes quota state to a linked Notify! device. Comes up and goes down
     /// with `notify.enabled`; does nothing until a device is linked.
     private let notifyDriver: NotifyPublishDriver
@@ -40,6 +42,8 @@ struct ClaudeBarApp: App {
     /// Binding required by `.menuBarExtraAccess`; also enables programmatic
     /// dropdown control if ever needed.
     @State private var isMenuPresented = false
+
+    @Environment(\.openWindow) private var openWindow
 
     /// The hook HTTP server that receives events from Claude Code
     private let hookServer = HookHTTPServer()
@@ -174,6 +178,20 @@ struct ClaudeBarApp: App {
         )
         notchDriver.startWhenLaunched()
 
+        statusExportDriver = StatusExportDriver(
+            monitor: monitor,
+            settings: AppSettings.shared
+        )
+        statusExportDriver.start()
+
+        NativeTouchBarDriver.shared.configure(monitor: monitor)
+
+        PersistentTouchBarDriver.shared.configure(
+            monitor: monitor,
+            settings: AppSettings.shared,
+            sessionMonitor: sessionMonitor
+        )
+        PersistentTouchBarDriver.shared.start()
         // Started here rather than deferred to `didFinishLaunching` like the
         // notch driver: the surface it drives is on the user's phone, so it
         // touches no AppKit window and has nothing to wait for.
@@ -279,6 +297,25 @@ struct ClaudeBarApp: App {
         }
     }
 
+    @MainActor
+    private func handleIncomingURL(_ url: URL) {
+        let action = url.host ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        switch action {
+        case "refresh":
+            Task {
+                await monitor.refreshAll()
+            }
+        case "open":
+            isMenuPresented = true
+            NSApp.activate(ignoringOtherApps: true)
+        case "settings":
+            openWindow(id: "settings")
+            NSApp.activate(ignoringOtherApps: true)
+        default:
+            AppLog.ui.info("Received unhandled URL: \(url.absoluteString)")
+        }
+    }
+
     var body: some Scene {
         MenuBarExtra {
             Group {
@@ -301,6 +338,9 @@ struct ClaudeBarApp: App {
             // re-assert the menu-bar pixels on both edges.
             .onAppear { statusItemDriver.reassertPresentation() }
             .onDisappear { statusItemDriver.reassertPresentation() }
+            .onOpenURL { url in
+                handleIncomingURL(url)
+            }
         } label: {
             // Deliberately static: the menu-bar pixels are drawn by
             // StatusItemLabelDriver into the status item's button image,

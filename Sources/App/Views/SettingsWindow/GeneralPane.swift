@@ -53,6 +53,15 @@ struct GeneralPane: View {
                 ) {
                     SettingsSwitch(isOn: $settings.notchEnabled)
                 }
+
+                SettingsRowDivider()
+
+                SettingsRow(
+                    title: "Touch Bar",
+                    subtitle: "Show persistent quota and status on the MacBook Touch Bar."
+                ) {
+                    SettingsSwitch(isOn: $settings.touchBarEnabled)
+                }
             }
 
             SettingsCard {
