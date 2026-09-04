@@ -852,15 +852,6 @@ public final class ClaudePetTouchBarView: NSView {
             ink.set()
             fillPath.fill()
         }
-
-        // 7. Scale Ticks at 50% and 90%
-        NSColor(white: 1.0, alpha: 0.35).set()
-        for frac in [0.5, 0.9] {
-            let tx = width * frac
-            if tx > fillW {
-                NSRect(x: x + tx, y: barY, width: 1.0, height: barH).fill()
-            }
-        }
     }
 
     private func loadProviderIcon(for providerId: String) -> NSImage? {
