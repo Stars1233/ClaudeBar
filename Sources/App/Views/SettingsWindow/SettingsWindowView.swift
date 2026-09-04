@@ -7,6 +7,12 @@ import Infrastructure
 /// window's title bar is hidden; traffic lights overlay the sidebar top).
 struct SettingsWindowView: View {
     let monitor: QuotaMonitor
+
+    /// The one object allowed to write to the linked device. The Notify pane
+    /// sends through it rather than opening a second publishing path of its own,
+    /// so a button press and the background publish cannot both start a tile.
+    let notifyDriver: NotifyPublishDriver
+
     var onHookSettingsChanged: ((Bool) -> Void)?
 
     @Environment(\.appTheme) private var theme
@@ -88,6 +94,8 @@ struct SettingsWindowView: View {
             SyncAlertsPane()
         case .hooks:
             HooksPane()
+        case .notify:
+            NotifyPane(monitor: monitor, driver: notifyDriver)
         case .updates:
             UpdatesPane()
         case .logs:

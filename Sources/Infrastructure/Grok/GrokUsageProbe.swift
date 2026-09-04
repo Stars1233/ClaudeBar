@@ -257,6 +257,22 @@ public struct GrokUsageProbe: UsageProbe, @unchecked Sendable {
             ))
         }
 
+        // Fallback: billing returns 200 with a valid period but no usage
+        // percentages (fresh period with zero usage, or an unmetered plan).
+        // Without this the card renders an empty grid. Treat "no usage
+        // reported" as 100% remaining for the current window.
+        if quotas.isEmpty, periodStart != nil || periodEnd != nil {
+            AppLog.probes.info("Grok: No usage percentages in billing response, showing full remaining for current period")
+            quotas.append(UsageQuota(
+                percentRemaining: 100,
+                quotaType: periodQuotaType,
+                providerId: providerId,
+                resetsAt: periodEnd,
+                resetText: resetText,
+                windowDuration: windowDuration
+            ))
+        }
+
         AppLog.probes.info("Grok: Parsed \(quotas.count) quotas")
 
         return UsageSnapshot(
