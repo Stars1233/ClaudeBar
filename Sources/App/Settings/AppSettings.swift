@@ -117,6 +117,15 @@ public final class AppSettings {
         }
     }
 
+    // MARK: - Touch Bar Settings
+
+    /// Whether Touch Bar status integration is enabled (default: true).
+    public var touchBarEnabled: Bool {
+        didSet {
+            repository.setTouchBarEnabled(touchBarEnabled)
+        }
+    }
+
     // MARK: - Overview Mode Settings
 
     /// Whether to show all enabled providers at once instead of one at a time
@@ -243,6 +252,7 @@ public final class AppSettings {
         self.burnRateThreshold = repository.burnRateThreshold()
         self.showDailyUsageCards = repository.showDailyUsageCards()
         self.notchEnabled = repository.notchEnabled()
+        self.touchBarEnabled = repository.touchBarEnabled()
         self.overviewModeEnabled = repository.overviewModeEnabled()
         self.backgroundSyncEnabled = repository.backgroundSyncEnabled()
         self.backgroundSyncInterval = repository.backgroundSyncInterval()

@@ -246,13 +246,16 @@ struct MenuBarPane: View {
     }
 
     private func selectFirstMenuBarQuotaIfNeeded(force: Bool) {
-        guard let firstQuota = menuBarQuotaOptions.first else { return }
-        let currentQuotaExists = menuBarQuotaOptions.contains {
-            $0.quotaType.quotaKey == settings.menuBarPercentageQuotaKey
-        }
+        if let firstQuota = menuBarQuotaOptions.first {
+            let currentQuotaExists = menuBarQuotaOptions.contains {
+                $0.quotaType.quotaKey == settings.menuBarPercentageQuotaKey
+            }
 
-        if force || !currentQuotaExists {
-            settings.menuBarPercentageQuotaKey = firstQuota.quotaType.quotaKey
+            if force || !currentQuotaExists {
+                settings.menuBarPercentageQuotaKey = firstQuota.quotaType.quotaKey
+            }
+        } else if force {
+            settings.menuBarPercentageQuotaKey = "session"
         }
     }
 }

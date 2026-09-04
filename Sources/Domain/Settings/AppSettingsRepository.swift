@@ -51,6 +51,12 @@ public protocol AppSettingsRepository: Sendable {
     func notchEnabled() -> Bool
     func setNotchEnabled(_ enabled: Bool)
 
+    // MARK: - Touch Bar
+
+    /// Whether Touch Bar status integration is enabled (default: true).
+    func touchBarEnabled() -> Bool
+    func setTouchBarEnabled(_ enabled: Bool)
+
     // MARK: - Overview
 
     func overviewModeEnabled() -> Bool

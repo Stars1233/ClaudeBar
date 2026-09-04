@@ -52,6 +52,7 @@ Some companies support ClaudeBar's open source development through [GitHub Spons
 - **Automatic Adaptation** - System theme follows your macOS appearance; Christmas auto-enables during the holiday season
 - **Visual Status Indicators** - Color-coded progress bars (green/yellow/red) show quota health
 - **System Notifications** - Get alerted when quota status changes to warning or critical
+- **Touch Bar Integration** - Persistent MacBook Touch Bar widget with real-time multi-provider gauges, progress bars, and an interactive pixel mascot ([learn more](#claudebar-with-touch-bar))
 - **Auto-Refresh** - Automatically updates quotas at configurable intervals
 - **Keyboard Shortcuts** - Quick access with `⌘D` (Dashboard) and `⌘R` (Refresh)
 
@@ -63,6 +64,41 @@ Some companies support ClaudeBar's open source development through [GitHub Spons
 | 20-50% | Warning | Yellow |
 | < 20% | Critical | Red |
 | 0% | Depleted | Gray |
+
+## ClaudeBar with Touch Bar
+
+ClaudeBar features native, system-wide Touch Bar integration for MacBook Pro models equipped with a Touch Bar (including M1/M2 and Intel). Inspired by the beloved [`tpklo/claude-usage-touchbar`](https://github.com/tpklo/claude-usage-touchbar), this runs 100% natively inside ClaudeBar—requiring **no third-party apps** (no BetterTouchTool or MTMR required).
+
+<p align="center">
+  <img src="docs/screenshots/TouchBar-preview.png" alt="ClaudeBar with Touch Bar" width="100%"/>
+</p>
+
+### Key Touch Bar Features
+
+- **Always Visible Across All Windows & Apps**: Uses macOS system-modal function bar presentation (`placement: 0`). The widget remains persistently visible on your Touch Bar regardless of which application is active, automatically re-asserting on app switching and system unlock while keeping your system Escape key and Control Strip media/volume controls intact.
+- **Interactive Pixel Mascot (Clawd)**:
+  - An animated 20×20 retro creature pacing along a subtle ground line.
+  - **Mood-Reactive Gauge**: The creature's speed and animation adapt to your highest quota usage:
+    - **Calm** (< 30%): A relaxed, peaceful stroll.
+    - **Brisk** (30%–59%): Picking up the pace as coding intensifies.
+    - **Tired** (60%–84%): Moving sluggishly with animated sweat drops.
+    - **Panic** (≥ 85%): Frantic scurrying with speed streaks trailing behind!
+  - **Direct Touch Interaction**: Touch and drag Clawd across the Touch Bar, or flick him with realistic velocity and friction decay.
+- **Live Multi-Provider Quota Gauges**:
+  - Displays real provider logo icons (Claude, Gemini, Antigravity, GitHub Copilot, Codex, etc.) with rounded styling.
+  - Renders multi-segment provider views matching your menu bar configuration (e.g. `[Logo] Gemini 40% | [Logo] Claude 0%`).
+  - High-precision bold monospaced percentage readout with warning indicator (`!`) when quota is critical (≥ 90%).
+  - Sleek progress bars with 100% track reference, adaptive color coding (Blue < 50%, Amber 50%–89%, Alert Red ≥ 90%), and scale tick marks at **50%** and **90%**.
+  - Reset countdown timer (e.g., `2h15` or remaining duration).
+- **One-Tap Access**: Tap anywhere on the quota gauges on the Touch Bar to instantly summon the full ClaudeBar dropdown popover.
+
+### Enabling or Disabling Touch Bar
+
+You can toggle the persistent Touch Bar on or off at any time from **Settings > General > Touch Bar**:
+
+<p align="center">
+  <img src="docs/screenshots/TouchBar-settings.png" alt="Touch Bar Settings" width="680"/>
+</p>
 
 ## Requirements
 

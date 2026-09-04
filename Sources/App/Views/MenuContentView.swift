@@ -125,6 +125,10 @@ struct MenuContentView: View {
         .frame(width: 400)
         .fixedSize(horizontal: false, vertical: true)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .background(TouchBarWindowAccessor())
+        .touchBar {
+            ClaudeBarNativeTouchBar(monitor: monitor)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .hookSettingsChanged)) { notification in
             let enabled = notification.userInfo?["enabled"] as? Bool ?? false
             onHookSettingsChanged?(enabled)
