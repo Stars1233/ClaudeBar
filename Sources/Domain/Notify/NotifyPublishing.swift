@@ -29,6 +29,19 @@ public protocol NotifyPublishing: Sendable {
         widgetId: String?
     ) async throws -> String
 
+    /// Creates the Home Screen widget, or updates the one `screenWidgetId`
+    /// names.
+    ///
+    /// Takes a `NotifyTile` rather than a shape of its own: the gateway derives
+    /// this route's content contract from the Live Activity module, so the two
+    /// surfaces genuinely accept one body.
+    /// - Returns: the screen widget id to store for the next update.
+    func publishScreenTile(
+        _ tile: NotifyTile,
+        link: NotifyDeviceLink,
+        screenWidgetId: String?
+    ) async throws -> String
+
     /// Ends the Live Activity, optionally leaving it on the Lock Screen for a
     /// while so the final state can be read.
     func endTile(link: NotifyDeviceLink, activityId: String, keepFor: TimeInterval) async throws

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- The Notify! quota tile can now live on the iPhone Home Screen as well as the Lock Screen. Notify! added Home Screen widgets in its September 2026 update, and a screen widget carries exactly the content a Live Activity does, so the same tile ClaudeBar already builds (up to six quota windows, a progress bar and the reset countdown) can sit there permanently instead of appearing and vanishing with a job. It has its own switch in Settings then Notify!, is on once you link a device, and is placed through iOS's own widget picker after adding it under Settings then Home Screen Widgets in Notify!. If your copy of Notify! is not serving Home Screen widgets yet, ClaudeBar treats that as "not yet" rather than an error and quietly tries again later.
+
 ---
 
 ## [0.4.90] - 2026-09-05

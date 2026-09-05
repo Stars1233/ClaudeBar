@@ -311,6 +311,40 @@ struct NotifyPayloadBuilderTests {
         #expect(payload.tile?.metrics.first?.value == "42")
     }
 
+    @Test
+    func `turning the Home Screen tile off yields a payload with no screen tile`() {
+        let payload = builder.payload(readings: [reading(42)], includesScreenTile: false)
+
+        #expect(payload.screenTile == nil)
+        #expect(payload.tile?.metrics.first?.value == "42")
+    }
+
+    @Test
+    func `the Home Screen tile survives the Live Activity being turned off`() {
+        // The two surfaces switch on and off separately, which is the whole
+        // reason the payload carries them as two fields. A user who wants a tile
+        // that stays and nothing on their Lock Screen must still get one.
+        let payload = builder.payload(readings: [reading(42)], includesTile: false)
+
+        #expect(payload.tile == nil)
+        #expect(payload.screenTile?.metrics.first?.value == "42")
+    }
+
+    @Test
+    func `the Home Screen tile is the Live Activity tile, one value on two surfaces`() {
+        // The gateway derives both routes' content contracts from one module and
+        // takes the same body on either, so the client sends one body to both.
+        // Building the two separately here could only produce two pictures of
+        // one quota that were meant to be identical and one day were not.
+        let payload = builder.payload(readings: [
+            reading(8, provider: "claude", name: "Claude"),
+            reading(70, provider: "codex", name: "Codex", quotaType: .weekly),
+        ])
+
+        #expect(payload.screenTile != nil)
+        #expect(payload.screenTile == payload.tile)
+    }
+
     // MARK: - The summary line
 
     @Test
@@ -327,4 +361,31 @@ struct NotifyPayloadBuilderTests {
         #expect(payload.tile?.body?.contains("resets in") == true)
         #expect(payload.tile?.trailing != nil)
     }
+
+    @Test
+    func `two readings that tie on everything visible still order deterministically`() {
+        // An aggregating provider can report two accounts under one display
+        // name, so the name is not a unique key and neither is the pair of name
+        // and window. Swift's sort is not stable, so without a total comparator
+        // these two could come back in either order, the payload would differ
+        // between builds of identical state, and the driver would republish for
+        // nothing on every refresh.
+        let left = NotifyQuotaReading(
+            providerId: "omp-work",
+            providerName: "Oh My Pi",
+            quota: UsageQuota(percentRemaining: 40, quotaType: .session, providerId: "omp-work")
+        )
+        let right = NotifyQuotaReading(
+            providerId: "omp-home",
+            providerName: "Oh My Pi",
+            quota: UsageQuota(percentRemaining: 40, quotaType: .session, providerId: "omp-home")
+        )
+
+        let oneWay = NotifyPayloadBuilder.ordered([left, right]).map(\.providerId)
+        let theOther = NotifyPayloadBuilder.ordered([right, left]).map(\.providerId)
+
+        #expect(oneWay == theOther)
+        #expect(oneWay == ["omp-home", "omp-work"])
+    }
+
 }

@@ -49,14 +49,28 @@ public struct NotifyPayload: Sendable, Equatable {
     public let tile: NotifyTile?
     public let gauge: NotifyGauge?
 
-    public init(tile: NotifyTile? = nil, gauge: NotifyGauge? = nil) {
+    /// The Home Screen tile. Deliberately the same `NotifyTile` the Live
+    /// Activity carries, because the gateway derives both content sets from one
+    /// module: any body that starts a Live Activity is a valid screen widget
+    /// body. It is a separate property rather than a reuse of `tile` because the
+    /// two surfaces are switched on and off independently and published on
+    /// different clocks, so a payload has to be able to carry one without the
+    /// other.
+    public let screenTile: NotifyTile?
+
+    public init(
+        tile: NotifyTile? = nil,
+        gauge: NotifyGauge? = nil,
+        screenTile: NotifyTile? = nil
+    ) {
         self.tile = tile
         self.gauge = gauge
+        self.screenTile = screenTile
     }
 
     /// Nothing to say, so nothing to send.
     public var isEmpty: Bool {
-        tile == nil && gauge == nil
+        tile == nil && gauge == nil && screenTile == nil
     }
 
     public static let empty = NotifyPayload()

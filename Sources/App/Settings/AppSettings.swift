@@ -151,6 +151,14 @@ public final class AppSettings {
         }
     }
 
+    /// Whether the Home Screen widget is one of the surfaces published. It
+    /// carries the same content as the Live Activity, and unlike it, it stays.
+    public var notifyScreenWidgetEnabled: Bool {
+        didSet {
+            repository.setNotifyScreenWidgetEnabled(notifyScreenWidgetEnabled)
+        }
+    }
+
     /// Provider whose quota the widget gauge shows. Empty means "whichever
     /// quota needs attention most", which is what a glance wants before the
     /// user has picked anything.
@@ -297,6 +305,7 @@ public final class AppSettings {
         self.notifyEnabled = repository.isNotifyEnabled()
         self.notifyLiveActivityEnabled = repository.isNotifyLiveActivityEnabled()
         self.notifyWidgetEnabled = repository.isNotifyWidgetEnabled()
+        self.notifyScreenWidgetEnabled = repository.isNotifyScreenWidgetEnabled()
         self.notifyGaugeProviderId = repository.notifyGaugeProviderId()
         self.notifyGaugeQuotaKey = repository.notifyGaugeQuotaKey()
         self.overviewModeEnabled = repository.overviewModeEnabled()

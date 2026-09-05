@@ -5,20 +5,40 @@ public struct NotifyPublishRecord: Sendable, Equatable {
     public let payload: NotifyPayload
     public let tileAt: Date?
     public let gaugeAt: Date?
+    public let screenTileAt: Date?
 
-    public init(payload: NotifyPayload, tileAt: Date? = nil, gaugeAt: Date? = nil) {
+    public init(
+        payload: NotifyPayload,
+        tileAt: Date? = nil,
+        gaugeAt: Date? = nil,
+        screenTileAt: Date? = nil
+    ) {
         self.payload = payload
         self.tileAt = tileAt
         self.gaugeAt = gaugeAt
+        self.screenTileAt = screenTileAt
     }
 
-    /// The record after a publish, carrying forward the timestamp of whichever
-    /// surface was not written this time.
+    /// The record after a publish, carrying forward both the timestamp and the
+    /// content of whichever surface was not written this time.
+    ///
+    /// Merging per surface rather than storing the payload wholesale is what
+    /// keeps a held back change from being lost. A tile-only publish that
+    /// recorded the whole payload would file the new gauge as already sent, and
+    /// the gate would then see no change when the gauge's own interval finally
+    /// came round, leaving a stale value on the phone until something else
+    /// happened to move it. The record has to remember what each surface is
+    /// actually showing, which is not the same as the last payload built.
     public func updated(with payload: NotifyPayload, decision: NotifyPublishDecision, at now: Date) -> NotifyPublishRecord {
         NotifyPublishRecord(
-            payload: payload,
+            payload: NotifyPayload(
+                tile: decision.publishesTile ? payload.tile : self.payload.tile,
+                gauge: decision.publishesGauge ? payload.gauge : self.payload.gauge,
+                screenTile: decision.publishesScreenTile ? payload.screenTile : self.payload.screenTile
+            ),
             tileAt: decision.publishesTile ? now : tileAt,
-            gaugeAt: decision.publishesGauge ? now : gaugeAt
+            gaugeAt: decision.publishesGauge ? now : gaugeAt,
+            screenTileAt: decision.publishesScreenTile ? now : screenTileAt
         )
     }
 }
@@ -27,17 +47,27 @@ public struct NotifyPublishRecord: Sendable, Equatable {
 public struct NotifyPublishDecision: Sendable, Equatable {
     public let publishesTile: Bool
     public let publishesGauge: Bool
+    public let publishesScreenTile: Bool
 
-    public init(publishesTile: Bool, publishesGauge: Bool) {
+    public init(
+        publishesTile: Bool,
+        publishesGauge: Bool,
+        publishesScreenTile: Bool = false
+    ) {
         self.publishesTile = publishesTile
         self.publishesGauge = publishesGauge
+        self.publishesScreenTile = publishesScreenTile
     }
 
     public var publishesNothing: Bool {
-        !publishesTile && !publishesGauge
+        !publishesTile && !publishesGauge && !publishesScreenTile
     }
 
-    public static let nothing = NotifyPublishDecision(publishesTile: false, publishesGauge: false)
+    public static let nothing = NotifyPublishDecision(
+        publishesTile: false,
+        publishesGauge: false,
+        publishesScreenTile: false
+    )
 }
 
 /// Decides when a payload is worth a request.
@@ -64,20 +94,29 @@ public struct NotifyPublishGate: Sendable {
     /// hour, so there is nothing to gain from writing it more often.
     public static let defaultGaugeInterval: TimeInterval = 15 * 60
 
-    /// Comfortably inside the gateway's two hour abandonment reaper.
+    /// The Home Screen tile is a poll like the gauge, on the same quarter hour.
+    public static let defaultScreenTileInterval: TimeInterval = 15 * 60
+
+    /// Comfortably inside both deadlines it has to beat: the gateway ends a
+    /// progress-only Live Activity after two hours without an update, and a
+    /// screen widget's `staleAt` falls two hours after its last write, past
+    /// which the phone dims the tile and says how long ago it was current.
     public static let defaultKeepAliveInterval: TimeInterval = 90 * 60
 
     private let tileInterval: TimeInterval
     private let gaugeInterval: TimeInterval
+    private let screenTileInterval: TimeInterval
     private let keepAliveInterval: TimeInterval
 
     public init(
         tileInterval: TimeInterval = NotifyPublishGate.defaultTileInterval,
         gaugeInterval: TimeInterval = NotifyPublishGate.defaultGaugeInterval,
+        screenTileInterval: TimeInterval = NotifyPublishGate.defaultScreenTileInterval,
         keepAliveInterval: TimeInterval = NotifyPublishGate.defaultKeepAliveInterval
     ) {
         self.tileInterval = tileInterval
         self.gaugeInterval = gaugeInterval
+        self.screenTileInterval = screenTileInterval
         self.keepAliveInterval = keepAliveInterval
     }
 
@@ -88,7 +127,8 @@ public struct NotifyPublishGate: Sendable {
     ) -> NotifyPublishDecision {
         NotifyPublishDecision(
             publishesTile: publishesTile(payload: payload, record: record, now: now),
-            publishesGauge: publishesGauge(payload: payload, record: record, now: now)
+            publishesGauge: publishesGauge(payload: payload, record: record, now: now),
+            publishesScreenTile: publishesScreenTile(payload: payload, record: record, now: now)
         )
     }
 
@@ -99,6 +139,18 @@ public struct NotifyPublishGate: Sendable {
         let elapsed = now.timeIntervalSince(lastAt)
         if elapsed >= keepAliveInterval { return true }
         return tile != record.payload.tile && elapsed >= tileInterval
+    }
+
+    /// The Home Screen tile takes the keep alive as well as its interval,
+    /// because its freshness deadline is a real one: two hours after the last
+    /// write the phone stops presenting the content as current and dims it.
+    private func publishesScreenTile(payload: NotifyPayload, record: NotifyPublishRecord?, now: Date) -> Bool {
+        guard let screenTile = payload.screenTile else { return false }
+        guard let record, let lastAt = record.screenTileAt else { return true }
+
+        let elapsed = now.timeIntervalSince(lastAt)
+        if elapsed >= keepAliveInterval { return true }
+        return screenTile != record.payload.screenTile && elapsed >= screenTileInterval
     }
 
     private func publishesGauge(payload: NotifyPayload, record: NotifyPublishRecord?, now: Date) -> Bool {

@@ -14,6 +14,7 @@ struct NotifyGatewayClientTests {
     static let token = "sekret-token-42"
     static let activityId = "LA7Q2ZKM"
     static let widgetId = "WG4H2QZ1"
+    static let screenWidgetId = "SW8N3PQ2"
 
     // The three ids that name something with no Lock Screen of its own: a push
     // capable Mac listener, a web push browser, and a notification group.
@@ -36,6 +37,19 @@ struct NotifyGatewayClientTests {
       "createdAt": "2026-09-03T09:00:00Z",
       "updatedAt": "2026-09-03T09:00:00Z",
       "updateUrl": "https://push.getnotifyapp.com/widgets/WG4H2QZ1"
+    }
+    """
+
+    /// The `ScreenWidget` object. `staleAt` is the phone's freshness deadline and rides along on
+    /// every write, but ClaudeBar has no decision to make about it, so only the id is read.
+    static let screenWidgetResponse = """
+    {
+      "screenWidgetId": "SW8N3PQ2",
+      "content": { "title": "ClaudeBar" },
+      "staleAt": 1772539200,
+      "createdAt": "2026-09-03T09:00:00Z",
+      "updatedAt": "2026-09-03T09:00:00Z",
+      "updateUrl": "https://push.getnotifyapp.com/screenwidgets/SW8N3PQ2"
     }
     """
 
@@ -458,6 +472,133 @@ struct NotifyGatewayClientTests {
         #expect(body["button"] == nil)
     }
 
+    // MARK: - The Home Screen Tile
+
+    @Test
+    func `a Home Screen tile create addresses the device with new and returns the screen widget id`() async throws {
+        // Given
+        let link = try makeLink()
+        let tile = try makeTile()
+        var capturedRequest: URLRequest?
+        let network = MockNetworkClient()
+        given(network)
+            .request(.any)
+            .willProduce { request in
+                capturedRequest = request
+                return (Data(Self.screenWidgetResponse.utf8), Self.response(201))
+            }
+        let client = NotifyGatewayClient(networkClient: network, host: Self.host, timeout: 1)
+
+        // When
+        let identifier = try await client.publishScreenTile(tile, link: link, screenWidgetId: nil)
+
+        // Then: the device dialect, and `new` for the same reason the other two surfaces send it.
+        // A screen widget stays until the user removes it, so taking over one they already placed
+        // would replace something of theirs permanently.
+        #expect(
+            capturedRequest?.url?.absoluteString
+                == "https://push.getnotifyapp.com/screenwidgets/ABC12345?token=sekret-token-42"
+        )
+        #expect(capturedRequest?.httpMethod == "POST")
+        #expect(capturedRequest?.value(forHTTPHeaderField: "Content-Type") == "application/json")
+        let body = try jsonBody(of: capturedRequest)
+        #expect(body["new"] as? Bool == true)
+        #expect(body["title"] as? String == "ClaudeBar")
+        #expect(identifier == Self.screenWidgetId)
+    }
+
+    @Test
+    func `a Home Screen tile create accepts a 200 answer as well as a 201`() async throws {
+        // Given: the gateway answers 200 when the create it received turned out to be an update
+        let link = try makeLink()
+        let tile = try makeTile()
+        let client = makeClient(status: 200, body: Self.screenWidgetResponse)
+
+        // When
+        let identifier = try await client.publishScreenTile(tile, link: link, screenWidgetId: nil)
+
+        // Then
+        #expect(identifier == Self.screenWidgetId)
+    }
+
+    @Test
+    func `a Home Screen tile update addresses that exact widget and never sends new`() async throws {
+        // Given
+        let link = try makeLink()
+        let tile = try makeTile()
+        var capturedRequest: URLRequest?
+        let network = MockNetworkClient()
+        given(network)
+            .request(.any)
+            .willProduce { request in
+                capturedRequest = request
+                return (Data(Self.screenWidgetResponse.utf8), Self.response(200))
+            }
+        let client = NotifyGatewayClient(networkClient: network, host: Self.host, timeout: 1)
+
+        // When
+        let identifier = try await client.publishScreenTile(
+            tile,
+            link: link,
+            screenWidgetId: Self.screenWidgetId
+        )
+
+        // Then: `new` on an update would leave a second tile on the Home Screen for the user to
+        // find and delete by hand
+        #expect(
+            capturedRequest?.url?.absoluteString
+                == "https://push.getnotifyapp.com/screenwidgets/SW8N3PQ2?token=sekret-token-42"
+        )
+        let body = try jsonBody(of: capturedRequest)
+        #expect(body.keys.contains("new") == false)
+        #expect(body["title"] as? String == "ClaudeBar")
+        #expect(identifier == Self.screenWidgetId)
+    }
+
+    @Test
+    func `the Home Screen tile and the Live Activity are sent one identical body`() async throws {
+        // Given one tile value, and a stub that answers whichever of the two routes it is handed
+        let link = try makeLink()
+        let tile = try makeTile()
+        var capturedRequests: [URLRequest] = []
+        let network = MockNetworkClient()
+        given(network)
+            .request(.any)
+            .willProduce { request in
+                capturedRequests.append(request)
+                let isScreenWidget = request.url?.absoluteString.contains("/screenwidgets/") == true
+                return (
+                    Data((isScreenWidget ? Self.screenWidgetResponse : Self.startResponse).utf8),
+                    Self.response(isScreenWidget ? 201 : 200)
+                )
+            }
+        let client = NotifyGatewayClient(networkClient: network, host: Self.host, timeout: 1)
+
+        // When: the same tile goes to both surfaces
+        _ = try await client.publishTile(tile, link: link, activityId: nil)
+        _ = try await client.publishScreenTile(tile, link: link, screenWidgetId: nil)
+
+        // Then: the two bodies differ in nothing at all. That is the premise of the whole feature:
+        // the gateway derives the screen widget's content contract from its Live Activity module,
+        // so one tile value drives both surfaces and the client keeps one builder for them. A
+        // second builder here could only drift and put two different pictures of one quota on one
+        // phone, which is the thing this test exists to catch.
+        #expect(capturedRequests.count == 2)
+        var liveActivityBody = try jsonBody(of: capturedRequests.first)
+        var screenBody = try jsonBody(of: capturedRequests.last)
+        liveActivityBody.removeValue(forKey: "new")
+        screenBody.removeValue(forKey: "new")
+
+        // Compared through NSDictionary rather than key by key, because the claim being made is
+        // about the whole body, nested metrics row and explicit nulls included.
+        #expect(NSDictionary(dictionary: liveActivityBody) == NSDictionary(dictionary: screenBody))
+
+        // And the thing being compared is a real body rather than two empty dictionaries, which
+        // would satisfy the equality above and prove nothing.
+        #expect(screenBody["title"] as? String == "ClaudeBar")
+        #expect((screenBody["metrics"] as? [[String: Any]])?.count == 2)
+    }
+
     // MARK: - Device Kind Guards
 
     @Test
@@ -581,6 +722,80 @@ struct NotifyGatewayClientTests {
             _ = try await client.publishGauge(gauge, link: link, widgetId: nil)
         }
         #expect(capturedRequest == nil)
+    }
+
+    @Test
+    func `a Home Screen tile aimed at a group is refused without spending a request`() async throws {
+        // Given a group link, which owns no widget list for a Home Screen tile to sit in
+        let link = try makeLink(deviceId: Self.groupDeviceId)
+        let tile = try makeTile()
+        let reason = try #require(NotifyDeviceKind.group.screenWidgetUnsupportedReason)
+        var capturedRequest: URLRequest?
+        let network = MockNetworkClient()
+        given(network)
+            .request(.any)
+            .willProduce { request in
+                capturedRequest = request
+                return (Data(Self.screenWidgetResponse.utf8), Self.response(201))
+            }
+        let client = NotifyGatewayClient(networkClient: network, host: Self.host, timeout: 1)
+
+        // When & Then: `invalidPayload` rather than `liveActivityUnavailable`, because no Live
+        // Activity is involved and that error's remedies would send the user somewhere useless
+        await #expect(throws: NotifyPublishError.invalidPayload(reason)) {
+            _ = try await client.publishScreenTile(tile, link: link, screenWidgetId: nil)
+        }
+        #expect(capturedRequest == nil)
+    }
+
+    @Test
+    func `a Home Screen tile aimed at a Mac is sent, because screen widgets carry no device gate`() async throws {
+        // Given a Mac link. A Live Activity would be refused for one, and a screen widget is not:
+        // the gateway is explicit that this route has no device-type gate and that legacy, IO, WB
+        // and MC ids can each own one. Refusing it here would be ClaudeBar inventing a rule the
+        // service does not have.
+        let link = try makeLink(deviceId: Self.macDeviceId)
+        let tile = try makeTile()
+        var capturedRequest: URLRequest?
+        let network = MockNetworkClient()
+        given(network)
+            .request(.any)
+            .willProduce { request in
+                capturedRequest = request
+                return (Data(Self.screenWidgetResponse.utf8), Self.response(201))
+            }
+        let client = NotifyGatewayClient(networkClient: network, host: Self.host, timeout: 1)
+
+        // When
+        let identifier = try await client.publishScreenTile(tile, link: link, screenWidgetId: nil)
+
+        // Then: the write went out and its id came back
+        #expect(identifier == Self.screenWidgetId)
+        #expect(
+            capturedRequest?.url?.absoluteString.contains("/screenwidgets/\(Self.macDeviceId)") == true
+        )
+    }
+
+    @Test
+    func `a Home Screen tile aimed at a browser is sent too`() async throws {
+        let link = try makeLink(deviceId: Self.webDeviceId)
+        let tile = try makeTile()
+        var capturedRequest: URLRequest?
+        let network = MockNetworkClient()
+        given(network)
+            .request(.any)
+            .willProduce { request in
+                capturedRequest = request
+                return (Data(Self.screenWidgetResponse.utf8), Self.response(201))
+            }
+        let client = NotifyGatewayClient(networkClient: network, host: Self.host, timeout: 1)
+
+        let identifier = try await client.publishScreenTile(tile, link: link, screenWidgetId: nil)
+
+        #expect(identifier == Self.screenWidgetId)
+        #expect(
+            capturedRequest?.url?.absoluteString.contains("/screenwidgets/\(Self.webDeviceId)") == true
+        )
     }
 
     @Test
@@ -828,6 +1043,56 @@ struct NotifyGatewayClientTests {
             throws: NotifyPublishError.liveActivityUnavailable("Open the Notify! app once on the device.")
         ) {
             try await client.publishTile(tile, link: link, activityId: nil)
+        }
+    }
+
+    @Test
+    func `409 on the Home Screen route becomes invalidPayload, not liveActivityUnavailable`() async throws {
+        // Given the one thing a 409 can mean here: the device dialect found several screen widgets
+        // and cannot tell which was meant. ClaudeBar creates its own and addresses it by SW id
+        // afterwards, so it should never see this.
+        let link = try makeLink()
+        let tile = try makeTile()
+        let client = makeClient(status: 409, body: """
+        { "error": "ScreenWidgetAmbiguous", "message": "Several screen widgets exist on this device." }
+        """)
+
+        // When & Then: the shared mapping reads a 409 as a Live Activity problem, because that is
+        // what it means on the route it was written for. Left alone it would tell somebody to open
+        // the Notify! app about their Live Activities, which is a wrong answer to a question about
+        // a Home Screen widget.
+        await #expect(
+            throws: NotifyPublishError.invalidPayload("Several screen widgets exist on this device.")
+        ) {
+            _ = try await client.publishScreenTile(tile, link: link, screenWidgetId: nil)
+        }
+    }
+
+    @Test
+    func `503 is the Home Screen surface being switched off, and worth trying again later`() async throws {
+        // Given the server side kill switch this surface shipped behind, so a ClaudeBar that
+        // supports it can meet a gateway that is not serving it yet
+        let link = try makeLink()
+        let tile = try makeTile()
+        let client = makeClient(status: 503, body: """
+        { "error": "ScreenWidgetsDisabled", "message": "Screen widgets are not enabled." }
+        """)
+
+        // When
+        do {
+            _ = try await client.publishScreenTile(tile, link: link, screenWidgetId: nil)
+            Issue.record("Expected the kill switch to surface")
+        } catch let error as NotifyPublishError {
+            // Then: nothing is wrong with ClaudeBar, the credentials or the content, and the only
+            // remedy is the day the surface is switched on. The gateway's own sentence is not
+            // carried, and that costs nothing: an empty message picks the error's own wording,
+            // which is the sentence to put in front of a user however the server phrased it.
+            #expect(error == .surfaceSwitchedOff(""))
+            #expect(error.errorDescription?.contains("try again later") == true)
+
+            // And it is retryable, which is what keeps the driver backing off rather than giving
+            // up on the surface until something else changes.
+            #expect(error.isRetryable)
         }
     }
 
