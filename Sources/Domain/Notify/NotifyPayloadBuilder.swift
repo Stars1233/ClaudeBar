@@ -36,14 +36,24 @@ public struct NotifyPayloadBuilder: Sendable {
         readings: [NotifyQuotaReading],
         gaugeSelection: NotifyGaugeSelection = .automatic,
         includesTile: Bool = true,
-        includesGauge: Bool = true
+        includesGauge: Bool = true,
+        includesScreenTile: Bool = true
     ) -> NotifyPayload {
         let ordered = Self.ordered(readings)
         guard let headline = ordered.first else { return .empty }
 
+        // The Live Activity and the Home Screen tile are built once and shared.
+        // The gateway takes the same body on both routes, so building them twice
+        // could only produce two things that were supposed to be identical and
+        // one day were not.
+        let tile = (includesTile || includesScreenTile)
+            ? self.tile(ordered: ordered, headline: headline)
+            : nil
+
         return NotifyPayload(
-            tile: includesTile ? tile(ordered: ordered, headline: headline) : nil,
-            gauge: includesGauge ? gauge(ordered: ordered, headline: headline, selection: gaugeSelection) : nil
+            tile: includesTile ? tile : nil,
+            gauge: includesGauge ? gauge(ordered: ordered, headline: headline, selection: gaugeSelection) : nil,
+            screenTile: includesScreenTile ? tile : nil
         )
     }
 
@@ -60,7 +70,16 @@ public struct NotifyPayloadBuilder: Sendable {
                 return left.quota.percentRemaining < right.quota.percentRemaining
             }
             if left.providerName != right.providerName { return left.providerName < right.providerName }
-            return left.quota.quotaType.quotaKey < right.quota.quotaType.quotaKey
+            if left.quota.quotaType.quotaKey != right.quota.quotaType.quotaKey {
+                return left.quota.quotaType.quotaKey < right.quota.quotaType.quotaKey
+            }
+            // The last tie break, and the one that makes the comparator total.
+            // Display names are not unique: an aggregating provider can report
+            // two accounts under one name, and Swift's sort is not stable, so
+            // without this two readings that tie on everything else could come
+            // back in either order. The payload would then differ between builds
+            // of the same state and the driver would republish for nothing.
+            return left.providerId < right.providerId
         }
     }
 

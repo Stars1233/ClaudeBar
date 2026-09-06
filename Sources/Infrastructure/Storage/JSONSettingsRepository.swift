@@ -616,6 +616,14 @@ public final class JSONSettingsRepository:
         store.write(value: enabled, key: "notify.widgetEnabled")
     }
 
+    public func isNotifyScreenWidgetEnabled() -> Bool {
+        store.read(key: "notify.screenWidgetEnabled") ?? NotifyConstants.defaultScreenWidgetEnabled
+    }
+
+    public func setNotifyScreenWidgetEnabled(_ enabled: Bool) {
+        store.write(value: enabled, key: "notify.screenWidgetEnabled")
+    }
+
     public func notifyGaugeProviderId() -> String {
         store.read(key: "notify.gauge.providerId") ?? ""
     }
@@ -651,6 +659,15 @@ public final class JSONSettingsRepository:
     /// Passed through for the same reason as the activity handle above.
     public func setNotifyWidgetId(_ widgetId: String?) {
         store.write(value: widgetId, key: "notify.widgetId")
+    }
+
+    public func notifyScreenWidgetId() -> String? {
+        store.read(key: "notify.screenWidgetId")
+    }
+
+    /// Passed through for the same reason as the two handles above.
+    public func setNotifyScreenWidgetId(_ screenWidgetId: String?) {
+        store.write(value: screenWidgetId, key: "notify.screenWidgetId")
     }
 
     // MARK: - MiniMaxSettingsRepository

@@ -11,14 +11,14 @@ import Infrastructure
 /// it yet.
 ///
 /// A saved ID narrows the second card, one control at a time. Notify! hands out
-/// ids for groups, Macs and browsers as well as for phones, and the two surfaces
-/// answer to that separately: a Mac or a browser keeps a widget perfectly well
-/// and cannot show a Live Activity, while a group is a fan-out target with no
-/// Lock Screen of its own and gets neither. So each switch is disabled by its
-/// own rule and carries its own sentence, and a Mac user reads that half the
-/// feature works for them rather than none of it. Saving such an ID is still
-/// allowed. It is a real ID, the user may be about to replace it, and refusing a
-/// save the gateway itself would accept reads as a bug.
+/// ids for groups, Macs and browsers as well as for phones, and the three
+/// surfaces answer to that separately: a Mac or a browser keeps a widget
+/// perfectly well and cannot show a Live Activity, while a group is a fan-out
+/// target with no screen of its own and gets none of them. So each switch is
+/// disabled by its own rule and carries its own sentence, and a Mac user reads
+/// that most of the feature works for them rather than none of it. Saving such
+/// an ID is still allowed. It is a real ID, the user may be about to replace it,
+/// and refusing a save the gateway itself would accept reads as a bug.
 /// Verify Device stays live for every kind, because it checks the credentials
 /// rather than the surfaces and is the one useful thing to press here.
 struct NotifyPane: View {
@@ -56,7 +56,7 @@ struct NotifyPane: View {
     var body: some View {
         SettingsPane(
             title: "Notify!",
-            subtitle: "Push your quota to an iPhone Lock Screen as a Live Activity and a widget, using the Notify! app."
+            subtitle: "Push your quota to an iPhone as a Lock Screen Live Activity, a Lock Screen widget and a Home Screen widget, using the Notify! app."
         ) {
             linkCard
             publishCard
@@ -370,7 +370,7 @@ struct NotifyPane: View {
                 .disabled(!linkSupportsLiveActivity)
                 .opacity(linkSupportsLiveActivity ? 1 : 0.6)
 
-                // Back beside the control now that the two surfaces are gated
+                // Back beside the control now that the surfaces are gated
                 // separately. A Mac closes off this one switch and nothing else,
                 // so there is exactly one sentence on screen rather than four.
                 if let savedLiveActivityReason {
@@ -384,7 +384,7 @@ struct NotifyPane: View {
             VStack(alignment: .leading, spacing: 8) {
                 SettingsRow(
                     title: "Lock Screen widget",
-                    subtitle: "A gauge you can add to the Lock Screen or Home Screen. iOS decides when a widget redraws, roughly every fifteen minutes."
+                    subtitle: "A gauge showing one quota, small enough for the Lock Screen. iOS decides when a widget redraws, roughly every fifteen minutes."
                 ) {
                     SettingsSwitch(isOn: $settings.notifyWidgetEnabled)
                 }
@@ -393,6 +393,24 @@ struct NotifyPane: View {
 
                 if let savedWidgetReason {
                     unsupportedReasonLine(savedWidgetReason)
+                }
+
+            }
+
+            SettingsRowDivider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                SettingsRow(
+                    title: "Home Screen widget",
+                    subtitle: "The same content as the Live Activity, except that it stays put instead of appearing when something happens and vanishing after. Needs a recent Notify! app: turn it on under Settings then Home Screen Widgets in Notify!, then place it with iOS's own widget picker."
+                ) {
+                    SettingsSwitch(isOn: $settings.notifyScreenWidgetEnabled)
+                }
+                .disabled(!linkSupportsScreenWidget)
+                .opacity(linkSupportsScreenWidget ? 1 : 0.6)
+
+                if let savedScreenWidgetReason {
+                    unsupportedReasonLine(savedScreenWidgetReason)
                 }
 
             }
@@ -540,7 +558,7 @@ struct NotifyPane: View {
     /// decides the surfaces anyway.
     ///
     /// With nothing saved the empty id lands on `.unrecognized`, which claims
-    /// both surfaces. That is the right answer for this pane rather than a
+    /// every surface. That is the right answer for this pane rather than a
     /// quirk to guard against: the publish card is already disabled wholesale
     /// on `isLinked`, and dimming its rows a second time would blame the user's
     /// phone for a link they have not pasted yet.
@@ -550,10 +568,11 @@ struct NotifyPane: View {
 
     /// Whether the saved link can hold a tile.
     ///
-    /// The two surfaces are asked about separately even though the same three
-    /// prefixes fail both today, because they fail for different reasons: the
-    /// gateway refuses a Live Activity outright, while a widget is accepted and
-    /// then drawn by nothing. Those are two rules, and they could stop agreeing.
+    /// The surfaces are asked about separately even though the same three
+    /// prefixes fail all of them today, because they fail for different reasons:
+    /// the gateway refuses a Live Activity outright, while a widget is accepted
+    /// and then drawn by nothing. Those are separate rules, and they could stop
+    /// agreeing.
     private var linkSupportsLiveActivity: Bool {
         linkedKind.supportsLiveActivity
     }
@@ -563,9 +582,16 @@ struct NotifyPane: View {
         linkedKind.supportsWidget
     }
 
-    /// Whether a publish has anywhere to land. It writes a tile and a gauge and
-    /// nothing else, so a link that can hold neither leaves the button nothing
-    /// to send.
+    /// Whether a Home Screen tile written to the saved link would ever be drawn.
+    /// The same answer as the Lock Screen widget today, asked separately because
+    /// it is a separate route with its own rules.
+    private var linkSupportsScreenWidget: Bool {
+        linkedKind.supportsScreenWidget
+    }
+
+    /// Whether a publish has anywhere to land. It writes a tile, a gauge and a
+    /// Home Screen tile and nothing else, so a link that can hold none of them
+    /// leaves the button nothing to send.
     private var linkSupportsAnySurface: Bool {
         linkedKind.supportsAnySurface
     }
@@ -583,6 +609,11 @@ struct NotifyPane: View {
     /// Only a group has one of these. Every real device can keep a widget.
     private var savedWidgetReason: String? {
         isLinked ? linkedKind.widgetUnsupportedReason : nil
+    }
+
+    /// The same, for the Home Screen widget, which a group cannot keep either.
+    private var savedScreenWidgetReason: String? {
+        isLinked ? linkedKind.screenWidgetUnsupportedReason : nil
     }
 
     /// The publish card's own short form: what is closed off, not the full
@@ -616,8 +647,11 @@ struct NotifyPane: View {
     private func saveLink() {
         guard let link = pendingLink else { return }
 
-        settings.notify.setNotifyDeviceId(link.deviceId)
-        settings.notify.saveNotifyDeviceToken(link.token)
+        // The repository decides whether the previous device's handles survive
+        // this, because it is the only part of that rule that can be tested: a
+        // link naming the same phone keeps them, a different phone does not.
+        settings.notify.saveNotifyDeviceLink(link)
+
         refreshLinkState()
 
         // Saving a secret can fail, and it fails silently: the credential store
@@ -653,12 +687,13 @@ struct NotifyPane: View {
         settings.notify.setNotifyDeviceId("")
         settings.notify.deleteNotifyDeviceToken()
 
-        // The two handles name a tile and a widget belonging to credentials
-        // that are now gone. Keeping them would risk writing to a stranger's
-        // surface if the gateway ever reuses an id, so a later link starts by
-        // creating its own.
+        // The handles name a tile and two widgets belonging to credentials that
+        // are now gone. Keeping them would risk writing to a stranger's surface
+        // if the gateway ever reuses an id, so a later link starts by creating
+        // its own.
         settings.notify.setNotifyActivityId(nil)
         settings.notify.setNotifyWidgetId(nil)
+        settings.notify.setNotifyScreenWidgetId(nil)
 
         deviceIdField = ""
         tokenField = ""

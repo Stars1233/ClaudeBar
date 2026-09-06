@@ -51,10 +51,23 @@ final class NotifyPublishDriver {
     /// backoff and every attempt inside the wait lengthens it.
     private var tileSuppressedUntil: Date?
 
+    /// While set, Home Screen tile writes are skipped: the gateway has that
+    /// surface switched off server side. Separate from the tile's wait because
+    /// the two mean opposite things. Backoff is the gateway asking ClaudeBar to
+    /// stop doing something; the kill switch is a feature Notify! has not
+    /// started serving yet, and nothing on this Mac shortens it.
+    private var screenTileSuppressedUntil: Date?
+
     /// How often the payload is re-offered to the gate. A minute is the
     /// tile's own minimum interval, so this is the finest cadence that can
     /// ever change an answer.
     private static let tickInterval: TimeInterval = 60
+
+    /// How long the Home Screen tile goes quiet after the gateway says it is
+    /// not serving that surface. Deliberately hours: the switch is thrown by
+    /// Notify! on Notify!'s own schedule, so asking again on the next tick is a
+    /// poll against a decision that will not have moved, once a minute forever.
+    private static let switchedOffSuppression: TimeInterval = 6 * 60 * 60
 
     init(
         monitor: QuotaMonitor,
@@ -151,12 +164,14 @@ final class NotifyPublishDriver {
         }
 
         // Said before the payload is built, because an empty payload cannot
-        // tell these two apart afterwards: both surfaces switched off and no
+        // tell these two apart afterwards: every surface switched off and no
         // quota reported yet produce exactly the same nothing, and blaming the
         // providers for a switch the user turned off themselves is the more
         // annoying of the two wrong answers.
-        guard settings.notifyLiveActivityEnabled || settings.notifyWidgetEnabled else {
-            return "Both the Live Activity and the Lock Screen widget are switched off, so there is nothing to send."
+        guard settings.notifyLiveActivityEnabled
+            || settings.notifyWidgetEnabled
+            || settings.notifyScreenWidgetEnabled else {
+            return "The Live Activity, the Lock Screen widget and the Home Screen widget are all switched off, so there is nothing to send."
         }
 
         // Let any publish already running finish first, rather than cancelling
@@ -187,9 +202,19 @@ final class NotifyPublishDriver {
         }
 
         let now = Date()
-        let decision = withoutSuppressedTile(gate.decide(payload: payload, since: nil, now: now), at: now)
+        let decision = withoutSuppressedSurfaces(gate.decide(payload: payload, since: nil, now: now), at: now)
         guard !decision.publishesNothing else {
-            return "Notify! is still holding off Live Activity starts. ClaudeBar will retry on its own."
+            // Every surface the payload carried is inside a wait the gateway
+            // asked for, and the two waits are different news. A backoff is
+            // ClaudeBar being told to slow down, which the user can sometimes
+            // clear from their phone; the kill switch is a surface Notify! has
+            // not started serving, where waiting is the only move either of us
+            // has. The backoff is named first because it is the one with a
+            // remedy.
+            if tileSuppressedUntil != nil {
+                return "Notify! is still holding off Live Activity starts. ClaudeBar will retry on its own."
+            }
+            return "Notify! is not serving Home Screen widgets yet. ClaudeBar will try again later."
         }
 
         return await startPublish(payload: payload, decision: decision, at: now).value
@@ -227,6 +252,7 @@ final class NotifyPublishDriver {
         let readings = monitor.notifyReadings()
         let includesTile = settings.notifyLiveActivityEnabled
         let includesGauge = settings.notifyWidgetEnabled
+        let includesScreenTile = settings.notifyScreenWidgetEnabled
         let selection = NotifyGaugeSelection(
             providerId: settings.notifyGaugeProviderId,
             quotaKey: settings.notifyGaugeQuotaKey
@@ -236,7 +262,8 @@ final class NotifyPublishDriver {
             readings: readings,
             gaugeSelection: selection,
             includesTile: includesTile,
-            includesGauge: includesGauge
+            includesGauge: includesGauge,
+            includesScreenTile: includesScreenTile
         )
     }
 
@@ -249,7 +276,7 @@ final class NotifyPublishDriver {
         guard !payload.isEmpty else { return }
 
         let now = Date()
-        let decision = withoutSuppressedTile(gate.decide(payload: payload, since: record, now: now), at: now)
+        let decision = withoutSuppressedSurfaces(gate.decide(payload: payload, since: record, now: now), at: now)
         guard !decision.publishesNothing else { return }
 
         guard publishTask == nil else { return }
@@ -302,27 +329,40 @@ final class NotifyPublishDriver {
         tickTimer = nil
     }
 
-    /// Drops the tile from a decision while the gateway's push to start backoff
-    /// is still running, and forgets the wait once it has passed.
-    private func withoutSuppressedTile(
+    /// Drops the surfaces sitting inside a wait the gateway asked for, and
+    /// forgets each wait once it has passed.
+    ///
+    /// The two waits are held apart on purpose. The tile's is push to start
+    /// backoff, where every attempt inside it lengthens the wait; the Home
+    /// Screen tile's is a server side kill switch, where nothing is wrong and
+    /// there is simply nothing serving that route yet. Neither is evidence about
+    /// the other, so neither may silence the other, and the gauge is a poll the
+    /// gateway rations not at all.
+    private func withoutSuppressedSurfaces(
         _ decision: NotifyPublishDecision,
         at now: Date
     ) -> NotifyPublishDecision {
-        guard let tileSuppressedUntil else { return decision }
-        if now >= tileSuppressedUntil {
+        if let tileSuppressedUntil, now >= tileSuppressedUntil {
             self.tileSuppressedUntil = nil
-            return decision
         }
-        return NotifyPublishDecision(publishesTile: false, publishesGauge: decision.publishesGauge)
+        if let screenTileSuppressedUntil, now >= screenTileSuppressedUntil {
+            self.screenTileSuppressedUntil = nil
+        }
+
+        return NotifyPublishDecision(
+            publishesTile: decision.publishesTile && tileSuppressedUntil == nil,
+            publishesGauge: decision.publishesGauge,
+            publishesScreenTile: decision.publishesScreenTile && screenTileSuppressedUntil == nil
+        )
     }
 
     /// Drops whichever surfaces the linked device could never show.
     ///
-    /// A Notify! id says what it is, and the two surfaces answer to it
+    /// A Notify! id says what it is, and the three surfaces answer to it
     /// separately. A `GRP`, `MC` or `WB` id cannot show a Live Activity, so a
-    /// tile aimed at one is a 400 waiting to happen. Only a group cannot keep a
-    /// widget, being a fan-out target rather than a device. Neither request is
-    /// worth making.
+    /// tile aimed at one is a 400 waiting to happen. Only a group can keep
+    /// neither widget, being a fan-out target rather than a device with a widget
+    /// list of its own. None of those requests is worth making.
     ///
     /// This is the one narrowing the gate cannot do for itself. The gate is
     /// pure and the payload knows nothing about where it is going; the link is
@@ -334,23 +374,26 @@ final class NotifyPublishDriver {
     ) -> NotifyPublishDecision {
         NotifyPublishDecision(
             publishesTile: decision.publishesTile && link.supportsLiveActivity,
-            publishesGauge: decision.publishesGauge && link.supportsWidget
+            publishesGauge: decision.publishesGauge && link.supportsWidget,
+            publishesScreenTile: decision.publishesScreenTile && link.supportsScreenWidget
         )
     }
 
     // MARK: - Publishing
 
-    /// Which surface a write was for. The two are addressed by separate handles
-    /// and fail for separate reasons, so every reaction to a failure has to know
+    /// Which surface a write was for. Each is addressed by its own handle and
+    /// fails for its own reasons, so every reaction to a failure has to know
     /// which one it is reacting to.
     private enum Surface {
         case tile
         case gauge
+        case screenTile
 
         var label: String {
             switch self {
             case .tile: "tile"
             case .gauge: "widget"
+            case .screenTile: "Home Screen widget"
             }
         }
     }
@@ -382,7 +425,7 @@ final class NotifyPublishDriver {
             // failure to show. The place to explain a device's limits is where
             // the user pastes the link, not once a minute forever.
             AppLog.notifications.debug(
-                "Notify! publish skipped: the linked \(link.kind.displayName) shows neither surface"
+                "Notify! publish skipped: the linked \(link.kind.displayName) shows none of these surfaces"
             )
             return nil
         }
@@ -392,6 +435,7 @@ final class NotifyPublishDriver {
         // device that cannot do Live Activities at all.
         var sentTile = false
         var sentGauge = false
+        var sentScreenTile = false
         var failures: [String] = []
 
         if supported.publishesTile, let tile = payload.tile {
@@ -408,8 +452,24 @@ final class NotifyPublishDriver {
                 sentGauge = true
             }
         }
+        // Last, and with the same content the Live Activity just carried. The
+        // Home Screen route takes the tile body unchanged, which is why the
+        // builder hands out one value for both rather than two that agree.
+        if supported.publishesScreenTile, let screenTile = payload.screenTile {
+            if let failure = await sendScreenTile(screenTile, link: link) {
+                failures.append(failure)
+            } else {
+                sentScreenTile = true
+            }
+        }
 
-        remember(payload: payload, sentTile: sentTile, sentGauge: sentGauge, at: now)
+        remember(
+            payload: payload,
+            sentTile: sentTile,
+            sentGauge: sentGauge,
+            sentScreenTile: sentScreenTile,
+            at: now
+        )
         return failures.first
     }
 
@@ -421,7 +481,7 @@ final class NotifyPublishDriver {
                 link: link,
                 activityId: settings.notify.notifyActivityId()
             )
-            settings.notify.setNotifyActivityId(activityId)
+            store(activityId: activityId, for: link)
             return nil
         } catch NotifyPublishError.tileGone {
             // The handle names a tile the user dismissed, which can never be
@@ -439,7 +499,7 @@ final class NotifyPublishDriver {
     private func restartTile(_ tile: NotifyTile, link: NotifyDeviceLink) async -> String? {
         do {
             let activityId = try await publisher.publishTile(tile, link: link, activityId: nil)
-            settings.notify.setNotifyActivityId(activityId)
+            store(activityId: activityId, for: link)
             return nil
         } catch {
             report(error, surface: .tile)
@@ -455,12 +515,63 @@ final class NotifyPublishDriver {
                 link: link,
                 widgetId: settings.notify.notifyWidgetId()
             )
-            settings.notify.setNotifyWidgetId(widgetId)
+            store(widgetId: widgetId, for: link)
             return nil
         } catch {
             report(error, surface: .gauge)
             return message(for: error)
         }
+    }
+
+    /// - Returns: nil when the Home Screen widget was written, or the failure as
+    ///   a message.
+    private func sendScreenTile(_ tile: NotifyTile, link: NotifyDeviceLink) async -> String? {
+        do {
+            let screenWidgetId = try await publisher.publishScreenTile(
+                tile,
+                link: link,
+                screenWidgetId: settings.notify.notifyScreenWidgetId()
+            )
+            store(screenWidgetId: screenWidgetId, for: link)
+            return nil
+        } catch {
+            report(error, surface: .screenTile)
+            return message(for: error)
+        }
+    }
+
+    /// Stores a handle only while it still belongs to the saved link.
+    ///
+    /// A publish holds the link it started with, and a request can be in flight
+    /// for as long as the timeout allows. The user can remove or replace the
+    /// link in that window, and the reply, when it lands, carries a handle for
+    /// a device that is no longer the one on file. Writing it would leave the
+    /// next link inheriting a stranger's tile id, which costs a wasted request
+    /// and a 403 before it heals. Comparing first is cheaper than healing.
+    private func store(activityId: String, for link: NotifyDeviceLink) {
+        guard settings.notify.notifyDeviceLink() == link else {
+            AppLog.notifications.info("Notify! link changed while publishing, discarding the tile handle it returned")
+            return
+        }
+        settings.notify.setNotifyActivityId(activityId)
+    }
+
+    private func store(widgetId: String, for link: NotifyDeviceLink) {
+        guard settings.notify.notifyDeviceLink() == link else {
+            AppLog.notifications.info("Notify! link changed while publishing, discarding the widget handle it returned")
+            return
+        }
+        settings.notify.setNotifyWidgetId(widgetId)
+    }
+
+    private func store(screenWidgetId: String, for link: NotifyDeviceLink) {
+        guard settings.notify.notifyDeviceLink() == link else {
+            AppLog.notifications.info(
+                "Notify! link changed while publishing, discarding the Home Screen widget handle it returned"
+            )
+            return
+        }
+        settings.notify.setNotifyScreenWidgetId(screenWidgetId)
     }
 
     /// Every `NotifyPublishError` already carries a sentence written for a
@@ -471,20 +582,26 @@ final class NotifyPublishDriver {
 
     /// Records what the phone now shows, per surface.
     ///
-    /// The payload is merged rather than stored wholesale: a surface that was
-    /// held back or that failed still shows its previous content, and recording
-    /// the new content for it would tell the gate a change had already been
-    /// sent and lose it until the keep alive came round.
-    private func remember(payload: NotifyPayload, sentTile: Bool, sentGauge: Bool, at now: Date) {
-        guard sentTile || sentGauge else { return }
+    /// What was actually sent, not what was decided: a surface that failed must
+    /// not be filed as delivered. `NotifyPublishRecord.updated` does the per
+    /// surface merge itself, so a surface that was held back or that failed
+    /// keeps the content it is really showing.
+    private func remember(
+        payload: NotifyPayload,
+        sentTile: Bool,
+        sentGauge: Bool,
+        sentScreenTile: Bool,
+        at now: Date
+    ) {
+        guard sentTile || sentGauge || sentScreenTile else { return }
 
-        let standing = NotifyPayload(
-            tile: sentTile ? payload.tile : record?.payload.tile,
-            gauge: sentGauge ? payload.gauge : record?.payload.gauge
+        let sent = NotifyPublishDecision(
+            publishesTile: sentTile,
+            publishesGauge: sentGauge,
+            publishesScreenTile: sentScreenTile
         )
-        let sent = NotifyPublishDecision(publishesTile: sentTile, publishesGauge: sentGauge)
         record = (record ?? NotifyPublishRecord(payload: .empty))
-            .updated(with: standing, decision: sent, at: now)
+            .updated(with: payload, decision: sent, at: now)
     }
 
     /// Turns a failed write into whatever state change it implies, and one log
@@ -500,7 +617,11 @@ final class NotifyPublishDriver {
     /// names something that is gone.
     private func report(_ error: any Error, surface: Surface) {
         guard let error = error as? NotifyPublishError else {
-            AppLog.notifications.error("Notify! \(surface.label) publish failed: \(error.localizedDescription)")
+            // An error from outside this feature's own vocabulary, so its text is
+            // not known to be free of a URL, and every URL here carries the
+            // device token. The type is enough to find the cause and cannot
+            // quote anything.
+            AppLog.notifications.error("Notify! \(surface.label) publish failed: \(type(of: error))")
             return
         }
 
@@ -517,11 +638,13 @@ final class NotifyPublishDriver {
             )
 
         case .backoff(let retryAfter, let openingTheAppMayHelp):
-            // Push to start backoff is a Live Activity rule. A widget write is
-            // a poll the gateway does not ration, so a tile's wait must never
-            // silence one.
+            // Push to start backoff is a Live Activity rule. Both widgets are
+            // polls the gateway does not ration, so a tile's wait must never
+            // silence either of them.
             guard surface == .tile else {
-                AppLog.notifications.warning("Notify! widget publish was rate limited, retrying on a later tick")
+                AppLog.notifications.warning(
+                    "Notify! \(surface.label) publish was rate limited, retrying on a later tick"
+                )
                 return
             }
             tileSuppressedUntil = Date().addingTimeInterval(retryAfter)
@@ -530,6 +653,29 @@ final class NotifyPublishDriver {
                 : ""
             AppLog.notifications.warning(
                 "Notify! is holding off Live Activity starts for \(Int(retryAfter.rounded()))s\(hint)"
+            )
+
+        case .surfaceSwitchedOff:
+            // Not a failure, which is why it is the only branch here that logs
+            // at info. Home Screen widgets ship behind a server side kill
+            // switch, so a ClaudeBar that can write them meets a gateway that is
+            // not serving them yet, and the remedy is entirely Notify!'s.
+            // Backing off for hours rather than retrying every tick, because
+            // nothing this app does moves that switch and asking once a minute
+            // forever would fill the log with a fact that has not changed.
+            guard surface == .screenTile else {
+                // The 503 belongs to the Home Screen route. Reaching here means
+                // the gateway switched off a surface this code did not expect to
+                // be switchable, so that write is skipped and offered again on a
+                // later tick, and the Home Screen tile's own pause is left alone.
+                AppLog.notifications.info(
+                    "Notify! has the \(surface.label) switched off at the moment, retrying on a later tick"
+                )
+                return
+            }
+            screenTileSuppressedUntil = Date().addingTimeInterval(Self.switchedOffSuppression)
+            AppLog.notifications.info(
+                "Notify! is not serving Home Screen widgets yet, pausing that surface for six hours"
             )
 
         case .deliveryUnconfirmed(let activityId):
@@ -543,6 +689,16 @@ final class NotifyPublishDriver {
                 "Notify! could not confirm the tile started, updating it on the next tick"
             )
 
+        case .transportFailed:
+            // The one error whose text is not ClaudeBar's own. It carries a
+            // URLError's localized description, which is free to quote the URL
+            // it failed on, and every URL in this feature has the device token
+            // in its query string. The client already refuses to write that
+            // down; logging it here through the error's description would put it
+            // in the same file by the back door. The pane still shows it, which
+            // is not written down.
+            AppLog.notifications.error("Notify! \(surface.label) publish could not reach the gateway")
+
         default:
             AppLog.notifications.error("Notify! \(surface.label) publish failed: \(error.localizedDescription)")
         }
@@ -554,6 +710,7 @@ final class NotifyPublishDriver {
         switch surface {
         case .tile: settings.notify.setNotifyActivityId(nil)
         case .gauge: settings.notify.setNotifyWidgetId(nil)
+        case .screenTile: settings.notify.setNotifyScreenWidgetId(nil)
         }
     }
 }

@@ -11,6 +11,7 @@ import Domain
 /// Routes used:
 /// - `POST /live-activity/{deviceId|activityId}?token=` for the Lock Screen tile
 /// - `POST /widgets/{deviceId|widgetId}?token=` for the gauge widget
+/// - `POST /screenwidgets/{deviceId|screenWidgetId}?token=` for the Home Screen widget
 /// - `DELETE /live-activity/{activityId}?token=&keepFor=` to end the tile
 /// - `GET /link?id=&token=` to check a pasted device link
 ///
@@ -24,6 +25,7 @@ public struct NotifyGatewayClient: NotifyPublishing, Sendable {
 
     private static let liveActivityRoute = "/live-activity"
     private static let widgetsRoute = "/widgets"
+    private static let screenWidgetsRoute = "/screenwidgets"
     private static let linkRoute = "/link"
 
     /// The first rung of the gateway's push to start backoff ladder, used when a 429 names no
@@ -188,6 +190,99 @@ public struct NotifyGatewayClient: NotifyPublishing, Sendable {
         return identifier
     }
 
+    /// Creates the Home Screen widget when `screenWidgetId` is nil, otherwise updates that exact
+    /// one.
+    ///
+    /// The body is the tile's, built by the same `tileBody` the Live Activity uses. That is not a
+    /// convenience: the gateway derives this route's content contract from its Live Activity
+    /// module, so the two surfaces take the same fields, the same caps and the same merge rules,
+    /// and one tile value driving both is the entire point of the feature. A second builder here
+    /// could only drift from the first and put two different pictures of one quota on one phone.
+    ///
+    /// A create carries `"new": true` for the same "never hijack" reason as the other two
+    /// surfaces: the device dialect would otherwise write over whichever screen widget is already
+    /// there. A create answers 201, and 200 is accepted alongside it exactly as for the gauge,
+    /// since the gateway answers 200 when the call it received turned out to be an update.
+    public func publishScreenTile(
+        _ tile: NotifyTile,
+        link: NotifyDeviceLink,
+        screenWidgetId: String?
+    ) async throws -> String {
+        // Only a group is refused, and for the reason the gauge refuses one: a group is not a
+        // device and owns no widget list to write into. Every real device can keep a screen
+        // widget, the gateway being explicit that this route carries no device type gate at all
+        // and that legacy, `IO`, `WB` and `MC` ids can each own one.
+        guard link.supportsScreenWidget else {
+            throw NotifyPublishError.invalidPayload(
+                link.kind.screenWidgetUnsupportedReason
+                    ?? "A group owns no Home Screen of its own, so use the device ID and token for a single device instead."
+            )
+        }
+
+        var body = Self.tileBody(tile)
+        let target: String
+        let route: String
+        let accepting: Set<Int>
+
+        if let screenWidgetId {
+            target = screenWidgetId
+            route = "POST \(Self.screenWidgetsRoute) (update)"
+            accepting = [200]
+        } else {
+            target = link.deviceId
+            body["new"] = true
+            route = "POST \(Self.screenWidgetsRoute) (create)"
+            accepting = [200, 201]
+            AppLog.network.debug("Notify!: creating a Home Screen widget on device \(link.deviceId)")
+        }
+
+        let url = try Self.endpoint(
+            host: host,
+            path: "\(Self.screenWidgetsRoute)/\(target)",
+            queryItems: [URLQueryItem(name: "token", value: link.token)]
+        )
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = try Self.encode(body)
+        Self.applyWriteHeaders(&request, timeout: timeout)
+
+        // Two statuses mean something here that they do not mean anywhere else in this client, so
+        // they are translated where that difference is known rather than inside the shared
+        // `failure` mapping, which every other route would then have to reason about.
+        let data: Data
+        do {
+            data = try await send(request, route: route, accepting: accepting, expected: [503])
+        } catch NotifyPublishError.unexpectedStatus(503) {
+            // The server side kill switch for Home Screen widgets. While it is off, creates and
+            // updates are refused and reads and deletes are deliberately left open so an already
+            // placed tile keeps rendering. Nothing is wrong with ClaudeBar, the credentials or
+            // the content, so this must not reach the user reading like a failure, and the remedy
+            // is to wait for the day the surface is switched on.
+            //
+            // The gateway's own sentence does not survive `unexpectedStatus`, which carries a
+            // status code and nothing else, and that costs nothing: an empty message picks the
+            // error's own "switched off at the moment, ClaudeBar will try again later" wording,
+            // which is the sentence to put in front of a user however the server phrased it.
+            throw NotifyPublishError.surfaceSwitchedOff("")
+        } catch NotifyPublishError.liveActivityUnavailable(let message) {
+            // A 409, which the shared mapping reads as a Live Activity problem because that is
+            // what it means on the route it was written for. Here it means the device dialect
+            // found several screen widgets and cannot tell which one was meant. ClaudeBar creates
+            // its own with `new` and addresses it by `SW…` id afterwards, so it should never see
+            // this, but telling somebody to open the Notify! app about their Live Activities
+            // would be a wrong answer to a question about a Home Screen widget.
+            throw NotifyPublishError.invalidPayload(message)
+        }
+
+        guard let decoded = try? JSONDecoder().decode(ScreenWidgetWriteResponse.self, from: data),
+              let identifier = decoded.screenWidgetId ?? screenWidgetId else {
+            AppLog.network.error("Notify!: \(route) answered a body ClaudeBar could not read")
+            throw NotifyPublishError.malformedResponse
+        }
+        return identifier
+    }
+
     /// Ends the tile, leaving it on the Lock Screen for `keepFor` seconds so the final state can
     /// be read.
     ///
@@ -282,13 +377,30 @@ public struct NotifyGatewayClient: NotifyPublishing, Sendable {
     /// device token and the device id, and neither belongs in a log the user is asked to attach to
     /// a bug report, so only the route and the status code are logged. The device id appears at
     /// debug level only, which never reaches the log file on disk.
-    private func send(_ request: URLRequest, route: String, accepting: Set<Int>) async throws -> Data {
+    /// `expected` names statuses that are a refusal rather than a fault: they
+    /// still throw, but they are logged at info, because writing "error" into
+    /// the file a user attaches to a bug report for something ClaudeBar then
+    /// tells them is perfectly normal is how a log stops being trusted. The
+    /// Home Screen widget's 503 kill switch is the only one so far.
+    private func send(
+        _ request: URLRequest,
+        route: String,
+        accepting: Set<Int>,
+        expected: Set<Int> = []
+    ) async throws -> Data {
         let data: Data
         let response: URLResponse
         do {
             (data, response) = try await networkClient.request(request)
         } catch {
-            AppLog.network.error("Notify!: \(route) could not be reached: \(error.localizedDescription)")
+            // The code and domain, never the description. Every URL in this
+            // client carries the device token in its query string, and a
+            // transport error's localized description is free to quote the URL
+            // it failed on. `AppLog.error` is written to a plaintext file users
+            // are asked to attach to bug reports, so the description goes to the
+            // thrown error, which is shown in the pane and never written down.
+            let failure = error as NSError
+            AppLog.network.error("Notify!: \(route) could not be reached (\(failure.domain) \(failure.code))")
             throw NotifyPublishError.transportFailed(error.localizedDescription)
         }
 
@@ -305,7 +417,11 @@ public struct NotifyGatewayClient: NotifyPublishing, Sendable {
                 data: data,
                 retryAfterHeader: http.value(forHTTPHeaderField: "Retry-After")
             )
-            AppLog.network.error("Notify!: \(route) failed with HTTP \(http.statusCode)")
+            if expected.contains(http.statusCode) {
+                AppLog.network.info("Notify!: \(route) answered HTTP \(http.statusCode), which is expected here")
+            } else {
+                AppLog.network.error("Notify!: \(route) failed with HTTP \(http.statusCode)")
+            }
             throw mapped
         }
 
@@ -351,6 +467,10 @@ public struct NotifyGatewayClient: NotifyPublishing, Sendable {
     }
 
     /// The tile's content fields, stating a null for anything the Domain type left nil.
+    ///
+    /// Both the Live Activity and the Home Screen widget are written with this, because the
+    /// gateway builds both routes' content contracts from one module and accepts either body on
+    /// either route unchanged.
     ///
     /// `status`, `endsIn`, `steps`, `step` and `button` are deliberately never mentioned. Those
     /// are the fields the "leave it alone" rule is actually for: an absent field is left alone by
@@ -507,6 +627,13 @@ private struct LiveActivityWriteResponse: Decodable {
 /// the echoed content is what ClaudeBar just sent.
 private struct WidgetWriteResponse: Decodable {
     let widgetId: String?
+}
+
+/// The `ScreenWidget` object, answered by a create (201) and an update (200) alike. Only the id is
+/// read, for the reason the widget's is: the rest of the object is the content ClaudeBar just sent
+/// back again, plus a `staleAt` the phone owns and ClaudeBar has no decision to make about.
+private struct ScreenWidgetWriteResponse: Decodable {
+    let screenWidgetId: String?
 }
 
 /// `GET /link`, which answers flat snake_case. Only the four fields ClaudeBar needs are read, and

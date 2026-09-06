@@ -42,6 +42,13 @@ public enum NotifyPublishError: Error, Sendable, Equatable, LocalizedError {
     /// The request never completed.
     case transportFailed(String)
 
+    /// The gateway has this surface switched off server side. Home Screen
+    /// widgets ship behind a kill switch, so a build that supports them can meet
+    /// a service that is not serving them yet. Reads and deletes stay open, only
+    /// creates and updates are refused, and the remedy is to wait rather than to
+    /// change anything.
+    case surfaceSwitchedOff(String)
+
     case unexpectedStatus(Int)
 
     case malformedResponse
@@ -68,6 +75,10 @@ public enum NotifyPublishError: Error, Sendable, Equatable, LocalizedError {
             "Notify! could not confirm the Live Activity started. ClaudeBar will check again on the next update."
         case .transportFailed(let message):
             "Could not reach Notify!: \(message)"
+        case .surfaceSwitchedOff(let message):
+            message.isEmpty
+                ? "Notify! has this widget switched off at the moment. ClaudeBar will try again later."
+                : message
         case .unexpectedStatus(let code):
             "Notify! answered with HTTP \(code)."
         case .malformedResponse:
@@ -87,7 +98,7 @@ public enum NotifyPublishError: Error, Sendable, Equatable, LocalizedError {
     /// decide between backing off and giving up until something changes.
     public var isRetryable: Bool {
         switch self {
-        case .transportFailed, .backoff, .deliveryUnconfirmed, .unexpectedStatus:
+        case .transportFailed, .backoff, .deliveryUnconfirmed, .unexpectedStatus, .surfaceSwitchedOff:
             true
         case .notLinked, .rejectedCredentials, .liveActivityUnavailable, .tileGone,
              .invalidPayload, .malformedResponse:

@@ -112,6 +112,18 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
+    func `the Home Screen widget defaults to on`() {
+        let fixture = makeFixture()
+        defer { cleanup(fixture) }
+
+        // On even though the gateway ships this surface behind a kill switch, because a 503 is
+        // handled as "not yet" rather than as an error. Defaulting it off would mean nobody saw
+        // the surface on the day it was switched on.
+        #expect(fixture.repository.isNotifyScreenWidgetEnabled() == NotifyConstants.defaultScreenWidgetEnabled)
+        #expect(fixture.repository.isNotifyScreenWidgetEnabled() == true)
+    }
+
+    @Test
     func `the device id defaults to empty`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
@@ -186,6 +198,15 @@ struct NotifySettingsRepositoryTests {
     }
 
     @Test
+    func `setNotifyScreenWidgetEnabled persists value`() {
+        let fixture = makeFixture()
+        defer { cleanup(fixture) }
+
+        fixture.repository.setNotifyScreenWidgetEnabled(false)
+        #expect(fixture.repository.isNotifyScreenWidgetEnabled() == false)
+    }
+
+    @Test
     func `setNotifyGaugeProviderId persists value`() {
         let fixture = makeFixture()
         defer { cleanup(fixture) }
@@ -221,6 +242,15 @@ struct NotifySettingsRepositoryTests {
         #expect(fixture.repository.notifyWidgetId() == "WG4H2QZ1")
     }
 
+    @Test
+    func `setNotifyScreenWidgetId persists value`() {
+        let fixture = makeFixture()
+        defer { cleanup(fixture) }
+
+        fixture.repository.setNotifyScreenWidgetId("SW8N3PQ2")
+        #expect(fixture.repository.notifyScreenWidgetId() == "SW8N3PQ2")
+    }
+
     // MARK: - Forgetting a Handle
 
     @Test
@@ -245,6 +275,20 @@ struct NotifySettingsRepositoryTests {
         fixture.repository.setNotifyWidgetId(nil)
 
         #expect(fixture.repository.notifyWidgetId() == nil)
+    }
+
+    @Test
+    func `setNotifyScreenWidgetId nil removes the handle`() {
+        let fixture = makeFixture()
+        defer { cleanup(fixture) }
+
+        fixture.repository.setNotifyScreenWidgetId("SW8N3PQ2")
+        fixture.repository.setNotifyScreenWidgetId(nil)
+
+        // A screen widget stays on the Home Screen until the user removes it, so a stored "" that
+        // read back as a handle would aim every later update at a tile that is not there while the
+        // one that is sits frozen on their phone.
+        #expect(fixture.repository.notifyScreenWidgetId() == nil)
     }
 
     // MARK: - Device Token
@@ -472,6 +516,53 @@ struct NotifySettingsRepositoryTests {
         // Then: removing a link has to remove it, wherever it ended up
         #expect(fixture.repository.notifyDeviceToken() == nil)
         #expect(fixture.repository.hasNotifyDeviceToken() == false)
+    }
+
+
+    // MARK: - Saving a link
+
+    @Test
+    func `saving the same device again keeps the surfaces already standing on it`() throws {
+        // Given a linked device with all three surfaces published
+        let fixture = makeFixture()
+        defer { cleanup(fixture) }
+        fixture.repository.saveNotifyDeviceLink(try #require(NotifyDeviceLink(deviceId: Self.deviceId, token: Self.token)))
+        fixture.repository.setNotifyActivityId("LA7Q2ZKM")
+        fixture.repository.setNotifyWidgetId("WG4H2QZ1")
+        fixture.repository.setNotifyScreenWidgetId("SW3K9QZ2")
+
+        // When the user presses Save again, which the pane allows, with a
+        // rotated token but the same phone
+        fixture.repository.saveNotifyDeviceLink(try #require(NotifyDeviceLink(deviceId: Self.deviceId, token: "a-rotated-token")))
+
+        // Then the handles survive. Clearing them would orphan a tile and two
+        // widgets that are still ours and make the next publish build a second
+        // set beside them, which on a Home Screen is a duplicate the user has to
+        // go and remove by hand.
+        #expect(fixture.repository.notifyActivityId() == "LA7Q2ZKM")
+        #expect(fixture.repository.notifyWidgetId() == "WG4H2QZ1")
+        #expect(fixture.repository.notifyScreenWidgetId() == "SW3K9QZ2")
+        #expect(fixture.repository.notifyDeviceToken() == "a-rotated-token")
+    }
+
+    @Test
+    func `linking a different device forgets the previous one's surfaces`() throws {
+        let fixture = makeFixture()
+        defer { cleanup(fixture) }
+        fixture.repository.saveNotifyDeviceLink(try #require(NotifyDeviceLink(deviceId: Self.deviceId, token: Self.token)))
+        fixture.repository.setNotifyActivityId("LA7Q2ZKM")
+        fixture.repository.setNotifyWidgetId("WG4H2QZ1")
+        fixture.repository.setNotifyScreenWidgetId("SW3K9QZ2")
+
+        // When a different phone is linked
+        fixture.repository.saveNotifyDeviceLink(try #require(NotifyDeviceLink(deviceId: "ZZZ99999", token: Self.token)))
+
+        // Then the handles go, because they name surfaces on a phone this link
+        // can no longer write to, and keeping them would spend a 403 finding out
+        #expect(fixture.repository.notifyActivityId() == nil)
+        #expect(fixture.repository.notifyWidgetId() == nil)
+        #expect(fixture.repository.notifyScreenWidgetId() == nil)
+        #expect(fixture.repository.notifyDeviceId() == "ZZZ99999")
     }
 
 }

@@ -278,6 +278,27 @@ struct NotifyDeviceLinkTests {
     }
 
     @Test
+    func `an app device, a Mac and a browser can all keep a Home Screen widget`() {
+        // The gateway is explicit that screen widgets carry no device type gate
+        // at all and that legacy, IO, WB and MC ids can each own one. Only the
+        // iOS app draws them, but which device draws what is Notify!'s business
+        // rather than a rule for ClaudeBar to invent on the user's behalf.
+        for kind in [NotifyDeviceKind.appDevice, .mac, .web, .unrecognized] {
+            #expect(kind.supportsScreenWidget)
+            #expect(kind.screenWidgetUnsupportedReason == nil)
+        }
+    }
+
+    @Test
+    func `a group can keep no Home Screen widget either`() {
+        // The one exception, and for the reason it keeps no Lock Screen widget:
+        // a group is a fan-out target with no screen of its own for a tile to
+        // stay on.
+        #expect(NotifyDeviceKind.group.supportsScreenWidget == false)
+        #expect(NotifyDeviceKind.group.screenWidgetUnsupportedReason != nil)
+    }
+
+    @Test
     func `an id from a namespace nobody knows yet is allowed through`() {
         // Refusing an unknown shape would break the day Notify! mints a new
         // namespace, and ClaudeBar would be wrong about a device it has never

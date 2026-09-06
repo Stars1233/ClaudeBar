@@ -36,6 +36,11 @@ public struct NotifyDeviceLink: Sendable, Equatable, Hashable {
         kind.supportsWidget
     }
 
+    /// Whether a Home Screen widget can be kept on this link.
+    public var supportsScreenWidget: Bool {
+        kind.supportsScreenWidget
+    }
+
     public init?(deviceId: String, token: String) {
         let id = deviceId.trimmingCharacters(in: .whitespacesAndNewlines)
         let secret = token.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -246,9 +251,19 @@ public enum NotifyDeviceKind: Sendable, Equatable, Hashable, CaseIterable {
         }
     }
 
-    /// Whether either Lock Screen surface is available here.
+    /// Whether a Home Screen widget can be kept here.
+    ///
+    /// The same answer as the Lock Screen widget and for the same reason: the
+    /// gateway states that screen widgets carry no device-type gate and that
+    /// legacy, `IO`, `WB` and `MC` ids can all own one. Only a group is
+    /// excluded, having no widget list of its own to write to.
+    public var supportsScreenWidget: Bool {
+        supportsWidget
+    }
+
+    /// Whether any surface at all is available here.
     public var supportsAnySurface: Bool {
-        supportsLiveActivity || supportsWidget
+        supportsLiveActivity || supportsWidget || supportsScreenWidget
     }
 
     /// What to call this in the settings pane.
@@ -276,6 +291,11 @@ public enum NotifyDeviceKind: Sendable, Equatable, Hashable, CaseIterable {
         case .group:
             Self.groupReason
         }
+    }
+
+    /// The Home Screen widget shares the Lock Screen widget's answer.
+    public var screenWidgetUnsupportedReason: String? {
+        widgetUnsupportedReason
     }
 
     /// The same for the widget, which only a group cannot keep.
