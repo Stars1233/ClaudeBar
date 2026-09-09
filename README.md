@@ -504,6 +504,15 @@ To credit someone, comment on any issue or pull request:
 @all-contributors please add @username for code, doc
 ```
 
+## Multiple Providers in the Menu Bar
+
+In **Settings → Menu Bar**, enable percentage or duration display and select up
+to three providers. Each selected provider has its own card for choosing a quota,
+an optional secondary quota, and stacked text size. Their existing logos identify
+the readouts, while tooltips retain provider names. All displayed providers refresh
+in the background. Choices are preserved when a provider is removed and added again,
+and existing single-provider settings are retained. Providers awaiting data show `—`.
+
 ## License
 
 MIT

@@ -40,3 +40,25 @@ public struct MenuBarLabel: Sendable, Equatable {
         self.segments = segments ?? [Segment(text: text, status: status)]
     }
 }
+
+/// Provider identity stays separate from quota text so renderers can show an
+/// icon while retaining a named tooltip and accessibility description.
+public struct MenuBarProviderLabel: Sendable, Equatable {
+    public let providerId: String
+    public let providerName: String
+    public let stacked: Bool
+    public let stackedSize: MenuBarStackedSize
+    public let label: MenuBarLabel
+
+    public var text: String { "\(providerName) \(label.text)" }
+    public var status: QuotaStatus { label.status }
+
+    public init(providerId: String, providerName: String, label: MenuBarLabel,
+                stacked: Bool = false, stackedSize: MenuBarStackedSize = .default) {
+        self.providerId = providerId
+        self.providerName = providerName
+        self.stacked = stacked
+        self.stackedSize = stackedSize
+        self.label = label
+    }
+}

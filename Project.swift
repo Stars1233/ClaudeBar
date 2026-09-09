@@ -137,7 +137,9 @@ let project = Project(
             product: .unitTests,
             bundleId: "com.tddworks.claudebar.infrastructure-tests",
             deploymentTargets: .macOS("15.0"),
-            sources: ["Tests/InfrastructureTests/**"],
+            // Include the observable settings facade to exercise persistence through
+            // the same setters used by SwiftUI, without launching the application.
+            sources: ["Tests/InfrastructureTests/**", "Sources/App/Settings/AppSettings.swift"],
             dependencies: [
                 .target(name: "Infrastructure"),
                 .target(name: "Domain"),

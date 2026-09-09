@@ -245,6 +245,74 @@ struct QuotaMonitorTests {
         #expect(display == nil)
     }
 
+    @Test
+    func `additional menu bar labels use first quota and identify provider`() async {
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude"),
+        ])
+        let labels = monitor.additionalMenuBarLabels(
+            providerIds: ["claude", "missing"], showPercentage: true,
+            showDuration: false, mode: .remaining
+        )
+        #expect(labels.map(\.text) == ["Claude 35%"])
+        #expect(labels.first?.providerId == "claude")
+        #expect(labels.first?.label.text == "35%")
+        #expect(labels.first?.status == .warning)
+        #expect(monitor.additionalMenuBarLabels(
+            providerIds: ["claude"], showPercentage: false,
+            showDuration: false, mode: .remaining
+        ).isEmpty)
+    }
+
+    @Test
+    func `additional labels keep selection order and omit disabled providers`() async {
+        let settings = makeSettingsRepository()
+        let claude = ClaudeProvider(probe: CountingUsageProbe(providerId: "claude"), settingsRepository: settings)
+        let codex = CodexProvider(probe: CountingUsageProbe(providerId: "codex"), settingsRepository: settings)
+        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        await monitor.refresh(providerId: "claude")
+        await monitor.refresh(providerId: "codex")
+        #expect(monitor.additionalMenuBarLabels(
+            providerIds: ["codex", "codex", "claude"], showPercentage: true,
+            showDuration: false, mode: .used
+        ).map(\.text) == ["Codex 1%", "Claude 1%"])
+        codex.isEnabled = false
+        #expect(monitor.additionalMenuBarLabels(
+            providerIds: ["codex", "claude"], showPercentage: true,
+            showDuration: false, mode: .remaining
+        ).map(\.text) == ["Claude 99%"])
+    }
+
+    @Test
+    func `additional provider awaiting first snapshot has a named placeholder`() {
+        let provider = ClaudeProvider(
+            probe: CountingUsageProbe(providerId: "claude"), settingsRepository: makeSettingsRepository()
+        )
+        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        #expect(monitor.additionalMenuBarLabels(
+            providerIds: ["claude"], showPercentage: true, showDuration: false, mode: .remaining
+        ).map(\.text) == ["Claude —"])
+    }
+
+    @Test
+    func `additional providers honor their own primary secondary and stacked choices`() async {
+        let monitor = await makeRefreshedClaudeMonitor(quotas: [
+            UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude"),
+            UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude"),
+        ])
+        let labels = monitor.additionalMenuBarLabels(
+            providerIds: ["claude"],
+            configurations: ["claude": MenuBarProviderSettings(primaryQuotaKey: "weekly", secondaryQuotaKey: "session", stacked: true, stackedSize: "large")],
+            showPercentage: true, showDuration: false, mode: .remaining
+        )
+        #expect(labels.first?.label.text == "7d 35% | 5h 75%")
+        #expect(labels.first?.label.segments.count == 2)
+        #expect(labels.first?.stacked == true)
+        #expect(labels.first?.stackedSize == .large)
+        #expect(monitor.menuBarLabel(providerId: "claude", primaryQuotaKey: "", showPercentage: true,
+                                    showDuration: false, mode: .remaining)?.text == "75%")
+    }
+
     // MARK: - Menu Bar Label (single + dual window)
 
     /// Builds a Claude-only monitor, refreshed once with the given quotas.
