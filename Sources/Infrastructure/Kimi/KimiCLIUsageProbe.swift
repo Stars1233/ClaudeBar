@@ -204,6 +204,14 @@ public struct KimiCLIUsageProbe: UsageProbe {
             }
         }
 
+        // Extract seconds
+        if let secMatch = text.range(of: #"(\d+)\s*s"#, options: .regularExpression) {
+            let secStr = String(text[secMatch])
+            if let seconds = Int(secStr.filter { $0.isNumber }) {
+                totalSeconds += Double(seconds)
+            }
+        }
+
         guard totalSeconds > 0 else { return nil }
         return Date().addingTimeInterval(totalSeconds)
     }

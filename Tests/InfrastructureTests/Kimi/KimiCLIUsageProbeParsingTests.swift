@@ -258,6 +258,31 @@ struct KimiCLIUsageProbeParsingTests {
     }
 
     @Test
+    func `parseResetDuration handles seconds only`() {
+        let now = Date()
+        let date = KimiCLIUsageProbe.parseResetDuration("45s")
+
+        #expect(date != nil)
+        if let date {
+            let diff = date.timeIntervalSince(now)
+            #expect(abs(diff - 45) < 2)
+        }
+    }
+
+    @Test
+    func `parse used format with seconds reset sets resetsAt`() throws {
+        let secondsReset = """
+        │   5h limit      ██░░░░░░░░░░░░░░░░░░  12% used  resets in 45s │
+        """
+        let snapshot = try KimiCLIUsageProbe.parse(secondsReset)
+        let session = snapshot.quota(for: .session)
+
+        #expect(session?.percentRemaining == 88.0)
+        #expect(session?.resetText == "Resets in 45s")
+        #expect(session?.resetsAt != nil)
+    }
+
+    @Test
     func `parseResetDuration returns nil for empty string`() {
         let date = KimiCLIUsageProbe.parseResetDuration("")
         #expect(date == nil)
