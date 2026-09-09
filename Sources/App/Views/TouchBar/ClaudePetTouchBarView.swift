@@ -16,32 +16,46 @@ private struct Particle {
     var color: NSColor? = nil
 }
 
-// MARK: - Thought Bubble
+// MARK: - Thought Bubble & Emotions
+
+private enum ThoughtEmotion: CaseIterable {
+    case happy      // ความสุข สดใส ร่าเริง ฉลอง
+    case hyped      // พลังล้น ไฮป์ ไฟลุก มุ่งมั่น
+    case curious    // ครุ่นคิด สงสัย ไอเดียปิ๊ง สติปัญญา
+    case cool       // เท่ มั่นใจ มีสไตล์ เกมเมอร์
+    case love       // อบอุ่น นุ่มฟู น่ารัก ส่งความรัก
+    case silly      // ซน ขี้เล่น สนุกสนาน สแน็ค
+    case zen        // ชิลล์ สบายๆ สงบใจ ผ่อนคลาย คาเฟ่
+    case dramatic   // ตกใจ ตาโต ตาค้าง หวือหวา
+    case sleepy     // ง่วง แบตหมด เหนื่อย งอแงนิดๆ
+
+    var emojis: [String] {
+        switch self {
+        case .happy:
+            return ["😊", "🥳", "😄", "✨", "🌟", "🎉", "😸", "🌈", "🌻", "🍀", "🧁", "🪄", "🎈", "☀️", "🍭", "🌸"]
+        case .hyped:
+            return ["🔥", "⚡", "🚀", "💥", "🦾", "💯", "🏆", "🏎️", "🤩", "🎯", "⚡️", "🥊", "💫", "🆙"]
+        case .curious:
+            return ["🤔", "💡", "🧐", "🔍", "🧠", "🧪", "🔮", "📡", "🪐", "💭", "🔬", "🧩", "📖", "🧭"]
+        case .cool:
+            return ["😎", "🕶️", "💎", "👑", "🛹", "🕹️", "🎧", "🪩", "🎩", "🥷", "🎸", "🪙"]
+        case .love:
+            return ["🥰", "💖", "💕", "😻", "💌", "🌸", "🍬", "🧸", "🪻", "💓", "🎀", "🌷", "🍰"]
+        case .silly:
+            return ["🤪", "😜", "👻", "🍕", "🍩", "🥑", "🌮", "🧋", "🎮", "👾", "🦄", "🍦", "🥐", "🍿", "🍔"]
+        case .zen:
+            return ["☕", "🍵", "🍃", "😌", "🎶", "🛋️", "🌿", "🌊", "☁️", "🧃", "🪴", "🎋", "🕯️"]
+        case .dramatic:
+            return ["😲", "🤯", "😱", "🛸", "🎭", "🌀", "👁️", "🙀", "💫", "🌪️", "🚨"]
+        case .sleepy:
+            return ["🥱", "💤", "😴", "🪫", "🫠", "😵‍💫", "😤", "🤨", "🌧️", "😮‍💨", "🐢", "🛌", "🌙"]
+        }
+    }
+}
 
 private struct ThoughtBubble {
     var text: String
     var expireTime: TimeInterval
-    var isKaomoji: Bool
-}
-
-// MARK: - Dropped Gift
-
-private struct DroppedGift {
-    var x: CGFloat
-    var y: CGFloat
-    var glyph: String
-    var expireTime: TimeInterval
-}
-
-// MARK: - Pixel Bug
-
-private struct PixelBug: Equatable {
-    var x: CGFloat
-    var y: CGFloat
-    var vx: CGFloat
-    var vy: CGFloat
-    var caught: Bool
-    var glyph: String
 }
 
 // MARK: - Pet Antic State Machine
@@ -58,14 +72,8 @@ private enum PetAntic: Equatable {
     case skateboard(endTime: TimeInterval)
     case theWorm(endTime: TimeInterval)
     case ninjaVanish(endTime: TimeInterval, targetX: CGFloat)
-    case balloonFloat(endTime: TimeInterval, popTime: TimeInterval)
     case glassKnock(endTime: TimeInterval)
     case quotaSnack(endTime: TimeInterval)
-    case bugChase(endTime: TimeInterval, bug: PixelBug)
-    case fishing(endTime: TimeInterval, prize: String, hooked: Bool)
-    case sweepFloor(endTime: TimeInterval)
-    case coffeeOverdose(endTime: TimeInterval)
-    case workoutPushups(endTime: TimeInterval, reps: Int)
     case bellyRub(endTime: TimeInterval)
     case highFive(endTime: TimeInterval, succeeded: Bool)
     case laserChase(targetX: CGFloat, expireTime: TimeInterval)
@@ -161,9 +169,6 @@ public final class ClaudePetTouchBarView: NSView {
     private var currentThought: ThoughtBubble?
     private var nextThoughtCheckTime: TimeInterval = 0
 
-    // Dropped gifts
-    private var droppedGifts: [DroppedGift] = []
-
     // Laser pointer
     private var laserDot: (x: CGFloat, expireTime: TimeInterval)?
 
@@ -242,15 +247,15 @@ public final class ClaudePetTouchBarView: NSView {
                 let newSev = severity(of: newStatus)
                 if newSev > oldSev {
                     // Quota degraded → ! alarm particle + body flash
-                    spawnParticle(glyph: "!", x: x + CGFloat.random(in: -4...4),
+                    spawnParticle(glyph: "⚠️", x: x + CGFloat.random(in: -4...4),
                                   y: 24, vx: 0, vy: 0.7, size: 10, color: .systemRed)
                     flashWhiteT = 0.12
                     // Interrupt any playful antic
                     currentAntic = .normal
                 } else if newSev < oldSev && oldSev > 0 {
                     // Quota improved (reset) → sparkle particles + Confetti celebration!
-                    spawnParticle(glyph: "✦", x: x - 5, y: 24, vx: -0.3, vy: 0.6, size: 9, color: .systemYellow)
-                    spawnParticle(glyph: "✦", x: x + 6, y: 22, vx: 0.3,  vy: 0.7, size: 7, color: .systemOrange)
+                    spawnParticle(glyph: "✨", x: x - 5, y: 24, vx: -0.3, vy: 0.6, size: 9, color: .systemYellow)
+                    spawnParticle(glyph: "✨", x: x + 6, y: 22, vx: 0.3,  vy: 0.7, size: 7, color: .systemOrange)
 
                     // Confetti explosion 🎉
                     let confettiColors: [NSColor] = [
@@ -261,7 +266,7 @@ public final class ClaudePetTouchBarView: NSView {
                         NSColor(srgbRed: 0.75, green: 0.40, blue: 0.95, alpha: 1.0)
                     ]
                     for _ in 0..<12 {
-                        let glyph = ["■", "▲", "★", "✦"].randomElement() ?? "★"
+                        let glyph = ["🎉", "✨", "🎊", "⭐", "🌟"].randomElement() ?? "✨"
                         let color = confettiColors.randomElement() ?? .systemPink
                         spawnParticle(
                             glyph: glyph,
@@ -273,7 +278,7 @@ public final class ClaudePetTouchBarView: NSView {
                             color: color
                         )
                     }
-                    currentThought = ThoughtBubble(text: "🎉 YAY!", expireTime: Date.timeIntervalSinceReferenceDate + 2.5, isKaomoji: false)
+                    currentThought = ThoughtBubble(text: "🎉", expireTime: Date.timeIntervalSinceReferenceDate + 2.5)
                 }
                 prevStatus = newStatus
             }
@@ -283,7 +288,7 @@ public final class ClaudePetTouchBarView: NSView {
                 jumpVY = 85.0
                 dir = -dir  // face new direction
                 markActivity()
-                spawnParticle(glyph: "★", x: x, y: 24, vx: 0, vy: 0.6, size: 9, color: .systemYellow)
+                spawnParticle(glyph: "✨", x: x, y: 24, vx: 0, vy: 0.6, size: 9)
             }
             prevProviderId = newProviderId
 
@@ -447,15 +452,15 @@ public final class ClaudePetTouchBarView: NSView {
         // Night star emission (every ~4 s)
         if isNightMode && now - lastNightStarEmit > 4.0 {
             lastNightStarEmit = now
-            spawnParticle(glyph: "✦",
+            spawnParticle(glyph: "⭐",
                           x: x + CGFloat.random(in: -4...8),
-                          y: 22, vx: CGFloat.random(in: 0.1...0.4), vy: 0.5, size: 7, color: .systemYellow)
+                          y: 22, vx: CGFloat.random(in: 0.1...0.4), vy: 0.5, size: 7)
         }
 
         // Zzz emission when sleeping (every 2 s)
         if isSleeping && now - lastZzzEmit > 2.0 {
             lastZzzEmit = now
-            spawnParticle(glyph: "z", x: x + dir * 8.0, y: 22, vx: dir * 0.2, vy: 0.5, size: 8, color: .lightGray)
+            spawnParticle(glyph: "💤", x: x + dir * 8.0, y: 22, vx: dir * 0.2, vy: 0.5, size: 8)
         }
 
         // RGB Gamer Mode cycle check
@@ -463,7 +468,7 @@ public final class ClaudePetTouchBarView: NSView {
             nextGamerModeCheck = now + 90.0
             if Double.random(in: 0...1) < 0.35 {
                 rgbGamerEndTime = now + 3.5
-                spawnParticle(glyph: "★", x: x, y: 24, vx: 0, vy: 0.6, size: 8, color: .systemCyan)
+                spawnParticle(glyph: "🌈", x: x, y: 24, vx: 0, vy: 0.6, size: 9)
             }
         }
 
@@ -473,11 +478,8 @@ public final class ClaudePetTouchBarView: NSView {
         }
         if currentThought == nil && now > nextThoughtCheckTime && !isSleeping && mood != .depleted {
             nextThoughtCheckTime = now + Double.random(in: 10.0...18.0)
-            rollNextThought(now: now)
+            rollNextThought(now: now, mood: mood)
         }
-
-        // Dropped gifts expiration
-        droppedGifts = droppedGifts.filter { now < $0.expireTime }
 
         // Laser dot expiration
         if let laser = laserDot, now > laser.expireTime {
@@ -490,13 +492,12 @@ public final class ClaudePetTouchBarView: NSView {
             if now > nextUltraPanicSputter {
                 nextUltraPanicSputter = now + 0.22
                 spawnParticle(
-                    glyph: Bool.random() ? "♨" : "!",
+                    glyph: Bool.random() ? "💥" : "🔥",
                     x: x + CGFloat.random(in: -6...6),
                     y: 24,
                     vx: CGFloat.random(in: -0.3...0.3),
                     vy: 0.85,
-                    size: 9,
-                    color: NSColor(srgbRed: 1.0, green: 0.3, blue: 0.2, alpha: 1.0)
+                    size: 9
                 )
             }
         } else {
@@ -579,7 +580,7 @@ public final class ClaudePetTouchBarView: NSView {
                 if x < pad        { x = pad;        dir =  1 }
                 phase += CGFloat(dt) * 22.0
                 if Bool.random() {
-                    spawnParticle(glyph: "·", x: x - dir * 10, y: 4, vx: -dir * 0.4, vy: 0.1, size: 6, color: .lightGray)
+                    spawnParticle(glyph: "💨", x: x - dir * 10, y: 4, vx: -dir * 0.4, vy: 0.1, size: 8)
                 }
             }
 
@@ -594,7 +595,7 @@ public final class ClaudePetTouchBarView: NSView {
                 if x < pad        { x = pad;        dir = -1 }
                 phase += CGFloat(dt) * 12.0
                 if Bool.random() {
-                    spawnParticle(glyph: "✦", x: x - dir * 4, y: 3, vx: 0, vy: 0.3, size: 7, color: .systemYellow)
+                    spawnParticle(glyph: "✨", x: x - dir * 4, y: 3, vx: 0, vy: 0.3, size: 8)
                 }
             }
 
@@ -607,7 +608,7 @@ public final class ClaudePetTouchBarView: NSView {
                     // Transition to getting up
                     currentAntic = .tripAndFall(endTime: endTime, phase: 1)
                     jumpVY = 35.0
-                    spawnParticle(glyph: "!", x: x, y: 22, vx: 0, vy: 0.6, size: 9, color: .systemYellow)
+                    spawnParticle(glyph: "💫", x: x, y: 22, vx: 0, vy: 0.6, size: 9)
                 }
             }
 
@@ -615,10 +616,10 @@ public final class ClaudePetTouchBarView: NSView {
             if now >= endTime {
                 currentAntic = .normal
                 jumpVY = 50.0
-                spawnParticle(glyph: "!", x: x, y: 24, vx: 0, vy: 0.7, size: 10, color: .systemYellow)
+                spawnParticle(glyph: "💡", x: x, y: 24, vx: 0, vy: 0.7, size: 9)
             } else {
                 if Bool.random() && Int(now * 2) % 2 == 0 {
-                    spawnParticle(glyph: "z", x: x + 6, y: 20, vx: 0.2, vy: 0.4, size: 8, color: .lightGray)
+                    spawnParticle(glyph: "💤", x: x + 6, y: 20, vx: 0.2, vy: 0.4, size: 8)
                 }
             }
 
@@ -628,8 +629,8 @@ public final class ClaudePetTouchBarView: NSView {
             } else {
                 if jumpY == 0 && jumpVY == 0 {
                     jumpVY = 65.0
-                    let g = ["♥", "♪", "★"].randomElement() ?? "★"
-                    spawnParticle(glyph: g, x: x, y: 22, vx: 0, vy: 0.6, size: 9, color: .systemPink)
+                    let g = ["💖", "🎶", "✨"].randomElement() ?? "✨"
+                    spawnParticle(glyph: g, x: x, y: 22, vx: 0, vy: 0.6, size: 9)
                 }
             }
 
@@ -639,7 +640,7 @@ public final class ClaudePetTouchBarView: NSView {
             } else {
                 anticAngle += CGFloat(dt) * 14.0
                 if Bool.random() {
-                    spawnParticle(glyph: "★", x: x + CGFloat.random(in: -8...8), y: 12, vx: 0, vy: 0.5, size: 8, color: .systemYellow)
+                    spawnParticle(glyph: "✨", x: x + CGFloat.random(in: -8...8), y: 12, vx: 0, vy: 0.5, size: 8)
                 }
             }
 
@@ -664,7 +665,7 @@ public final class ClaudePetTouchBarView: NSView {
                 if x > rightLimit { x = rightLimit; dir = -1 }
                 if x < pad        { x = pad;        dir =  1 }
                 if Bool.random() {
-                    spawnParticle(glyph: "·", x: x - dir * 10, y: 2, vx: -dir * 0.4, vy: 0.2, size: 5, color: .systemOrange)
+                    spawnParticle(glyph: "✨", x: x - dir * 10, y: 2, vx: -dir * 0.4, vy: 0.2, size: 7)
                 }
             }
 
@@ -682,7 +683,7 @@ public final class ClaudePetTouchBarView: NSView {
             if now >= endTime {
                 currentAntic = .normal
                 ninjaAlpha = 1.0
-                spawnParticle(glyph: "✦", x: x, y: 20, vx: 0, vy: 0.6, size: 9, color: .systemCyan)
+                spawnParticle(glyph: "✨", x: x, y: 20, vx: 0, vy: 0.6, size: 9)
             } else {
                 let remaining = endTime - now
                 if remaining > 1.2 {
@@ -695,19 +696,6 @@ public final class ClaudePetTouchBarView: NSView {
                 } else {
                     ninjaAlpha = 1.0
                 }
-            }
-
-        case .balloonFloat(let endTime, let popTime):
-            if now >= endTime {
-                currentAntic = .normal
-            } else if now >= popTime {
-                // Balloon popped!
-                if jumpVY == 0 && jumpY > 0 {
-                    jumpVY = -40.0
-                }
-            } else {
-                // Rising with balloon
-                jumpY = min(14.0, jumpY + 12.0 * CGFloat(dt))
             }
 
         case .glassKnock(let endTime):
@@ -725,82 +713,8 @@ public final class ClaudePetTouchBarView: NSView {
                     dir = 1
                 }
                 if Bool.random() && Int(now * 3) % 2 == 0 {
-                    spawnParticle(glyph: "·", x: rightLimit + 4, y: 8, vx: -0.2, vy: -0.3, size: 4, color: .systemYellow)
+                    spawnParticle(glyph: "✨", x: rightLimit + 4, y: 8, vx: -0.2, vy: -0.3, size: 6)
                 }
-            }
-
-        case .bugChase(let endTime, var bug):
-            if now >= endTime {
-                currentAntic = .normal
-            } else if bug.caught {
-                // Munched!
-                phase += CGFloat(dt) * 4.0
-            } else {
-                // Bug moves
-                bug.x += bug.vx * CGFloat(dt)
-                bug.y = 8.0 + sin(CGFloat(now * 6.0)) * 5.0
-                if bug.x < pad { bug.x = pad; bug.vx = -bug.vx }
-                if bug.x > rightLimit { bug.x = rightLimit; bug.vx = -bug.vx }
-
-                // Clawd chases bug
-                dir = (bug.x > x) ? 1 : -1
-                x += dir * 42.0 * CGFloat(dt)
-                phase += CGFloat(dt) * 14.0
-
-                if abs(x - bug.x) < 8.0 {
-                    // Catch!
-                    bug.caught = true
-                    jumpVY = 45.0
-                    spawnParticle(glyph: "★", x: bug.x, y: bug.y, vx: 0, vy: 0.6, size: 8, color: .systemYellow)
-                    currentAntic = .bugChase(endTime: endTime, bug: bug)
-                } else {
-                    currentAntic = .bugChase(endTime: endTime, bug: bug)
-                }
-            }
-
-        case .fishing(let endTime, let prize, let hooked):
-            if now >= endTime {
-                currentAntic = .normal
-            } else {
-                let remaining = endTime - now
-                if remaining < 1.0 && !hooked {
-                    currentAntic = .fishing(endTime: endTime, prize: prize, hooked: true)
-                    jumpVY = 35.0
-                    spawnParticle(glyph: prize, x: x + dir * 14, y: 14, vx: 0, vy: 0.7, size: 10)
-                }
-            }
-
-        case .sweepFloor(let endTime):
-            if now >= endTime {
-                currentAntic = .normal
-            } else {
-                x += dir * 8.0 * CGFloat(dt)
-                if x > rightLimit { x = rightLimit; dir = -1 }
-                if x < pad        { x = pad;        dir =  1 }
-                if Bool.random() {
-                    spawnParticle(glyph: "·", x: x + dir * 8, y: 2, vx: dir * 0.2, vy: 0.2, size: 4, color: .lightGray)
-                }
-            }
-
-        case .coffeeOverdose(let endTime):
-            if now >= endTime {
-                currentAntic = .normal
-            } else {
-                let speed: CGFloat = 60.0
-                x += dir * speed * CGFloat(dt)
-                if x > rightLimit { x = rightLimit; dir = -1 }
-                if x < pad        { x = pad;        dir =  1 }
-                phase += CGFloat(dt) * 18.0
-                if Bool.random() {
-                    spawnParticle(glyph: "♨", x: x + 4, y: 22, vx: 0, vy: 0.6, size: 8, color: .systemOrange)
-                }
-            }
-
-        case .workoutPushups(let endTime, _):
-            if now >= endTime {
-                currentAntic = .normal
-                jumpVY = 40.0
-                spawnParticle(glyph: "💪", x: x, y: 24, vx: 0, vy: 0.6, size: 10)
             }
 
         case .bellyRub(let endTime):
@@ -813,14 +727,14 @@ public final class ClaudePetTouchBarView: NSView {
                 currentAntic = .normal
             } else if !succeeded {
                 // Waiting for high five
-                currentThought = ThoughtBubble(text: "✋ Tap!", expireTime: now + 0.5, isKaomoji: false)
+                currentThought = ThoughtBubble(text: "✋", expireTime: now + 0.5)
             }
 
         case .laserChase(let targetX, let expireTime):
             if now >= expireTime || abs(x - targetX) < 4.0 {
                 currentAntic = .normal
                 jumpVY = 45.0
-                spawnParticle(glyph: "✦", x: x, y: 22, vx: 0, vy: 0.6, size: 8, color: .systemRed)
+                spawnParticle(glyph: "🎯", x: x, y: 22, vx: 0, vy: 0.6, size: 9)
             } else {
                 dir = (targetX > x) ? 1 : -1
                 x += dir * 55.0 * CGFloat(dt)
@@ -843,8 +757,7 @@ public final class ClaudePetTouchBarView: NSView {
         if mood == .panic {
             let panicChoices: [(PetAntic, Int)] = [
                 (.zoomies(endTime: now + 2.5), 5),
-                (.tripAndFall(endTime: now + 1.8, phase: 0), 3),
-                (.coffeeOverdose(endTime: now + 3.0), 4)
+                (.tripAndFall(endTime: now + 1.8, phase: 0), 3)
             ]
             if let chosen = weightedRandom(from: panicChoices) {
                 startAntic(chosen, now: now)
@@ -863,14 +776,8 @@ public final class ClaudePetTouchBarView: NSView {
             (.skateboard(endTime: now + 3.0), 4),
             (.theWorm(endTime: now + 2.5), 3),
             (.ninjaVanish(endTime: now + 1.8, targetX: CGFloat.random(in: 40...petRightBoundary - 20)), 3),
-            (.balloonFloat(endTime: now + 2.8, popTime: now + 2.2), 3),
             (.glassKnock(endTime: now + 2.0), 3),
             (.quotaSnack(endTime: now + 2.2), 3),
-            (.bugChase(endTime: now + 3.5, bug: PixelBug(x: x + (dir > 0 ? 50 : -50), y: 12, vx: dir * 30, vy: 0, caught: false, glyph: Bool.random() ? "🐛" : "🐝")), 4),
-            (.fishing(endTime: now + 3.0, prize: ["🪙", "💎", "🐟", "⭐"].randomElement() ?? "⭐", hooked: false), 3),
-            (.sweepFloor(endTime: now + 2.5), 3),
-            (.coffeeOverdose(endTime: now + 3.0), 3),
-            (.workoutPushups(endTime: now + 2.8, reps: 3), 3),
             (.bellyRub(endTime: now + 3.0), 3),
             (.highFive(endTime: now + 3.2, succeeded: false), 3)
         ]
@@ -888,20 +795,12 @@ public final class ClaudePetTouchBarView: NSView {
     private func startAntic(_ antic: PetAntic, now: TimeInterval) {
         currentAntic = antic
 
-        // Random chance to drop a gift when starting an antic
-        if droppedGifts.count < 3 && Double.random(in: 0...1) < 0.22 {
-            let g = ["🎁", "🍕", "💎", "⭐", "🪙"].randomElement() ?? "🎁"
-            droppedGifts.append(DroppedGift(x: x, y: 3.0, glyph: g, expireTime: now + 14.0))
-        }
-
         // Specific particle or effect per antic
         switch antic {
         case .ninjaVanish:
-            spawnParticle(glyph: "POOF!", x: x, y: 18, vx: 0, vy: 0.5, size: 9, color: .lightGray)
+            spawnParticle(glyph: "💨", x: x, y: 18, vx: 0, vy: 0.5, size: 9)
         case .glassKnock:
-            spawnParticle(glyph: "Tap!", x: x, y: 22, vx: 0, vy: 0.6, size: 8, color: .white)
-        case .coffeeOverdose:
-            spawnParticle(glyph: "☕", x: x, y: 20, vx: 0, vy: 0.5, size: 10)
+            spawnParticle(glyph: "👋", x: x, y: 22, vx: 0, vy: 0.6, size: 8)
         default:
             break
         }
@@ -918,17 +817,37 @@ public final class ClaudePetTouchBarView: NSView {
         return items.first?.0
     }
 
-    private func rollNextThought(now: TimeInterval) {
-        let kaomojis = [
-            "(ง'̀-'́)ง", "(ಠ_ಠ)", "(⊙_⊙)", "( ^ω^ )",
-            "(>_<)", "(╯°□°)╯", "(•‿•)", "(¬_¬)", "(^o^)/"
-        ]
-        let icons = [
-            "☕", "💡", "♥", "♪", "🔥", "🚀", "💬", "⚡", "🍕", "✨"
-        ]
-        let isKaomoji = Bool.random()
-        let text = isKaomoji ? (kaomojis.randomElement() ?? "(^o^)") : (icons.randomElement() ?? "💡")
-        currentThought = ThoughtBubble(text: text, expireTime: now + 2.5, isKaomoji: isKaomoji)
+    private func rollNextThought(now: TimeInterval, mood: Mood) {
+        let weights: [(ThoughtEmotion, Int)]
+        switch mood {
+        case .panic:
+            weights = [
+                (.dramatic, 30), (.hyped, 25), (.sleepy, 20),
+                (.curious, 10), (.zen, 5), (.happy, 5), (.silly, 5)
+            ]
+        case .tired:
+            weights = [
+                (.sleepy, 35), (.zen, 25), (.curious, 10),
+                (.dramatic, 10), (.happy, 10), (.silly, 5), (.love, 5)
+            ]
+        case .brisk:
+            weights = [
+                (.hyped, 30), (.happy, 20), (.cool, 15),
+                (.curious, 15), (.silly, 10), (.zen, 5), (.dramatic, 5)
+            ]
+        case .calm:
+            weights = [
+                (.happy, 15), (.curious, 15), (.cool, 15),
+                (.zen, 15), (.love, 15), (.silly, 15),
+                (.hyped, 5), (.dramatic, 3), (.sleepy, 2)
+            ]
+        case .depleted, .sleeping:
+            weights = [(.sleepy, 50), (.zen, 50)]
+        }
+
+        let emotion = weightedRandom(from: weights) ?? (ThoughtEmotion.allCases.randomElement() ?? .happy)
+        let emoji = emotion.emojis.randomElement() ?? "✨"
+        currentThought = ThoughtBubble(text: emoji, expireTime: now + 2.5)
     }
 
     // MARK: - Touch Interaction
@@ -952,16 +871,17 @@ public final class ClaudePetTouchBarView: NSView {
             // High-five success tap
             if case .highFive(let endTime, let succeeded) = currentAntic, !succeeded {
                 currentAntic = .highFive(endTime: endTime, succeeded: true)
-                spawnParticle(glyph: "✦", x: x, y: 22, vx: -0.5, vy: 0.8, size: 10, color: .systemYellow)
-                spawnParticle(glyph: "✦", x: x, y: 22, vx: 0.5, vy: 0.8, size: 10, color: .systemOrange)
-                spawnParticle(glyph: "BAM!", x: x, y: 25, vx: 0, vy: 0.6, size: 9, color: .white)
+                currentThought = ThoughtBubble(text: "👏", expireTime: Date.timeIntervalSinceReferenceDate + 1.5)
+                spawnParticle(glyph: "✨", x: x, y: 22, vx: -0.5, vy: 0.8, size: 10)
+                spawnParticle(glyph: "✨", x: x, y: 22, vx: 0.5, vy: 0.8, size: 10)
+                spawnParticle(glyph: "💥", x: x, y: 25, vx: 0, vy: 0.6, size: 10)
                 jumpVY = 65.0
                 return
             }
 
             // Belly rub reaction
             if case .bellyRub = currentAntic {
-                spawnParticle(glyph: "♥", x: x + CGFloat.random(in: -6...6), y: 20, vx: CGFloat.random(in: -0.2...0.2), vy: 0.6, size: 9, color: .systemPink)
+                spawnParticle(glyph: "💖", x: x + CGFloat.random(in: -6...6), y: 20, vx: CGFloat.random(in: -0.2...0.2), vy: 0.6, size: 9)
                 return
             }
 
@@ -976,7 +896,7 @@ public final class ClaudePetTouchBarView: NSView {
             let target = min(petRightBoundary, max(24.0, tx))
             laserDot = (x: target, expireTime: now + 4.0)
             currentAntic = .laserChase(targetX: target, expireTime: now + 4.0)
-            spawnParticle(glyph: "•", x: target, y: 5, vx: 0, vy: 0.2, size: 8, color: .systemRed)
+            spawnParticle(glyph: "🔴", x: target, y: 5, vx: 0, vy: 0.2, size: 8)
         }
     }
 
@@ -990,8 +910,9 @@ public final class ClaudePetTouchBarView: NSView {
         // If finger stayed close to touchStartPos, it's a tickle!
         if abs(tx - touchStartPos) < 6.0 {
             isTickling = true
+            currentThought = ThoughtBubble(text: "🥰", expireTime: Date.timeIntervalSinceReferenceDate + 0.8)
             if Bool.random() {
-                spawnParticle(glyph: "♥", x: x + CGFloat.random(in: -8...8), y: 22, vx: CGFloat.random(in: -0.3...0.3), vy: 0.5, size: 8, color: .systemPink)
+                spawnParticle(glyph: "💖", x: x + CGFloat.random(in: -8...8), y: 22, vx: CGFloat.random(in: -0.3...0.3), vy: 0.5, size: 9)
             }
         } else {
             isTickling = false
@@ -1016,7 +937,7 @@ public final class ClaudePetTouchBarView: NSView {
         if duration < 0.25 && abs(dragVX) < 1.0 {
             // Quick tap: surprise hop!
             jumpVY = 60.0
-            spawnParticle(glyph: "!", x: x, y: 24, vx: 0, vy: 0.6, size: 8, color: .systemYellow)
+            spawnParticle(glyph: "⭐", x: x, y: 24, vx: 0, vy: 0.6, size: 8)
         } else {
             throwVX = dragVX * 12.0
             if abs(throwVX) > 25.0 {
@@ -1041,19 +962,9 @@ public final class ClaudePetTouchBarView: NSView {
         NSColor(white: 1.0, alpha: 0.14).set()
         NSRect(x: 0, y: 1.0, width: bounds.width, height: 1.0).fill()
 
-        drawDroppedGifts()
         drawLaserDot()
         drawMascot(mood: mood, maxUsage: maxUsage)
         drawReadout()
-    }
-
-    // MARK: - Dropped Gifts Drawing
-
-    private func drawDroppedGifts() {
-        for gift in droppedGifts {
-            let attr: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 10)]
-            (gift.glyph as NSString).draw(at: NSPoint(x: gift.x - 5, y: gift.y), withAttributes: attr)
-        }
     }
 
     // MARK: - Laser Dot Drawing
@@ -1180,7 +1091,7 @@ public final class ClaudePetTouchBarView: NSView {
             drawChristmasHat(centerX: feetX, feetY: feetY, px: px, flipped: isFlipped)
         }
 
-        // Refresh pulse: '?' orbits above head
+        // Refresh pulse: '🔄' orbits above head
         if refreshPulseT > 0 {
             let headTopY   = feetY + 14.0 * px
             let orbitR: CGFloat = 7.0
@@ -1191,7 +1102,7 @@ public final class ClaudePetTouchBarView: NSView {
                 .font: NSFont.systemFont(ofSize: 9, weight: .bold),
                 .foregroundColor: NSColor(white: 1.0, alpha: pulseAlpha)
             ]
-            ("?" as NSString).draw(at: NSPoint(x: qx - 3, y: qy), withAttributes: attr)
+            ("🔄" as NSString).draw(at: NSPoint(x: qx - 4, y: qy), withAttributes: attr)
         }
 
         // Thought bubble
@@ -1218,55 +1129,6 @@ public final class ClaudePetTouchBarView: NSView {
             NSRect(x: feetX - 7.5, y: feetY - 3.2, width: 3.0, height: 2.2).fill()
             NSRect(x: feetX + 4.5, y: feetY - 3.2, width: 3.0, height: 2.2).fill()
 
-        case .balloonFloat(_, let popTime):
-            if now < popTime {
-                let balloonH: CGFloat = 10.0
-                let balloonW: CGFloat = 8.0
-                let balloonY: CGFloat = feetY + 15.0
-                let bx = feetX + dir * 6.0
-                let balloonRect = NSRect(x: bx - balloonW / 2.0, y: balloonY, width: balloonW, height: balloonH)
-                NSColor(srgbRed: 0.92, green: 0.18, blue: 0.18, alpha: 0.95).set()
-                NSBezierPath(ovalIn: balloonRect).fill()
-
-                // String
-                let stringPath = NSBezierPath()
-                stringPath.move(to: NSPoint(x: bx, y: balloonY))
-                stringPath.line(to: NSPoint(x: feetX + dir * 3.0, y: feetY + 8.0))
-                NSColor(white: 0.9, alpha: 0.7).set()
-                stringPath.lineWidth = 0.8
-                stringPath.stroke()
-            }
-
-        case .fishing(_, let prize, let hooked):
-            let rodPath = NSBezierPath()
-            rodPath.move(to: NSPoint(x: feetX, y: feetY + 6.0))
-            rodPath.line(to: NSPoint(x: feetX + dir * 13.0, y: feetY + 14.0))
-            rodPath.line(to: NSPoint(x: feetX + dir * 13.0, y: feetY - 1.0))
-            NSColor(white: 0.85, alpha: 0.8).set()
-            rodPath.lineWidth = 0.8
-            rodPath.stroke()
-            if hooked {
-                let attr: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 10)]
-                (prize as NSString).draw(at: NSPoint(x: feetX + dir * 13.0 - 5, y: feetY + 5.0), withAttributes: attr)
-            }
-
-        case .sweepFloor:
-            let broomPath = NSBezierPath()
-            broomPath.move(to: NSPoint(x: feetX + dir * 4.0, y: feetY + 13.0))
-            broomPath.line(to: NSPoint(x: feetX + dir * 9.0, y: feetY + 0.5))
-            NSColor(srgbRed: 0.75, green: 0.55, blue: 0.25, alpha: 1.0).set()
-            broomPath.lineWidth = 1.2
-            broomPath.stroke()
-            NSColor(srgbRed: 0.85, green: 0.75, blue: 0.40, alpha: 1.0).set()
-            NSRect(x: feetX + dir * 7.5, y: feetY, width: 4.0, height: 2.2).fill()
-
-        case .coffeeOverdose:
-            let cupRect = NSRect(x: feetX + dir * 8.0, y: feetY + 5.0, width: 5.5, height: 5.0)
-            NSColor(white: 0.95, alpha: 0.95).set()
-            NSBezierPath(roundedRect: cupRect, xRadius: 1, yRadius: 1).fill()
-            NSColor(srgbRed: 0.45, green: 0.25, blue: 0.15, alpha: 1.0).set()
-            NSRect(x: feetX + dir * 8.0 + 0.8, y: feetY + 7.5, width: 3.9, height: 1.8).fill()
-
         case .glassKnock(let endTime):
             let progress = 1.0 - (endTime - now) / 2.0
             let r = CGFloat(progress * 14.0)
@@ -1276,12 +1138,6 @@ public final class ClaudePetTouchBarView: NSView {
             NSColor(white: 1.0, alpha: max(0, 0.7 - progress)).set()
             ringPath.stroke()
 
-        case .bugChase(_, let bug):
-            if !bug.caught {
-                let attr: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 8)]
-                (bug.glyph as NSString).draw(at: NSPoint(x: bug.x, y: bug.y), withAttributes: attr)
-            }
-
         default:
             break
         }
@@ -1290,9 +1146,7 @@ public final class ClaudePetTouchBarView: NSView {
     // MARK: - Thought Bubble Drawing
 
     private func drawThoughtBubble(x: CGFloat, y: CGFloat, thought: ThoughtBubble) {
-        let font = thought.isKaomoji
-            ? NSFont.monospacedSystemFont(ofSize: 8.0, weight: .bold)
-            : NSFont.systemFont(ofSize: 9.0, weight: .bold)
+        let font = NSFont.systemFont(ofSize: 10.0, weight: .semibold)
         let attr: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: NSColor(white: 0.10, alpha: 0.96)

@@ -85,29 +85,27 @@ ClaudeBar features native, system-wide Touch Bar integration for MacBook Pro mod
 - **Interactive Pixel Mascot (Clawd)**:
   - An animated 20×20 retro creature pacing along an illuminated ground line.
   - **Autonomous Antics System**: Spontaneous antics and tricks occur as Clawd patrols:
-    - **The Zoomies**: High-speed sprint at 95 pt/s with trailing smoke streaks, finishing with a quick panting rest.
-    - **Skateboard Shredder**: Drops a mini skateboard underfoot and zips across the Touch Bar at 55 pt/s with spark particles.
-    - **Smooth Moonwalk**: Glides backward while facing forward with sparkling footsteps (`✦`).
-    - **Trip & Roll**: Hilariously stumbles and face-plants with X-eyes, then scrambles up sheepishly with an `!` particle.
-    - **Acrobatics & Stunts**: High-arc backflips, upside-down headspin breakdancing with star bursts, and wave-like worm crawls.
-    - **Playful Props**: Floats with a red balloon until it pops (`*POP*`), casts a fishing line for diamonds/tokens (`🪙`/`💎`), chases and munches fluttering pixel bugs (`🐛`/`🐝`), sweeps the floor with a broom, downs an espresso cup (`☕`) for an energy sprint, or drops down for push-ups (`💪`).
-  - **Thought Bubble & Kaomoji System**:
+    - **The Zoomies**: High-speed sprint at 95 pt/s with trailing smoke streaks (`💨`), finishing with a quick panting rest (`💧`).
+    - **Skateboard Shredder**: Drops a mini skateboard underfoot and zips across the Touch Bar at 55 pt/s with spark particles (`✨`).
+    - **Smooth Moonwalk**: Glides backward while facing forward with sparkling footsteps (`✨`).
+    - **Trip & Roll**: Hilariously stumbles and face-plants with X-eyes, then scrambles up sheepishly with a dizzy particle (`💫`).
+    - **Acrobatics & Stunts**: High-arc backflips, upside-down headspin breakdancing with star bursts (`✨`), and wave-like worm crawls.
+  - **Thought Bubble & Expressive Emoji System**:
     - Adaptive thought bubbles float beside Clawd at eye level (intelligently switching left or right based on walking direction and boundary clearance).
-    - Randomly expresses thoughts with expressive Kaomojis: `(ง'̀-'́)ง`, `(ಠ_ಠ)`, `(⊙_⊙)`, `( ^ω^ )`, `(>_<)`, `(╯°□°)╯`, `(^o^)/` and cute icons: `☕`, `💡`, `♥`, `♪`, `🔥`, `🚀`, `💬`, `⚡`.
-    - Periodically drops collectible gifts on the ground line: `🎁`, `🍕`, `💎`, `⭐`, `🪙`.
+    - Randomly expresses thoughts with a rich variety of expressive emojis & mood-reactive emotions: Happy (`😊`, `🥳`, `🌟`, `✨`), Hyped (`🔥`, `⚡`, `🚀`, `💥`), Curious (`🤔`, `💡`, `🧠`, `🔍`), Cool (`😎`, `💎`, `👑`, `🛹`), Love (`🥰`, `💖`, `🌸`), Silly (`🤪`, `🍕`, `🍩`, `🎮`), Zen (`☕`, `🍵`, `🍃`, `🎶`), Dramatic (`🤯`, `😲`, `🛸`), and Sleepy (`🥱`, `💤`, `🪫`).
   - **Ultra Panic Mode (Quota ≥ 95%)**:
-    - Full-body micro-jitter screen shake, screaming open mouth with alternating wide eyes, and rapid sputtering steam (`♨`) and flame (`!`) particles.
+    - Full-body micro-jitter screen shake, screaming open mouth with alternating wide eyes, and rapid sputtering sparks (`💥`) and flame (`🔥`) particles.
   - **Confetti Celebration**:
-    - Multi-colored confetti explosion (`🎉 YAY!`) bursts across the bar whenever your quota resets or improves.
+    - Multi-colored confetti explosion (`🎉`) bursts across the bar whenever your quota resets or improves.
   - **RGB Gamer Mode Easter Egg**:
-    - Periodic 3.5-second rainbow hue-cycling easter egg across Clawd's entire body.
+    - Periodic 3.5-second rainbow hue-cycling easter egg across Clawd's entire body (`🌈`).
   - **Direct Touch Interaction & Physics**:
     - **Laser Pointer Chase**: Tap anywhere on empty space on the Touch Bar to cast a glowing red laser dot (`🔴`); Clawd turns around and excitedly sprints to catch it!
-    - **Tickle Mode**: Tap and hold Clawd to make him giggle with smiling eyes (`^ ^`) and floating hearts (`♥`).
-    - **High-Five**: When Clawd raises his hand waiting (`✋ Tap!`), tap his hand to trigger a `✦ BAM! ✦` celebration!
-    - **Belly Rub**: Flips onto back wiggling legs; purrs with hearts when stroked.
+    - **Tickle Mode**: Tap and hold Clawd to make him giggle with floating hearts (`💖`) and cute reaction (`🥰`).
+    - **High-Five**: When Clawd raises his hand waiting (`✋`), tap his hand to trigger a `💥` celebration with clapping (`👏`)!
+    - **Belly Rub**: Flips onto back wiggling legs; purrs with hearts (`💖`) when stroked.
     - **High Toss Somersault**: Fling Clawd with high velocity for a 360° mid-air spin before bouncing off walls with damping physics (`0.92`).
-    - **Tap to Hop**: Quick tap causes Clawd to hop with a surprise `!`.
+    - **Tap to Hop**: Quick tap causes Clawd to hop with surprise stars (`⭐`).
   - **Real-Time Keyboard Typing Cadence Sync**:
     - Passively synchronizes with your typing speed via `GlobalKeyboardMonitor`. Active typing provides a **1.4× sprint boost**, keeping Clawd running enthusiastically alongside your coding rhythm.
   - **Mood-Reactive Gauge**: Clawd adapts his speed, expression, and behavior to your highest quota usage:
@@ -115,16 +113,16 @@ ClaudeBar features native, system-wide Touch Bar integration for MacBook Pro mod
     - **Brisk** (30%–59%): An upbeat walk at 24 pt/s.
     - **Tired** (60%–84%): Sluggish pace at 8 pt/s with drooping eyes and animated sweat drops.
     - **Panic** (85%–99%): Frantic scurrying at 48 pt/s with wide eyes and trailing motion streaks.
-    - **Sleeping** (100% / Depleted): Stops walking peacefully in place, eyes close to horizontal bars `— —`, body color dims to 82% brightness, and `z` bubbles float upward.
+    - **Sleeping** (100% / Depleted): Stops walking peacefully in place, eyes close to horizontal bars `— —`, body color dims to 82% brightness, and `💤` bubbles float upward.
   - **Dynamic Provider Body Tints**: Clawd's body takes on the active provider's brand color (Claude terracotta, Gemini golden amber, Copilot indigo, Antigravity violet, Codex teal, Cursor cyan, DeepSeek cobalt, Kimi sky blue, etc.) with sRGB color safety, gently dimming during sleep.
   - **Event-Driven Reactions & Particles**:
-    - **Status Degrades**: Body flashes white for 0.12s + an `!` alert particle floats upward.
-    - **Quota Resets / Drops < 100%**: Burst of `✦` sparkle particles + confetti explosion.
-    - **Provider Switches**: Clawd jumps upward in an arc (85 pt) and flips direction to face the new provider.
-    - **Refresh Triggered**: A spinning `?` particle orbits his head for 1.5s.
+    - **Status Degrades**: Body flashes white for 0.12s + a `⚠️` alert particle floats upward.
+    - **Quota Resets / Drops < 100%**: Burst of `✨` sparkle particles + confetti explosion.
+    - **Provider Switches**: Clawd jumps upward in an arc (85 pt) with `✨` sparkles and flips direction to face the new provider.
+    - **Refresh Triggered**: A spinning `🔄` particle orbits his head for 1.5s.
   - **Context-Aware Animations**:
     - **Active Claude Code Session**: Speed multiplied ×1.5 (session sprint) + glowing orange ring beneath feet.
-    - **Night Mode (22:00–04:59)**: Speed reduced ×0.6 + drifting star particles.
+    - **Night Mode (22:00–04:59)**: Speed reduced ×0.6 + drifting star particles (`⭐`).
     - **Christmas Theme**: Red pixel Santa hat with white brim and pompom.
 - **Live Multi-Provider Quota Gauges**:
   - Displays authentic provider logos (Claude, Gemini, Antigravity, GitHub Copilot, Codex, etc.).
