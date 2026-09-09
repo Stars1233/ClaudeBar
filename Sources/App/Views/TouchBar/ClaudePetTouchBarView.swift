@@ -834,6 +834,9 @@ public final class ClaudePetTouchBarView: NSView {
     // MARK: - Antics Roller
 
     private func rollNextAntic(now: TimeInterval, mood: Mood, maxUsage: Double) {
+        // The Touch Bar can tick before layout or while hidden. The teleport
+        // destination below needs at least 40...40 to form a valid range.
+        guard petRightBoundary >= 60 else { return }
         guard mood != .sleeping && mood != .depleted else { return }
 
         // Panic mode antics
