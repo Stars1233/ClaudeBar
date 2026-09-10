@@ -14,11 +14,10 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
     private let emptyId = NSTouchBarItem.Identifier("com.tddworks.claudebar.touchbar.empty")
 
     private var touchBar: NSTouchBar?
-    private var petView: ClaudePetTouchBarView?
+    private var quotaView: TouchBarQuotaView?
     private var monitor: QuotaMonitor?
     private var settings: AppSettings?
     private var sessionMonitor: SessionMonitor?
-    private var keyboardMonitor: GlobalKeyboardMonitor?
 
     private var sync: ObservationRenderSync<[TouchBarProviderGauge]>?
     private var isPresented = false
@@ -35,17 +34,17 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
         self.sessionMonitor = sessionMonitor
     }
 
-    /// Trigger the refresh-pulse animation on Clawd's head.
+    /// Trigger the refresh-pulse animation on the quota view.
     public func triggerRefreshPulse() {
-        petView?.triggerRefreshPulse()
+        quotaView?.triggerRefreshPulse()
     }
 
     public func start() {
         guard self.monitor != nil, self.settings != nil, sync == nil else { return }
 
         // 1. Build View and TouchBar
-        let view = ClaudePetTouchBarView(frame: NSRect(x: 0, y: 0, width: ClaudePetTouchBarView.sceneW, height: ClaudePetTouchBarView.sceneH))
-        self.petView = view
+        let view = TouchBarQuotaView(frame: NSRect(x: 0, y: 0, width: TouchBarQuotaView.sceneW, height: TouchBarQuotaView.sceneH))
+        self.quotaView = view
 
         let bar = NSTouchBar()
         bar.delegate = self
@@ -83,13 +82,6 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
             }
         }
 
-        // 5. Global Keyboard Monitor for typing reactivity
-        let kMon = GlobalKeyboardMonitor { [weak self] in
-            self?.petView?.recordKeystroke()
-        }
-        self.keyboardMonitor = kMon
-        kMon.start()
-
         presentIfNeeded()
     }
 
@@ -97,10 +89,7 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
         dismiss()
         sync?.stop()
         sync = nil
-        keyboardMonitor?.stop()
-        keyboardMonitor = nil
-        petView?.stopAnimation()
-        petView = nil
+        quotaView = nil
         touchBar = nil
 
         if let activateObserver {
@@ -236,8 +225,8 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
     }
 
     private func updateGauges(_ gauges: [TouchBarProviderGauge]) {
-        petView?.gauges = gauges
-        petView?.sessionActive = sessionMonitor?.hasActiveSession ?? false
+        quotaView?.gauges = gauges
+        quotaView?.sessionActive = sessionMonitor?.hasActiveSession ?? false
 
         if let settings, settings.touchBarEnabled, !gauges.isEmpty {
             presentIfNeeded()
@@ -314,9 +303,9 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
     // MARK: - NSTouchBarDelegate
 
     public func touchBar(_ touchBar: NSTouchBar, makeItemForIdentifier identifier: NSTouchBarItem.Identifier) -> NSTouchBarItem? {
-        if identifier == sceneId, let petView {
+        if identifier == sceneId, let quotaView {
             let item = NSCustomTouchBarItem(identifier: identifier)
-            item.view = petView
+            item.view = quotaView
             return item
         } else if identifier == emptyId {
             let item = NSCustomTouchBarItem(identifier: identifier)
