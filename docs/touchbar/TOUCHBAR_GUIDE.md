@@ -3,12 +3,8 @@
 ClaudeBar features comprehensive Touch Bar integration designed specifically for MacBook Pro models equipped with an Apple Touch Bar (13-inch M1 / M2, 15 / 16-inch Intel models).
 
 It offers two integration modes:
-1. **Native Touch Bar (Primary & Recommended)**: Built directly into ClaudeBar using Swift and AppKit. Requires **zero third-party software**, operates system-wide across all applications, and includes an interactive pixel mascot alongside live quota gauges.
+1. **Native Touch Bar (Primary & Recommended)**: Built directly into ClaudeBar using Swift and AppKit. Requires **zero third-party software**, operates system-wide across all applications, and features clean, centered live quota gauges with zero background CPU overhead.
 2. **External Integration (Optional)**: Exported status integration via `~/.claudebar/status.json` for users who prefer configuring widgets in **BetterTouchTool (BTT)** or **MTMR**.
-
-<p align="center">
-  <img src="../screenshots/TouchBar-preview.gif" alt="ClaudeBar Touch Bar Preview" width="100%"/>
-</p>
 
 ---
 
@@ -16,9 +12,8 @@ It offers two integration modes:
 
 1. [Native Touch Bar (Zero Setup)](#1-native-touch-bar-zero-setup)
    - [System-Wide Persistence](#system-wide-persistence)
-   - [Interactive Pixel Mascot (Clawd)](#interactive-pixel-mascot-clawd)
-   - [Live Quota Gauges & Dynamic Coloring](#live-quota-gauges--dynamic-coloring)
-   - [Multi-Model & Pool Intelligence (e.g. Antigravity)](#multi-model--pool-intelligence)
+   - [Live Quota Gauges & Centered Layout](#live-quota-gauges--centered-layout)
+   - [Multi-Model & Pool Intelligence](#multi-model--pool-intelligence)
    - [One-Tap Interactions](#one-tap-interactions)
 2. [In-App Contextual Touch Bar](#2-in-app-contextual-touch-bar)
 3. [Configuration & Settings](#3-configuration--settings)
@@ -41,102 +36,21 @@ The native Touch Bar driver (`PersistentTouchBarDriver`) runs completely inside 
 - **Modal Function Bar Presentation (`placement: 0`)**: ClaudeBar presents its Touch Bar interface at the macOS system-modal level. This keeps the widget visible at all times, regardless of which application or full-screen space is active.
 - **Automatic Lifecycle Re-Assertion**: Automatically re-asserts itself when you switch applications (`NSWorkspace.didActivateApplicationNotification`) or unlock your Mac screen (`com.apple.screenIsUnlocked`).
 - **Preserves System Controls**: Intelligently suppresses intrusive dismiss/close buttons (`DFRSystemModalShowsCloseBoxWhenFrontMost(false)`) and uses an empty Escape replacement item, leaving your system Control Strip (volume, brightness, media controls) and Escape key completely functional.
+- **Zero Background CPU & Battery Efficient**: Redraws only when quota state updates; no animation timers or background event taps.
 
 ---
 
-### Interactive Pixel Mascot (Clawd)
+### Live Quota Gauges & Centered Layout
 
-On the left side of the Touch Bar, ClaudeBar displays **Clawd**, an animated 20×20 retro pixel mascot pacing along an illuminated ground line.
+ClaudeBar renders centered live quota gauges across the Touch Bar for your selected providers:
 
-#### Mood-Reactive Behavior
-Clawd automatically reflects your highest quota consumption and the overall quota status across all active gauges:
-
-| Mood | Trigger | Speed | Body Color | Eyes | Visuals |
-|---|---|---|---|---|---|
-| **Calm** | Usage < 30% | 12 pt/s | Terracotta + provider tint | Normal dots | Relaxed stroll |
-| **Brisk** | Usage 30–59% | 24 pt/s | Terracotta + provider tint | Normal dots | Upbeat walk |
-| **Tired** | Usage 60–84% | 8 pt/s | Terracotta + provider tint | Drooping (row lower) | Sluggish, animated blue sweat drop |
-| **Panic** | Usage 85–99% | 48 pt/s | Alert red tint | Wide, spread apart | Frantic scurry + trailing motion streaks |
-| **Sleeping** | Usage = 100% (Depleted) | 0 pt/s | Dimmed terracotta + provider tint | Flat bars `— —` | Sleeps peacefully in place, `zzz` bubbles float upward |
-
-#### Expression System
-Clawd's eyes change shape based on mood — each state uses a distinct pixel pattern drawn directly onto the 20×20 sprite grid:
-- **Calm / Brisk**: Single dot per eye (standard)
-- **Tired**: Drooping dots — shifted one row lower
-- **Panic**: Two-pixel wide eyes set further apart
-- **Sleeping (100% Quota / Depleted)**: Flat horizontal closed bars `—— ——`
-
-#### Provider Body Color
-Clawd's body shifts color (100% provider brand color) to reflect which AI provider is currently active. When Clawd enters the **Sleeping** state at 100% quota, this provider color is gently dimmed (82% brightness) to convey rest while preserving provider identity:
-
-| Provider | Color |
-|---|---|
-| Claude | Base terracotta |
-| Gemini | Golden amber |
-| Copilot | Indigo blue |
-| Antigravity | Violet |
-| Codex | Teal |
-| DeepSeek | Cobalt blue |
-| Cursor | Cyan |
-| Kimi | Sky blue |
-| Bedrock | Warm amber |
-| Mistral | Bright orange |
-| Grok / Vercel | Near-white |
-| MiniMax | Red-pink |
-| Z.ai | Azure |
-| AmpCode | Hot red |
-| Oh My Pi | Mint green |
-| Kiro | Purple |
-| OpenCode | Lavender |
-
-#### Event-Driven Reactions
-Clawd responds instantly to state changes — not just continuous usage levels:
-
-| Event | Reaction |
-|---|---|
-| **Status degrades** (healthy→warning→critical) | Body flashes white for 0.12 s + `!` particle floats upward from head |
-| **Quota depleted (100% used)** | Clawd stops walking and falls asleep peacefully in place; eyes close to `— —` and `z` bubbles float up |
-| **Quota resets** (status improves / drops below 100%) | Two `✦` sparkle particles burst from head and Clawd immediately wakes up |
-| **Provider switches** | Clawd jumps upward with a bounce arc (85 pt) and reverses direction to face the new provider |
-| **Quota refresh triggered** (Touch Bar button) | `?` orbits above Clawd's head in a small arc for 1.5 s |
-| **Active Monitoring** | Clawd stays awake and continuously patrols the Touch Bar as long as quota < 100% |
-| **Direct Touch** | Tap to bounce, drag to move, fling with release velocity (even while sleeping) |
-
-#### Context-Aware Behaviors
-
-| Context | Behavior |
-|---|---|
-| **Active Claude Code session** | Speed multiplied ×1.5 (session sprint) + subtle orange glow ring beneath feet |
-| **Night mode** (22:00–04:59 local) | Speed reduced ×0.6 + tiny `✦` star particles drift upward every 4 s |
-| **Christmas theme** | A small red pixel Santa hat with white brim and pompom appears on Clawd's head |
-
-#### Particle System
-All floating effects share a unified particle engine — each particle has independent velocity, fade-out alpha, and glyph:
-
-| Glyph | Meaning | Trigger |
-|---|---|---|
-| `!` | Status alert | Quota level degraded |
-| `✦` | Sparkle | Quota reset / night stars |
-| `z` | Zzz | Quota reaches 100% (Sleeping) |
-| `?` | Refresh pulse | Quota refresh in progress |
-
-#### Direct Touch Interaction
-- **Touch & Drag**: Tap and grab Clawd to drag him anywhere along the Touch Bar.
-- **Flick & Throw Physics**: Fling Clawd with your finger; he slides with realistic velocity, friction decay (`0.92` damping), and elastic bounces off boundaries.
-- **Boundary Intelligence**: Clawd automatically detects the start position of the quota gauges and turns around smoothly without colliding into the progress bars.
-
----
-
-### Live Quota Gauges & Dynamic Coloring
-
-On the right side of the Touch Bar, ClaudeBar renders live quota gauges for your selected providers:
-
-1. **Authentic Rounded Provider Logos**: Renders official provider icons (14×14 pt with 3 pt rounded corners) loaded from `~/.claudebar/icons/<provider>.png`, the application asset catalog, or SF Symbols.
-2. **Provider & Quota Name**: Displays the provider name and model/window label (e.g. `Claude 7d`, `Gemini 7d`, `Copilot`).
-3. **Reset Countdown Note**: Monospaced countdown timer indicating when the current quota window resets (e.g. `2:15`, `35m`, `3d`).
-4. **Percentage & Critical Alarm**: Bold monospaced percentage readout. An alert indicator (`!`) triggers alongside the percentage when usage is critical (≥ 90%).
-5. **Progress Bar Track**: 7 pt sleek progress bar with 100% track reference and scale tick marks at the **50%** and **90%** thresholds.
-6. **Adaptive Color Palette**:
+1. **Balanced Horizontal Centering**: Automatically centers the quota cell(s) along the Touch Bar for maximum clarity and aesthetic balance.
+2. **Authentic Rounded Provider Logos**: Renders official provider icons (14×14 pt with 3 pt rounded corners) loaded from `~/.claudebar/icons/<provider>.png`, the application asset catalog, or SF Symbols.
+3. **Provider & Quota Name**: Displays the provider name and model/window label (e.g. `Claude 7d`, `Gemini 7d`, `Copilot`).
+4. **Reset Countdown Note**: Monospaced countdown timer indicating when the current quota window resets (e.g. `2:15`, `35m`, `3d`).
+5. **Percentage & Critical Alarm**: Bold monospaced percentage readout. An alert indicator (`!`) triggers alongside the percentage when usage is critical (≥ 90%).
+6. **Progress Bar Track**: 7 pt sleek progress bar with 100% track reference and rounded corners.
+7. **Adaptive Color Palette**:
    - **Healthy Blue** (`#2C88F1`): Usage < 50%
    - **Warning Amber** (`#F2B429`): Usage 50% – 89%
    - **Alert Red** (`#E6352E`): Usage ≥ 90%
@@ -154,7 +68,6 @@ ClaudeBar understands multi-model and pooled quota structures:
 ### One-Tap Interactions
 
 - **Open ClaudeBar**: Tap directly anywhere on the quota gauges on the Touch Bar to immediately open the ClaudeBar popover window (`claudebar://open`).
-- **Interact with Clawd**: Tap or drag the mascot to play with him while waiting for code generation or test suites.
 
 ---
 
