@@ -137,9 +137,7 @@ let project = Project(
             product: .unitTests,
             bundleId: "com.tddworks.claudebar.infrastructure-tests",
             deploymentTargets: .macOS("15.0"),
-            // Include the observable settings facade to exercise persistence through
-            // the same setters used by SwiftUI, without launching the application.
-            sources: ["Tests/InfrastructureTests/**", "Sources/App/Settings/AppSettings.swift"],
+            sources: ["Tests/InfrastructureTests/**"],
             dependencies: [
                 .target(name: "Infrastructure"),
                 .target(name: "Domain"),
@@ -156,6 +154,21 @@ let project = Project(
                     "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "MOCKING",
                 ]
             )
+        ),
+
+        // MARK: - App Tests
+        .target(
+            name: "AppTests",
+            destinations: .macOS,
+            product: .unitTests,
+            bundleId: "com.tddworks.claudebar.app-tests",
+            deploymentTargets: .macOS("15.0"),
+            sources: ["Tests/AppTests/**"],
+            dependencies: [
+                .target(name: "ClaudeBar"),
+                .target(name: "Domain"),
+                .target(name: "Infrastructure"),
+            ]
         ),
 
         // MARK: - Acceptance Tests (BDD - Outer Loop)
@@ -194,6 +207,7 @@ let project = Project(
                     .testableTarget(target: .target("AcceptanceTests")),
                     .testableTarget(target: .target("DomainTests")),
                     .testableTarget(target: .target("InfrastructureTests")),
+                    .testableTarget(target: .target("AppTests")),
                 ],
                 configuration: .debug
             ),
