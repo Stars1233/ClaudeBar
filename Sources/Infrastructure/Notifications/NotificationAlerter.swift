@@ -94,6 +94,7 @@ public final class NotificationAlerter: QuotaAlerter, @unchecked Sendable {
         case "opencode-go": return "OpenCode Go"
         case "omp": return "Oh My Pi"
         case "grok": return "Grok"
+        case "commandcode": return "Command Code"
         default: return providerId.capitalized
         }
     }

@@ -145,6 +145,10 @@ struct ClaudeBarApp: App {
                 probe: GrokUsageProbe(),
                 settingsRepository: settingsRepository
             ),
+            CommandCodeProvider(
+                probe: CommandCodeUsageProbe(),
+                settingsRepository: settingsRepository
+            ),
         ])
         AppLog.providers.info("Created \(repository.all.count) providers")
 

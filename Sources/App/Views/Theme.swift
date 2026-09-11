@@ -656,6 +656,10 @@ extension AppTheme {
             return scheme == .dark
                 ? Color(white: 0.92)
                 : Color(white: 0.12)
+        case "commandcode":
+            return scheme == .dark
+                ? Color(red: 0.83, green: 1.0, blue: 0.29)
+                : Color(red: 0.07, green: 0.07, blue: 0.07)
         case "vercel-gateway":
             // Vercel brand black/white monochrome
             return scheme == .dark
@@ -726,6 +730,10 @@ extension AppTheme {
             secondaryColor = scheme == .dark
                 ? Color(white: 0.60)
                 : Color(white: 0.40)
+        case "commandcode":
+            secondaryColor = scheme == .dark
+                ? Color(red: 0.55, green: 0.75, blue: 0.12)
+                : Color(red: 0.25, green: 0.25, blue: 0.25)
         case "vercel-gateway":
             secondaryColor = scheme == .dark
                 ? Color(white: 0.55)
@@ -757,6 +765,7 @@ extension AppTheme {
         case "opencode-go": return "OpenCodeIcon"
         case "omp": return "OmpIcon"
         case "grok": return "GrokIcon"
+        case "commandcode": return "CommandCodeIcon"
         case "vercel-gateway": return "VercelIcon"
         default: return "QuestionIcon"
         }
@@ -778,6 +787,7 @@ extension AppTheme {
         case "opencode-go": return "OpenCode Go"
         case "omp": return "Oh My Pi"
         case "grok": return "Grok"
+        case "commandcode": return "Command Code"
         case "vercel-gateway": return "Vercel Gateway"
         default: return providerId.capitalized
         }
@@ -799,6 +809,7 @@ extension AppTheme {
         case "opencode-go": return "square.stack.3d.up.fill"
         case "omp": return "terminal.fill"
         case "grok": return "line.diagonal"
+        case "commandcode": return "command"
         case "vercel-gateway": return "triangle.fill"
         default: return "questionmark.circle.fill"
         }
