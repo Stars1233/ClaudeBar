@@ -9,11 +9,14 @@ import Testing
 @Suite("SubprocessSupport")
 struct SubprocessSupportTests {
 
-    @Test("Captures standard output and a successful exit code")
-    func capturesStandardOutput() async throws {
+    @Test("Captures output at each Foundation quality of service", arguments: [
+        QualityOfService.userInteractive, .userInitiated, .utility, .background, .default,
+    ])
+    func capturesStandardOutput(qualityOfService: QualityOfService) async throws {
         let result = try await SubprocessSupport.run(
             executablePath: "/bin/echo",
-            arguments: ["hello"]
+            arguments: ["hello"],
+            qualityOfService: qualityOfService
         )
 
         #expect(result.standardOutput.trimmingCharacters(in: .whitespacesAndNewlines) == "hello")

@@ -36,6 +36,13 @@ public protocol AppSettingsRepository: Sendable {
     func menuBarPercentageProviderId() -> String
     func setMenuBarPercentageProviderId(_ providerId: String)
 
+    /// Additional providers displayed after the primary, limited to two.
+    func menuBarAdditionalProviderIds() -> [String]
+    func setMenuBarAdditionalProviderIds(_ providerIds: [String])
+
+    func menuBarProviderSettings() -> [String: MenuBarProviderSettings]
+    func setMenuBarProviderSettings(_ settings: [String: MenuBarProviderSettings])
+
     func menuBarPercentageQuotaKey() -> String
     func setMenuBarPercentageQuotaKey(_ quotaKey: String)
 

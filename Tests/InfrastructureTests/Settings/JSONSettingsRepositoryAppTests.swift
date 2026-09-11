@@ -20,6 +20,30 @@ struct JSONSettingsRepositoryAppTests {
         try? FileManager.default.removeItem(at: dir)
     }
 
+    @Test
+    func `additional menu bar providers preserve legacy selection and survive reload`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        repo.setMenuBarPercentageProviderId("codex")
+        #expect(repo.menuBarAdditionalProviderIds().isEmpty)
+        repo.setMenuBarAdditionalProviderIds(["claude", "gemini"])
+        let reloaded = JSONSettingsRepository(store: JSONSettingsStore(
+            fileURL: dir.appendingPathComponent("settings.json")
+        ))
+        #expect(reloaded.menuBarPercentageProviderId() == "codex")
+        #expect(reloaded.menuBarAdditionalProviderIds() == ["claude", "gemini"])
+    }
+
+    @Test
+    func `menu bar providers remove duplicates and cap the total at three`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        repo.setMenuBarAdditionalProviderIds(["claude", "codex", "codex", "", "gemini", "copilot"])
+        #expect(repo.menuBarAdditionalProviderIds() == ["codex", "gemini"])
+        repo.setMenuBarPercentageProviderId("codex")
+        #expect(repo.menuBarAdditionalProviderIds() == ["gemini"])
+    }
+
     // MARK: - Theme
 
     @Test

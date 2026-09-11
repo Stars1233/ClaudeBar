@@ -2,260 +2,203 @@ import SwiftUI
 import Domain
 import Infrastructure
 
-/// Menu Bar pane: what ClaudeBar shows in the macOS status bar.
-/// Ports the popover's "Quota Display" card logic unchanged.
+/// Select providers once, then configure each provider independently.
 struct MenuBarPane: View {
     let monitor: QuotaMonitor
-
     @Environment(\.appTheme) private var theme
     @State private var settings = AppSettings.shared
 
-    private var menuBarProviders: [any AIProvider] {
-        monitor.enabledProviders
-    }
-
-    private var selectedMenuBarProvider: (any AIProvider)? {
-        menuBarProviders.first { $0.id == settings.menuBarPercentageProviderId }
-            ?? monitor.selectedProvider
-            ?? menuBarProviders.first
-    }
-
-    private var menuBarQuotaOptions: [UsageQuota] {
-        selectedMenuBarProvider?.snapshot?.quotas ?? []
-    }
-
-    /// Quota options offered for the optional secondary menu bar window,
-    /// excluding the one already chosen as primary.
-    private var secondaryMenuBarQuotaOptions: [UsageQuota] {
-        menuBarQuotaOptions.filter {
-            $0.quotaType.quotaKey != settings.menuBarPercentageQuotaKey
-        }
+    private var selectedProviders: [any AIProvider] {
+        settings.menuBarProviderIds.compactMap { monitor.provider(for: $0) }
     }
 
     var body: some View {
-        SettingsPane(
-            title: "Menu Bar",
-            subtitle: "What ClaudeBar shows in the macOS status bar."
-        ) {
+        SettingsPane(title: "Menu Bar", subtitle: "Choose what appears in your menu bar.") {
             SettingsCard {
                 SettingsFieldLabel(text: "QUOTA DISPLAY")
                     .padding(.bottom, 8)
-
                 HStack(spacing: 8) {
                     ForEach(UsageDisplayMode.allCases, id: \.rawValue) { mode in
-                        DisplayModeButton(
-                            mode: mode,
-                            isSelected: settings.usageDisplayMode == mode
-                        ) {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                settings.usageDisplayMode = mode
-                            }
+                        DisplayModeButton(mode: mode, isSelected: settings.usageDisplayMode == mode) {
+                            settings.usageDisplayMode = mode
                         }
                     }
                 }
-            }
-
-            SettingsCard {
-                SettingsRow(
-                    title: "Show Percentage in Menu Bar",
-                    subtitle: "A live quota readout beside the status icon."
-                ) {
-                    SettingsSwitch(isOn: Binding(
-                        get: { settings.menuBarPercentageEnabled },
-                        set: { enabled in
-                            settings.menuBarPercentageEnabled = enabled
-                            if enabled {
-                                normalizeMenuBarSelection()
-                            }
-                        }
-                    ))
-                }
-
                 SettingsRowDivider()
-
-                SettingsRow(
-                    title: "Show Duration in Menu Bar",
-                    subtitle: "Time until the tracked quota window resets."
-                ) {
-                    SettingsSwitch(isOn: Binding(
-                        get: { settings.menuBarDurationEnabled },
-                        set: { enabled in
-                            settings.menuBarDurationEnabled = enabled
-                            if enabled {
-                                normalizeMenuBarSelection()
-                            }
-                        }
-                    ))
+                SettingsRow(title: "Show Percentage in Menu Bar", subtitle: "Live quota usage for each selected provider.") {
+                    SettingsSwitch(isOn: $settings.menuBarPercentageEnabled)
                 }
-
-                if settings.menuBarPercentageEnabled || settings.menuBarDurationEnabled {
-                    SettingsRowDivider()
-                    menuBarControls
+                SettingsRowDivider()
+                SettingsRow(title: "Show Duration in Menu Bar", subtitle: "Time until each quota window resets.") {
+                    SettingsSwitch(isOn: $settings.menuBarDurationEnabled)
                 }
             }
-        }
-    }
 
-    private var menuBarControls: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                SettingsFieldLabel(text: "PROVIDER")
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(menuBarProviders, id: \.id) { provider in
+            if settings.menuBarPercentageEnabled || settings.menuBarDurationEnabled {
+                SettingsCard {
+                    HStack {
+                        SettingsFieldLabel(text: "PROVIDERS")
+                        Spacer()
+                        Text("\(settings.menuBarProviderIds.count) / 3 selected")
+                            .font(.system(size: 11, design: theme.fontDesign))
+                            .foregroundStyle(theme.textSecondary)
+                    }
+                    Text("Select up to three, then customize each provider below.")
+                        .font(.system(size: 11, design: theme.fontDesign))
+                        .foregroundStyle(theme.textSecondary)
+                        .padding(.top, 5)
+                        .padding(.bottom, 12)
+                    MenuBarChoices {
+                        ForEach(monitor.enabledProviders, id: \.id) { provider in
+                            let selected = settings.menuBarProviderIds.contains(provider.id)
                             MenuBarProviderChoiceButton(
-                                providerId: provider.id,
-                                providerName: provider.name,
-                                isSelected: settings.menuBarPercentageProviderId == provider.id
+                                providerId: provider.id, providerName: provider.name, isSelected: selected
                             ) {
-                                settings.menuBarPercentageProviderId = provider.id
-                                selectFirstMenuBarQuotaIfNeeded(force: true)
-                                normalizeSecondaryMenuBarSelection()
+                                var ids = settings.menuBarProviderIds
+                                if selected { ids.removeAll { $0 == provider.id } }
+                                else { ids.append(provider.id) }
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    settings.setMenuBarProviderIds(ids)
+                                }
                             }
+                            .disabled(selected ? settings.menuBarProviderIds.count == 1 : settings.menuBarProviderIds.count >= 3)
+                            .accessibilityValue(selected ? "Selected" : "Not selected")
                         }
                     }
                 }
-                .disabled(menuBarProviders.isEmpty)
+                ForEach(selectedProviders, id: \.id) { provider in
+                    MenuBarProviderCard(provider: provider, settings: settings)
+                }
             }
+        }
+    }
+}
 
-            VStack(alignment: .leading, spacing: 6) {
+private struct MenuBarProviderCard: View {
+    let provider: any AIProvider
+    @Bindable var settings: AppSettings
+    @Environment(\.appTheme) private var theme
+
+    private var config: MenuBarProviderSettings { settings.menuBarConfiguration(for: provider.id) }
+    private var quotas: [UsageQuota] { provider.snapshot?.quotas ?? [] }
+    private var primaryKey: String {
+        config.primaryQuotaKey.isEmpty ? (quotas.first?.quotaType.quotaKey ?? "") : config.primaryQuotaKey
+    }
+    private var secondaryQuotas: [UsageQuota] { quotas.filter { $0.quotaType.quotaKey != primaryKey } }
+
+    private func binding<Value>(_ keyPath: WritableKeyPath<MenuBarProviderSettings, Value>) -> Binding<Value> {
+        Binding(get: { config[keyPath: keyPath] }, set: { value in
+            var updated = config
+            updated[keyPath: keyPath] = value
+            let resolvedPrimary = updated.primaryQuotaKey.isEmpty
+                ? (quotas.first?.quotaType.quotaKey ?? "") : updated.primaryQuotaKey
+            if !resolvedPrimary.isEmpty && updated.secondaryQuotaKey == resolvedPrimary {
+                updated.secondaryQuotaKey = ""
+            }
+            settings.setMenuBarConfiguration(updated, for: provider.id)
+        })
+    }
+
+    var body: some View {
+        SettingsCard {
+            HStack(spacing: 10) {
+                ProviderIconView(providerId: provider.id, size: 24, showGlow: false)
+                Text(provider.name)
+                    .font(.system(size: 15, weight: .semibold, design: theme.fontDesign))
+                    .foregroundStyle(theme.textPrimary)
+                Spacer()
+                if settings.menuBarProviderIds.count > 1 {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            settings.setMenuBarProviderIds(settings.menuBarProviderIds.filter { $0 != provider.id })
+                        }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .foregroundStyle(theme.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Remove \(provider.name) from the menu bar")
+                    .accessibilityLabel("Remove \(provider.name)")
+                }
+            }
+            if !provider.isEnabled || quotas.isEmpty {
+                Text(provider.isEnabled ? "Waiting for quota data… Your choices are saved." : "Enable this provider in Providers to show its usage.")
+                    .font(.system(size: 11, design: theme.fontDesign))
+                    .foregroundStyle(theme.textSecondary)
+                    .padding(.top, 10)
+            }
+            if !quotas.isEmpty && !config.primaryQuotaKey.isEmpty && !quotas.contains(where: { $0.quotaType.quotaKey == config.primaryQuotaKey }) {
+                Text("The saved quota is unavailable. Choose another quota below.")
+                    .font(.system(size: 11, design: theme.fontDesign))
+                    .foregroundStyle(theme.textSecondary)
+                    .padding(.top, 10)
+            }
+            SettingsRowDivider()
+            VStack(alignment: .leading, spacing: 8) {
                 SettingsFieldLabel(text: "QUOTA")
-
-                if menuBarQuotaOptions.isEmpty {
-                    Text("No quota data")
-                        .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(
-                            RoundedRectangle(cornerRadius: theme.pillCornerRadius)
-                                .fill(theme.glassBackground)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: theme.pillCornerRadius)
-                                        .stroke(theme.glassBorder, lineWidth: 1)
-                                )
-                        )
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(menuBarQuotaOptions, id: \.quotaType.quotaKey) { quota in
-                                MenuBarQuotaChoiceButton(
-                                    title: quota.menuBarTitle ?? quota.quotaType.displayName,
-                                    isSelected: settings.menuBarPercentageQuotaKey == quota.quotaType.quotaKey
-                                ) {
-                                    settings.menuBarPercentageQuotaKey = quota.quotaType.quotaKey
-                                    normalizeSecondaryMenuBarSelection()
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if menuBarQuotaOptions.count > 1 {
-                VStack(alignment: .leading, spacing: 6) {
-                    SettingsFieldLabel(text: "SECONDARY QUOTA")
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            MenuBarChoiceButton(
-                                iconName: "minus.circle",
-                                label: "None",
-                                isSelected: settings.menuBarSecondaryQuotaKey.isEmpty
-                            ) {
-                                settings.menuBarSecondaryQuotaKey = ""
-                            }
-
-                            ForEach(secondaryMenuBarQuotaOptions, id: \.quotaType.quotaKey) { quota in
-                                MenuBarQuotaChoiceButton(
-                                    title: quota.menuBarTitle ?? quota.quotaType.displayName,
-                                    isSelected: settings.menuBarSecondaryQuotaKey == quota.quotaType.quotaKey
-                                ) {
-                                    settings.menuBarSecondaryQuotaKey = quota.quotaType.quotaKey
-                                }
-                            }
-                        }
-                    }
-
-                    // Stacking only changes how two windows render, so the
-                    // toggle appears once a secondary window is selected.
-                    if !settings.menuBarSecondaryQuotaKey.isEmpty {
-                        SettingsRow(
-                            title: "Stack in Menu Bar",
-                            subtitle: "Draw the two windows as two smaller lines, halving the width."
+                MenuBarChoices {
+                    ForEach(quotas, id: \.quotaType.quotaKey) { quota in
+                        MenuBarQuotaChoiceButton(
+                            title: quota.menuBarTitle ?? quota.quotaType.displayName,
+                            isSelected: primaryKey == quota.quotaType.quotaKey
                         ) {
-                            SettingsSwitch(isOn: Binding(
-                                get: { settings.menuBarStackedEnabled },
-                                set: { settings.menuBarStackedEnabled = $0 }
-                            ))
+                            binding(\.primaryQuotaKey).wrappedValue = quota.quotaType.quotaKey
                         }
-                        .padding(.top, 6)
-
-                        // The size only matters while stacking is actually
-                        // rendering, so it appears with the toggle on.
-                        if settings.menuBarStackedEnabled {
-                            VStack(alignment: .leading, spacing: 6) {
-                                SettingsFieldLabel(text: "STACKED TEXT SIZE")
-
-                                HStack(spacing: 8) {
-                                    ForEach(MenuBarStackedSize.allCases, id: \.self) { size in
-                                        MenuBarChoiceButton(
-                                            iconName: size.choiceIconName,
-                                            label: size.displayLabel,
-                                            isSelected: settings.menuBarStackedSize == size
-                                        ) {
-                                            settings.menuBarStackedSize = size
-                                        }
-                                    }
-                                }
+                    }
+                }
+            }
+            if quotas.count > 1 || !config.secondaryQuotaKey.isEmpty {
+                SettingsRowDivider()
+                VStack(alignment: .leading, spacing: 8) {
+                    SettingsFieldLabel(text: "SECONDARY QUOTA")
+                    MenuBarChoices {
+                        MenuBarChoiceButton(iconName: "minus.circle", label: "None", isSelected: config.secondaryQuotaKey.isEmpty) {
+                            binding(\.secondaryQuotaKey).wrappedValue = ""
+                        }
+                        ForEach(secondaryQuotas, id: \.quotaType.quotaKey) { quota in
+                            MenuBarQuotaChoiceButton(
+                                title: quota.menuBarTitle ?? quota.quotaType.displayName,
+                                isSelected: config.secondaryQuotaKey == quota.quotaType.quotaKey
+                            ) {
+                                binding(\.secondaryQuotaKey).wrappedValue = quota.quotaType.quotaKey
                             }
                         }
                     }
                 }
             }
-        }
-        .onAppear {
-            normalizeMenuBarSelection()
-            normalizeSecondaryMenuBarSelection()
-        }
-    }
-
-    /// Clears a stored secondary quota key that is no longer offered — e.g. after it
-    /// becomes equal to the primary, or the chosen provider's quotas no longer include it.
-    private func normalizeSecondaryMenuBarSelection() {
-        guard !settings.menuBarSecondaryQuotaKey.isEmpty else { return }
-        // An empty options list means quota data has not loaded yet (cold
-        // start, provider still syncing), not that the stored selection is
-        // invalid. Clearing here would silently discard the user's secondary
-        // window on any settings interaction during a sync.
-        let validKeys = Set(secondaryMenuBarQuotaOptions.map(\.quotaType.quotaKey))
-        guard !validKeys.isEmpty else { return }
-        if !validKeys.contains(settings.menuBarSecondaryQuotaKey) {
-            settings.menuBarSecondaryQuotaKey = ""
-        }
-    }
-
-    private func normalizeMenuBarSelection() {
-        if let provider = selectedMenuBarProvider,
-           settings.menuBarPercentageProviderId != provider.id {
-            settings.menuBarPercentageProviderId = provider.id
-        }
-        selectFirstMenuBarQuotaIfNeeded(force: false)
-    }
-
-    private func selectFirstMenuBarQuotaIfNeeded(force: Bool) {
-        if let firstQuota = menuBarQuotaOptions.first {
-            let currentQuotaExists = menuBarQuotaOptions.contains {
-                $0.quotaType.quotaKey == settings.menuBarPercentageQuotaKey
+            if !config.secondaryQuotaKey.isEmpty {
+                SettingsRowDivider()
+                SettingsRow(title: "Stack in Menu Bar", subtitle: "Draw the two windows as two smaller lines, halving the width.") {
+                    SettingsSwitch(isOn: binding(\.stacked))
+                }
+                if config.stacked {
+                    VStack(alignment: .leading, spacing: 8) {
+                        SettingsFieldLabel(text: "STACKED TEXT SIZE")
+                        HStack(spacing: 8) {
+                            ForEach(MenuBarStackedSize.allCases, id: \.rawValue) { size in
+                                MenuBarChoiceButton(iconName: size.choiceIconName, label: size.displayLabel,
+                                                    isSelected: config.stackedSize == size.rawValue) {
+                                    binding(\.stackedSize).wrappedValue = size.rawValue
+                                }
+                            }
+                        }
+                    }
+                    .padding(.top, 12)
+                }
             }
-
-            if force || !currentQuotaExists {
-                settings.menuBarPercentageQuotaKey = firstQuota.quotaType.quotaKey
-            }
-        } else if force {
-            settings.menuBarPercentageQuotaKey = "session"
         }
+    }
+}
+
+/// Keep the existing compact pill spacing; long provider/quota lists scroll.
+private struct MenuBarChoices<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) { content }
+                .padding(.vertical, 2)
+        }
+        .scrollClipDisabled()
     }
 }

@@ -60,7 +60,8 @@ enum SubprocessSupport {
         qualityOfService: QualityOfService = ProbeExecutionContext.qualityOfService
     ) async throws -> Output {
         var platformOptions = PlatformOptions()
-        platformOptions.qualityOfService = qualityOfService
+        // Both enums use Darwin QoS class values, but they are distinct Swift types.
+        platformOptions.qualityOfService = PlatformOptions.QualityOfService(rawValue: qualityOfService.rawValue) ?? .default
 
         let result = try await Subprocess.run(
             .path(FilePath(executablePath)),

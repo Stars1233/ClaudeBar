@@ -82,7 +82,62 @@ public final class AppSettings {
     public var menuBarPercentageProviderId: String {
         didSet {
             repository.setMenuBarPercentageProviderId(menuBarPercentageProviderId)
+            menuBarAdditionalProviderIds = repository.menuBarAdditionalProviderIds()
         }
+    }
+
+    /// Up to two extra providers; the primary keeps its existing quota settings.
+    public var menuBarAdditionalProviderIds: [String] {
+        didSet {
+            repository.setMenuBarAdditionalProviderIds(menuBarAdditionalProviderIds)
+            let normalized = repository.menuBarAdditionalProviderIds()
+            if menuBarAdditionalProviderIds != normalized {
+                menuBarAdditionalProviderIds = normalized
+            }
+        }
+    }
+
+    public var menuBarProviderSettings: [String: MenuBarProviderSettings] {
+        didSet { repository.setMenuBarProviderSettings(menuBarProviderSettings) }
+    }
+
+    public var menuBarProviderIds: [String] {
+        [menuBarPercentageProviderId] + menuBarAdditionalProviderIds
+    }
+
+    public func menuBarConfiguration(for providerId: String) -> MenuBarProviderSettings {
+        if providerId == menuBarPercentageProviderId {
+            return MenuBarProviderSettings(
+                primaryQuotaKey: menuBarPercentageQuotaKey, secondaryQuotaKey: menuBarSecondaryQuotaKey,
+                stacked: menuBarStackedEnabled, stackedSize: menuBarStackedSize.rawValue
+            )
+        }
+        return menuBarProviderSettings[providerId] ?? MenuBarProviderSettings()
+    }
+
+    public func setMenuBarConfiguration(_ config: MenuBarProviderSettings, for providerId: String) {
+        menuBarProviderSettings[providerId] = config
+        if providerId == menuBarPercentageProviderId {
+            menuBarPercentageQuotaKey = config.primaryQuotaKey
+            menuBarSecondaryQuotaKey = config.secondaryQuotaKey
+            menuBarStackedEnabled = config.stacked
+            menuBarStackedSize = MenuBarStackedSize(storedRawValue: config.stackedSize)
+        }
+    }
+
+    public func setMenuBarProviderIds(_ providerIds: [String]) {
+        var seen: Set<String> = [""]
+        let ids = Array(providerIds.filter { seen.insert($0).inserted }.prefix(3))
+        guard let first = ids.first else { return }
+        if first != menuBarPercentageProviderId {
+            // Keep the legacy fields in sync for Touch Bar and status export while
+            // remembering each provider's choices when its position changes.
+            menuBarProviderSettings[menuBarPercentageProviderId] = menuBarConfiguration(for: menuBarPercentageProviderId)
+            let config = menuBarConfiguration(for: first)
+            menuBarPercentageProviderId = first
+            setMenuBarConfiguration(config, for: first)
+        }
+        menuBarAdditionalProviderIds = Array(ids.dropFirst())
     }
 
     /// Quota key used for the menu bar percentage label.
@@ -288,7 +343,7 @@ public final class AppSettings {
 
     // MARK: - Initialization
 
-    private init(repository: JSONSettingsRepository = .shared) {
+    init(repository: JSONSettingsRepository = .shared) {
         self.repository = repository
 
         // Load all values from repository
@@ -319,6 +374,8 @@ public final class AppSettings {
         // instead of crashing or dropping the label.
         self.menuBarStackedSize = MenuBarStackedSize(storedRawValue: repository.menuBarStackedSize())
         self.menuBarPercentageProviderId = repository.menuBarPercentageProviderId()
+        self.menuBarAdditionalProviderIds = repository.menuBarAdditionalProviderIds()
+        self.menuBarProviderSettings = repository.menuBarProviderSettings()
         self.menuBarPercentageQuotaKey = repository.menuBarPercentageQuotaKey()
         self.menuBarSecondaryQuotaKey = repository.menuBarSecondaryQuotaKey()
 

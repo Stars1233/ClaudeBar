@@ -115,6 +115,37 @@ public final class JSONSettingsRepository:
         store.write(value: providerId, key: "app.menuBarPercentageProviderId")
     }
 
+    public func menuBarAdditionalProviderIds() -> [String] {
+        let stored: [String] = store.read(key: "app.menuBarAdditionalProviderIds") ?? []
+        return normalizedMenuBarAdditionalProviderIds(stored)
+    }
+
+    public func setMenuBarAdditionalProviderIds(_ providerIds: [String]) {
+        store.write(value: normalizedMenuBarAdditionalProviderIds(providerIds),
+                    key: "app.menuBarAdditionalProviderIds")
+    }
+
+    private func normalizedMenuBarAdditionalProviderIds(_ providerIds: [String]) -> [String] {
+        var seen: Set<String> = [menuBarPercentageProviderId(), ""]
+        return Array(providerIds.filter { seen.insert($0).inserted }.prefix(2))
+    }
+
+    public func menuBarProviderSettings() -> [String: MenuBarProviderSettings] {
+        let stored: [String: Any] = store.read(key: "app.menuBarProviderSettings") ?? [:]
+        return stored.reduce(into: [:]) { result, entry in
+            guard let value = entry.value as? [String: Any],
+                  let data = try? JSONSerialization.data(withJSONObject: value),
+                  let settings = try? JSONDecoder().decode(MenuBarProviderSettings.self, from: data) else { return }
+            result[entry.key] = settings
+        }
+    }
+
+    public func setMenuBarProviderSettings(_ settings: [String: MenuBarProviderSettings]) {
+        guard let data = try? JSONEncoder().encode(settings),
+              let value = try? JSONSerialization.jsonObject(with: data) else { return }
+        store.write(value: value, key: "app.menuBarProviderSettings")
+    }
+
     public func menuBarPercentageQuotaKey() -> String {
         store.read(key: "app.menuBarPercentageQuotaKey") ?? "session"
     }

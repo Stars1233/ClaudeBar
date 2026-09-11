@@ -52,6 +52,7 @@ final class StatusItemLabelDriver {
     /// itself flicker) and to recognize external wipes via KVO.
     private var lastImage: NSImage?
     private var lastContent: LabelContent?
+    private var lastLabelSelection: [String]?
     private var imageWipeObservation: NSKeyValueObservation?
 
     init(monitor: QuotaMonitor, settings: AppSettings, sessionMonitor: SessionMonitor) {
@@ -70,6 +71,9 @@ final class StatusItemLabelDriver {
     /// inside the sync's `read` registers observation for each of them.
     struct LabelContent: Equatable {
         var label: MenuBarLabel?
+        var additionalLabels: [MenuBarProviderLabel] = []
+        var primaryProviderId: String? = nil
+        var primaryProviderName: String? = nil
         var fallbackStatus: QuotaStatus
         var sessionPhase: ClaudeSession.Phase?
         var themeModeId: String
@@ -160,9 +164,12 @@ final class StatusItemLabelDriver {
     }
 
     private func currentLabelContent() -> LabelContent {
+        let primaryQuotaKey = settings.menuBarPercentageQuotaKey.isEmpty
+            ? (monitor.provider(for: settings.menuBarPercentageProviderId)?.snapshot?.quotas.first?.quotaType.quotaKey ?? "session")
+            : settings.menuBarPercentageQuotaKey
         let freshLabel = monitor.menuBarLabel(
             providerId: settings.menuBarPercentageProviderId,
-            primaryQuotaKey: settings.menuBarPercentageQuotaKey,
+            primaryQuotaKey: primaryQuotaKey,
             secondaryQuotaKey: settings.menuBarSecondaryQuotaKey,
             showPercentage: settings.menuBarPercentageEnabled,
             showDuration: settings.menuBarDurationEnabled,
@@ -171,11 +178,32 @@ final class StatusItemLabelDriver {
             burnRateThreshold: settings.burnRateThreshold
         )
 
-        let label = freshLabel ?? lastKnownLabel(whenFreshIsMissing: freshLabel)
-        let hasCountdownColon = label.map { !CountdownColon.ranges(in: $0.text).isEmpty } ?? false
+        let selection = [settings.menuBarPercentageProviderId,
+                         settings.menuBarPercentageQuotaKey, settings.menuBarSecondaryQuotaKey,
+                         String(settings.menuBarPercentageEnabled), String(settings.menuBarDurationEnabled),
+                         settings.usageDisplayMode.rawValue]
+        let label = freshLabel ?? (lastLabelSelection == selection
+            ? lastKnownLabel(whenFreshIsMissing: freshLabel) : nil)
+        lastLabelSelection = selection
+        let additionalLabels = monitor.additionalMenuBarLabels(
+            providerIds: settings.menuBarAdditionalProviderIds,
+            configurations: settings.menuBarProviderSettings,
+            showPercentage: settings.menuBarPercentageEnabled,
+            showDuration: settings.menuBarDurationEnabled,
+            mode: settings.usageDisplayMode,
+            burnRateWarningEnabled: settings.burnRateWarningEnabled,
+            burnRateThreshold: settings.burnRateThreshold
+        )
+        let hasCountdownColon = ([label].compactMap { $0 } + additionalLabels.map(\.label))
+            .contains { !CountdownColon.ranges(in: $0.text).isEmpty }
+        let primaryProviderName = additionalLabels.isEmpty ? nil : monitor.enabledProviders
+            .first { $0.id == settings.menuBarPercentageProviderId }?.name
 
         return LabelContent(
             label: label,
+            additionalLabels: additionalLabels,
+            primaryProviderId: primaryProviderName == nil ? nil : settings.menuBarPercentageProviderId,
+            primaryProviderName: primaryProviderName,
             fallbackStatus: effectiveSelectedProviderStatus,
             sessionPhase: sessionMonitor.activeSession?.phase,
             themeModeId: settings.themeMode,
@@ -229,7 +257,13 @@ final class StatusItemLabelDriver {
         lastImage = image
         button.image = image
         button.imagePosition = .imageOnly
-        button.toolTip = content.label?.text
+        let primaryText = content.label.map {
+            [content.primaryProviderName, $0.text].compactMap { $0 }.joined(separator: " ")
+        }
+        let tooltip = ([primaryText].compactMap { $0 } + content.additionalLabels.map(\.text))
+            .joined(separator: " | ")
+        button.toolTip = tooltip.isEmpty ? nil : tooltip
+        button.setAccessibilityLabel(tooltip.isEmpty ? "ClaudeBar" : tooltip)
     }
 
     private func resolvedTheme(for themeModeId: String) -> any AppThemeProvider {
@@ -254,26 +288,13 @@ final class StatusItemLabelDriver {
             parts.append(symbolImage("terminal.fill", color: NSColor(phase.color)))
         }
 
+        if let providerId = content.primaryProviderId {
+            parts.append(providerIcon(for: providerId))
+        }
+
         if let label = content.label {
-            // Stacked mode only applies to a dual-window label: two windows
-            // become two smaller lines (halving the width the label needs).
-            // Anything else, including a dual label with stacking off, keeps
-            // the classic single-line rendering. The tooltip always stays the
-            // full joined text, so no information is lost either way.
-            if content.stacked, label.segments.count == 2 {
-                parts.append(StatusBarStackedImageRenderer.image(
-                    top: (label.segments[0].text, theme.statusColor(for: label.segments[0].status)),
-                    bottom: (label.segments[1].text, theme.statusColor(for: label.segments[1].status)),
-                    size: content.stackedSize,
-                    colonVisible: content.colonVisible
-                ))
-            } else {
-                parts.append(StatusBarPercentageImageRenderer.image(
-                    text: label.text,
-                    color: theme.statusColor(for: label.status),
-                    colonVisible: content.colonVisible
-                ))
-            }
+            parts.append(quotaImage(label, stacked: content.stacked, size: content.stackedSize,
+                                    colonVisible: content.colonVisible, theme: theme))
         } else {
             let symbolName = theme.statusBarIconName ?? fallbackIconName(for: content.fallbackStatus)
             parts.append(symbolImage(
@@ -282,7 +303,48 @@ final class StatusItemLabelDriver {
             ))
         }
 
+        for label in content.additionalLabels {
+            parts.append(StatusBarPercentageImageRenderer.image(
+                text: " | ", color: theme.statusColor(for: label.status)
+            ))
+            parts.append(providerIcon(for: label.providerId))
+            parts.append(quotaImage(label.label, stacked: label.stacked, size: label.stackedSize,
+                                    colonVisible: content.colonVisible, theme: theme))
+        }
         return hStack(parts, spacing: 3)
+    }
+
+    private static func quotaImage(_ label: MenuBarLabel, stacked: Bool, size: MenuBarStackedSize,
+                                   colonVisible: Bool, theme: any AppThemeProvider) -> NSImage {
+        if stacked, label.segments.count == 2 {
+            return StatusBarStackedImageRenderer.image(
+                top: (label.segments[0].text, theme.statusColor(for: label.segments[0].status)),
+                bottom: (label.segments[1].text, theme.statusColor(for: label.segments[1].status)),
+                size: size, colonVisible: colonVisible
+            )
+        }
+        return StatusBarPercentageImageRenderer.image(
+            text: label.text, color: theme.statusColor(for: label.status), colonVisible: colonVisible
+        )
+    }
+
+    private static func providerIcon(for providerId: String) -> NSImage {
+        let assetName = ProviderVisualIdentityLookup.iconAssetName(for: providerId)
+        guard let source = NSImage(named: assetName), source.size.width > 0, source.size.height > 0 else {
+            return symbolImage(ProviderVisualIdentityLookup.symbolIcon(for: providerId), color: .labelColor)
+        }
+        let size = NSSize(width: 16, height: 16)
+        let scale = min(size.width / source.size.width, size.height / source.size.height)
+        let fitted = NSSize(width: source.size.width * scale, height: source.size.height * scale)
+        let icon = NSImage(size: size, flipped: false) { bounds in
+            let rect = NSRect(x: (bounds.width - fitted.width) / 2,
+                              y: (bounds.height - fitted.height) / 2,
+                              width: fitted.width, height: fitted.height)
+            source.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
+            return true
+        }
+        icon.isTemplate = false
+        return icon
     }
 
     private static func fallbackIconName(for status: QuotaStatus) -> String {
@@ -504,10 +566,10 @@ final class StatusItemLabelDriver {
     private var backgroundRefreshProviderIds: [String]? {
         guard settings.menuBarPercentageEnabled || settings.menuBarDurationEnabled else { return nil }
         let enabledProviderIds = Set(monitor.enabledProviders.map(\.id))
-        return [
-            monitor.selectedProviderId,
-            settings.menuBarPercentageProviderId,
-        ].filter { enabledProviderIds.contains($0) }
+        var seen = Set<String>()
+        return ([monitor.selectedProviderId, settings.menuBarPercentageProviderId]
+            + settings.menuBarAdditionalProviderIds)
+            .filter { enabledProviderIds.contains($0) && seen.insert($0).inserted }
     }
 
     private func restartMonitoring(_ key: RefreshLoopKey) {

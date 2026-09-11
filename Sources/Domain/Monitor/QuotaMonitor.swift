@@ -230,6 +230,39 @@ public final class QuotaMonitor {
         )
     }
 
+    /// Additional providers use their first quota and include a name so adjacent
+    /// readouts remain distinguishable. Enabled providers awaiting data keep a placeholder.
+    public func additionalMenuBarLabels(
+        providerIds: [String],
+        configurations: [String: MenuBarProviderSettings] = [:],
+        showPercentage: Bool,
+        showDuration: Bool,
+        mode: UsageDisplayMode,
+        burnRateWarningEnabled: Bool = false,
+        burnRateThreshold: Double = 1.5
+    ) -> [MenuBarProviderLabel] {
+        guard showPercentage || showDuration else { return [] }
+        var seen = Set<String>()
+        return providerIds.filter { seen.insert($0).inserted }.prefix(2).compactMap { id in
+            guard let provider = enabledProviders.first(where: { $0.id == id }) else { return nil }
+            let config = configurations[id] ?? MenuBarProviderSettings()
+            let key = config.primaryQuotaKey.isEmpty
+                ? provider.snapshot?.quotas.first?.quotaType.quotaKey : config.primaryQuotaKey
+            guard let key,
+                  let label = menuBarLabel(
+                    providerId: id, primaryQuotaKey: key, secondaryQuotaKey: config.secondaryQuotaKey,
+                    showPercentage: showPercentage, showDuration: showDuration,
+                    mode: mode, burnRateWarningEnabled: burnRateWarningEnabled,
+                    burnRateThreshold: burnRateThreshold
+                  ) else {
+                return MenuBarProviderLabel(providerId: id, providerName: provider.name,
+                                            label: MenuBarLabel(text: "—", status: .healthy))
+            }
+            return MenuBarProviderLabel(providerId: id, providerName: provider.name, label: label,
+                                        stacked: config.stacked, stackedSize: MenuBarStackedSize(storedRawValue: config.stackedSize))
+        }
+    }
+
     /// Builds the fully composed menu bar label for one or two quota windows.
     ///
     /// The primary window renders exactly as the single-window label always has
@@ -254,6 +287,9 @@ public final class QuotaMonitor {
         burnRateWarningEnabled: Bool = false,
         burnRateThreshold: Double = 1.5
     ) -> MenuBarLabel? {
+        let primaryQuotaKey = primaryQuotaKey.isEmpty
+            ? (enabledProviders.first { $0.id == providerId }?.snapshot?.quotas.first?.quotaType.quotaKey ?? "")
+            : primaryQuotaKey
         func segment(forQuotaKey quotaKey: String) -> (text: String, status: QuotaStatus)? {
             let percentage = showPercentage
                 ? menuBarPercentageDisplay(
