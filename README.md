@@ -8,7 +8,7 @@
 [![Platform](https://img.shields.io/badge/Platform-macOS%2015-blue.svg)](https://developer.apple.com)
 [![Homebrew](https://img.shields.io/badge/Homebrew-Install-brightgreen.svg)](https://formulae.brew.sh/cask/claudebar)
 
-A macOS menu bar application that monitors AI coding assistant usage quotas in real time. Keep track of your Claude, OpenAI Codex, Google Gemini, GitHub Copilot, Google Antigravity, Cursor, AWS Bedrock, AWS Kiro, Kimi, DeepSeek, Mistral, MiniMax, Alibaba Coding Plan, Z.ai, Amp Code, OpenCode Go, Oh My Pi, Grok Build, and Vercel at a glance.
+A macOS menu bar application that monitors AI coding assistant usage quotas in real time. Keep track of your Claude, OpenAI Codex, Google Gemini, GitHub Copilot, Google Antigravity, Cursor, AWS Bedrock, AWS Kiro, Kimi, DeepSeek, Mistral, MiniMax, Alibaba Coding Plan, Z.ai, Amp Code, OpenCode Go, Oh My Pi, Grok Build, Command Code, and Vercel at a glance.
 
 Featuring full **MacBook Touch Bar integration** with persistent, centered multi-provider quota gauges, **MacBook Notch Live Activity**, **Multi-Account Switching**, and Raycast-style **User Extensions**.
 
@@ -66,7 +66,7 @@ Some companies support ClaudeBar's open source development through [GitHub Spons
 
 ## Features
 
-- **Multi-Provider Support** - Monitor Claude, Codex, Gemini, GitHub Copilot, Antigravity, Z.ai, Kimi, Kiro, Amp, OpenCode Go, Oh My Pi, and Grok quotas in one place
+- **Multi-Provider Support** - Monitor Claude, Codex, Gemini, GitHub Copilot, Antigravity, Z.ai, Kimi, Kiro, Amp, OpenCode Go, Oh My Pi, Grok, and Command Code quotas in one place
 - **Provider Enable/Disable** - Toggle individual providers on/off from Settings to customize your monitoring
 - **Real-Time Quota Tracking** - View Session, Weekly, and Model-specific usage percentages
 - **Multiple Themes** - Light, Dark, CLI, Christmas, and [imported terminal themes](#import-terminal-theme) (.itermcolors)
@@ -138,6 +138,7 @@ ClaudeBar can render Claude Code's session and quota state directly in your MacB
   - [OpenCode Go](https://opencode.ai/go) - Local SQLite DB or Zen API key
   - [Oh My Pi](https://omp.sh) - Aggregates account usage via `omp usage --json`
   - [Grok Build](https://docs.x.ai) - Tracks xAI credits using CLI OAuth credentials
+  - [Command Code](https://commandcode.ai) - Tracks 5-hour, weekly, and monthly credit windows from the same API the `cmd` CLI uses
   - [Vercel](https://vercel.com) - Token-based quota tracking
   - [Custom Extensions](docs/features/extensions.md) - Drop custom scripts into `~/.claudebar/extensions/`
 
