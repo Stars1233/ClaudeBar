@@ -10,7 +10,7 @@
 
 A macOS menu bar application that monitors AI coding assistant usage quotas in real time. Keep track of your Claude, OpenAI Codex, Google Gemini, GitHub Copilot, Google Antigravity, Cursor, AWS Bedrock, AWS Kiro, Kimi, DeepSeek, Mistral, MiniMax, Alibaba Coding Plan, Z.ai, Amp Code, OpenCode Go, Oh My Pi, Grok Build, and Vercel at a glance.
 
-Featuring full **MacBook Touch Bar integration** with persistent multi-provider gauges and an interactive pixel mascot (**Clawd**), **MacBook Notch Live Activity**, **Multi-Account Switching**, and Raycast-style **User Extensions**.
+Featuring full **MacBook Touch Bar integration** with persistent, centered multi-provider quota gauges, **MacBook Notch Live Activity**, **Multi-Account Switching**, and Raycast-style **User Extensions**.
 
 <table align="center">
   <tr>
@@ -22,6 +22,25 @@ Featuring full **MacBook Touch Bar integration** with persistent multi-provider 
     <td align="center"><img src="docs/screenshots/Christmas-theme.png" alt="Christmas Theme" width="360"/><br/><em>Christmas Theme</em></td>
   </tr>
 </table>
+
+### Multi-Account Switching & Multi-Window Quotas
+
+ClaudeBar supports seamless **Multi-Account Switching** for providers that support multiple logins (e.g. personal, work, client accounts). Configure multiple credentials in **Settings > Providers**, and quickly switch between them using the dedicated account selector dropdown.
+
+Each provider displays separate progress bars for multiple quota windows—for example, tracking your **5-hour session quota** and **7-day weekly quota** simultaneously with dedicated countdown timers.
+
+---
+
+## Quota Thresholds & Color Coding
+
+Every quota is tracked in real time and color-coded based on remaining capacity:
+
+| Remaining | Status | Color | Description |
+|-----------|--------|-------|-------------|
+| > 50% | Healthy | Blue / Green | Ample quota available |
+| 20-50% | Warning | Yellow / Amber | Approaching usage threshold or accelerated burn rate |
+| < 20% | Critical | Red | Low quota remaining; alerts triggered |
+| 0% | Depleted | Gray | Quota exhausted |
 
 ## Sponsors
 
@@ -59,77 +78,24 @@ Some companies support ClaudeBar's open source development through [GitHub Spons
 - **Auto-Refresh** - Automatically updates quotas at configurable intervals
 - **Keyboard Shortcuts** - Quick access with `⌘D` (Dashboard) and `⌘R` (Refresh)
 
-## Quota Status Thresholds
-
-| Remaining | Status | Color | Description |
-|-----------|--------|-------|-------------|
-| > 50% | Healthy | Blue / Green | Ample quota available |
-| 20-50% | Warning | Yellow / Amber | Approaching usage threshold or accelerated burn rate |
-| < 20% | Critical | Red | Low quota remaining; alerts triggered |
-| 0% | Depleted | Gray | Quota exhausted; Clawd mascot enters sleep mode |
-
 > [!TIP]
 > You can also enable **Burn Rate Warnings** in **Settings > General** to trigger alerts based on your real-time consumption velocity against remaining time rather than fixed percentage cutoffs.
 
 ## Touch Bar Integration
 
-ClaudeBar features native, system-wide Touch Bar integration for MacBook Pro models equipped with an Apple Touch Bar (including M1/M2 and Intel). This runs 100% natively inside ClaudeBar—requiring **zero third-party apps** (no BetterTouchTool or MTMR required).
-
-<p align="center">
-  <img src="docs/screenshots/TouchBar-preview.gif" alt="ClaudeBar Touch Bar Preview" width="100%"/>
-</p>
+ClaudeBar features native, system-wide Touch Bar integration for MacBook Pro models equipped with an Apple Touch Bar (including M1/M2 and Intel). This runs 100% natively inside ClaudeBar—requiring **zero third-party apps** (no BetterTouchTool or MTMR required) and **no special accessibility permissions**.
 
 ### Key Touch Bar Features
 
 - **Always Visible System-Wide (`placement: 0`)**: Uses macOS system-modal function bar presentation. The widget remains persistently visible across all full-screen windows and apps, automatically re-asserting on app switching and system unlock while keeping your system Escape key and Control Strip media/volume controls intact.
-- **Interactive Pixel Mascot (Clawd)**:
-  - An animated 20×20 retro creature pacing along an illuminated ground line.
-  - **Autonomous Antics System**: Spontaneous antics and tricks occur as Clawd patrols:
-    - **The Zoomies**: High-speed sprint at 95 pt/s with trailing smoke streaks (`💨`), finishing with a quick panting rest (`💧`).
-    - **Skateboard Shredder**: Drops a mini skateboard underfoot and zips across the Touch Bar at 55 pt/s with spark particles (`✨`).
-    - **Smooth Moonwalk**: Glides backward while facing forward with sparkling footsteps (`✨`).
-    - **Trip & Roll**: Hilariously stumbles and face-plants with X-eyes, then scrambles up sheepishly with a dizzy particle (`💫`).
-    - **Acrobatics & Stunts**: High-arc backflips, upside-down headspin breakdancing with star bursts (`✨`), and wave-like worm crawls.
-  - **Thought Bubble & Expressive Emoji System**:
-    - Adaptive thought bubbles float beside Clawd at eye level (intelligently switching left or right based on walking direction and boundary clearance).
-    - Randomly expresses thoughts with a rich variety of expressive emojis & mood-reactive emotions: Happy (`😊`, `🥳`, `🌟`, `✨`), Hyped (`🔥`, `⚡`, `🚀`, `💥`), Curious (`🤔`, `💡`, `🧠`, `🔍`), Cool (`😎`, `💎`, `👑`, `🛹`), Love (`🥰`, `💖`, `🌸`), Silly (`🤪`, `🍕`, `🍩`, `🎮`), Zen (`☕`, `🍵`, `🍃`, `🎶`), Dramatic (`🤯`, `😲`, `🛸`), and Sleepy (`🥱`, `💤`, `🪫`).
-  - **Ultra Panic Mode (Quota ≥ 95%)**:
-    - Full-body micro-jitter screen shake, screaming open mouth with alternating wide eyes, and rapid sputtering sparks (`💥`) and flame (`🔥`) particles.
-  - **Confetti Celebration**:
-    - Multi-colored confetti explosion (`🎉`) bursts across the bar whenever your quota resets or improves.
-  - **RGB Gamer Mode Easter Egg**:
-    - Periodic 3.5-second rainbow hue-cycling easter egg across Clawd's entire body (`🌈`).
-  - **Direct Touch Interaction & Physics**:
-    - **Laser Pointer Chase**: Tap anywhere on empty space on the Touch Bar to cast a glowing red laser dot (`🔴`); Clawd turns around and excitedly sprints to catch it!
-    - **Tickle Mode**: Tap and hold Clawd to make him giggle with floating hearts (`💖`) and cute reaction (`🥰`).
-    - **High-Five**: When Clawd raises his hand waiting (`✋`), tap his hand to trigger a `💥` celebration with clapping (`👏`)!
-    - **Belly Rub**: Flips onto back wiggling legs; purrs with hearts (`💖`) when stroked.
-    - **High Toss Somersault**: Fling Clawd with high velocity for a 360° mid-air spin before bouncing off walls with damping physics (`0.92`).
-    - **Tap to Hop**: Quick tap causes Clawd to hop with surprise stars (`⭐`).
-  - **Real-Time Keyboard Typing Cadence Sync**:
-    - Passively synchronizes with your typing speed via `GlobalKeyboardMonitor`. Active typing provides a **1.4× sprint boost**, keeping Clawd running enthusiastically alongside your coding rhythm.
-  - **Mood-Reactive Gauge**: Clawd adapts his speed, expression, and behavior to your highest quota usage:
-    - **Calm** (< 30%): A relaxed stroll at 12 pt/s.
-    - **Brisk** (30%–59%): An upbeat walk at 24 pt/s.
-    - **Tired** (60%–84%): Sluggish pace at 8 pt/s with drooping eyes and animated sweat drops.
-    - **Panic** (85%–99%): Frantic scurrying at 48 pt/s with wide eyes and trailing motion streaks.
-    - **Sleeping** (100% / Depleted): Stops walking peacefully in place, eyes close to horizontal bars `— —`, body color dims to 82% brightness, and `💤` bubbles float upward.
-  - **Dynamic Provider Body Tints**: Clawd's body takes on the active provider's brand color (Claude terracotta, Gemini golden amber, Copilot indigo, Antigravity violet, Codex teal, Cursor cyan, DeepSeek cobalt, Kimi sky blue, etc.) with sRGB color safety, gently dimming during sleep.
-  - **Event-Driven Reactions & Particles**:
-    - **Status Degrades**: Body flashes white for 0.12s + a `⚠️` alert particle floats upward.
-    - **Quota Resets / Drops < 100%**: Burst of `✨` sparkle particles + confetti explosion.
-    - **Provider Switches**: Clawd jumps upward in an arc (85 pt) with `✨` sparkles and flips direction to face the new provider.
-    - **Refresh Triggered**: A spinning `🔄` particle orbits his head for 1.5s.
-  - **Context-Aware Animations**:
-    - **Active Claude Code Session**: Speed multiplied ×1.5 (session sprint) + glowing orange ring beneath feet.
-    - **Night Mode (22:00–04:59)**: Speed reduced ×0.6 + drifting star particles (`⭐`).
-    - **Christmas Theme**: Red pixel Santa hat with white brim and pompom.
-- **Live Multi-Provider Quota Gauges**:
+- **Centered, Clean Multi-Provider Quota Gauges**:
+  - Balanced, centered layout across the Touch Bar for single or multi-provider views.
   - Displays authentic provider logos (Claude, Gemini, Antigravity, GitHub Copilot, Codex, etc.).
   - Multi-segment provider views matching your menu bar configuration (e.g. `[Logo] Gemini 40% | [Logo] Claude 0%`).
   - High-precision bold monospaced percentage readout with warning indicator (`!`) when quota is critical (≥ 90%).
-  - Sleek progress bars with 100% track reference, adaptive color coding, and scale tick marks at **50%** and **90%**.
+  - Sleek rounded progress bars with 100% track reference and adaptive color coding (healthy blue, warning amber, critical red).
   - Reset countdown timer (e.g., `2:15`, `35m`, `3d`).
+- **Battery-Friendly & Ultra Lightweight**: Redraws only when quota state updates; consumes 0% idle CPU and zero background animation overhead.
 - **One-Tap Access**: Tap anywhere on the quota gauges on the Touch Bar to instantly summon the full ClaudeBar dropdown popover (`claudebar://open`).
 
 > [!TIP]
