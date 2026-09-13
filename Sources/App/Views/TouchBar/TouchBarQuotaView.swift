@@ -11,19 +11,22 @@ public struct TouchBarProviderGauge: Equatable, Sendable {
     public let percentUsed: Double
     public let resetText: String?
     public let status: QuotaStatus
+    public let hasQuota: Bool
 
     public init(
         providerId: String,
         name: String,
         percentUsed: Double,
         resetText: String?,
-        status: QuotaStatus
+        status: QuotaStatus,
+        hasQuota: Bool = true
     ) {
         self.providerId = providerId
         self.name = name
         self.percentUsed = percentUsed
         self.resetText = resetText
         self.status = status
+        self.hasQuota = hasQuota
     }
 }
 
@@ -106,23 +109,18 @@ public final class TouchBarQuotaView: NSView {
         guard !gauges.isEmpty else { return }
 
         let n = CGFloat(gauges.count)
-        let totalWidth: CGFloat
-        let cellW: CGFloat
+        // Adaptive cell width: distribute available width evenly, minimum 80pt per cell.
+        // Recompute totalWidth from the clamped cellW to ensure centering is correct.
+        let availableW: CGFloat = min(580.0, bounds.width - 20.0)
+        let cellW = max(80.0, (availableW - (n - 1) * cellGap) / n)
+        let totalWidth = n * cellW + (n - 1) * cellGap
 
-        if n == 1 {
-            cellW = 240.0
-            totalWidth = cellW
-        } else if n == 2 {
-            cellW = 210.0
-            totalWidth = n * cellW + (n - 1) * cellGap
-        } else {
-            let maxTotalW: CGFloat = min(560.0, bounds.width - 24.0)
-            cellW = max(120.0, (maxTotalW - (n - 1) * cellGap) / n)
-            totalWidth = n * cellW + (n - 1) * cellGap
-        }
+        // Smart label visibility: suppress elements that won't fit at small sizes
+        let showResetText = cellW >= 120.0
+        let showName = cellW >= 100.0
 
-        // Center the gauges horizontally on the Touch Bar
-        let startX = max(10.0, (bounds.width - totalWidth) / 2.0)
+        // Center the gauges horizontally; never start so far left that cells bleed off-screen
+        let startX = max(4.0, (bounds.width - totalWidth) / 2.0)
 
         for (i, gauge) in gauges.enumerated() {
             let cx = startX + CGFloat(i) * (cellW + cellGap)
@@ -135,20 +133,30 @@ public final class TouchBarQuotaView: NSView {
                 NSRect(x: sepX, y: 4.0, width: 1.0, height: 22.0).fill()
             }
 
-            drawGaugeCell(gauge, icon: icon, x: cx, width: cellW)
+            drawGaugeCell(gauge, icon: icon, x: cx, width: cellW,
+                          showName: showName, showResetText: showResetText)
         }
     }
 
-    private func drawGaugeCell(_ gauge: TouchBarProviderGauge, icon: NSImage?, x: CGFloat, width: CGFloat) {
+    private func drawGaugeCell(
+        _ gauge: TouchBarProviderGauge,
+        icon: NSImage?,
+        x: CGFloat,
+        width: CGFloat,
+        showName: Bool = true,
+        showResetText: Bool = true
+    ) {
         let textY: CGFloat = 15.0
         let barY: CGFloat  = 3.0
         let barH: CGFloat  = 7.0
 
         let pct = Int(gauge.percentUsed.rounded())
-        let alarm = (pct >= 90)
+        let alarm = gauge.hasQuota && (pct >= 90)
 
         let ink: NSColor
-        if alarm {
+        if !gauge.hasQuota {
+            ink = NSColor(white: 1.0, alpha: 0.60)
+        } else if alarm {
             ink = NSColor(srgbRed: 0.902, green: 0.208, blue: 0.180, alpha: 1.0) // Alert Red
         } else if pct >= 50 {
             ink = NSColor(srgbRed: 0.949, green: 0.706, blue: 0.161, alpha: 1.0) // Warning Amber
@@ -170,6 +178,7 @@ public final class TouchBarQuotaView: NSView {
             let symName = ProviderVisualIdentityLookup.symbolIcon(for: gauge.providerId)
             if let sym = NSImage(systemSymbolName: symName, accessibilityDescription: nil) {
                 let conf = NSImage.SymbolConfiguration(pointSize: 11, weight: .bold)
+                    .applying(NSImage.SymbolConfiguration(paletteColors: [.white]))
                 if let configSym = sym.withSymbolConfiguration(conf) {
                     configSym.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1.0)
                     nameX += 18.0
@@ -177,25 +186,8 @@ public final class TouchBarQuotaView: NSView {
             }
         }
 
-        // 2. Draw Provider Name
-        let nameAttr: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 10, weight: .bold),
-            .foregroundColor: NSColor(white: 1.0, alpha: 0.90)
-        ]
-        (gauge.name as NSString).draw(at: NSPoint(x: nameX, y: textY), withAttributes: nameAttr)
-        let nameW = (gauge.name as NSString).size(withAttributes: nameAttr).width
-
-        // 3. Draw Reset Countdown Note
-        if let reset = gauge.resetText, !reset.isEmpty {
-            let noteAttr: [NSAttributedString.Key: Any] = [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: 8, weight: .medium),
-                .foregroundColor: NSColor(white: 1.0, alpha: 0.55)
-            ]
-            (reset as NSString).draw(at: NSPoint(x: nameX + nameW + 5.0, y: textY + 1.0), withAttributes: noteAttr)
-        }
-
-        // 4. Draw Percentage + Alarm Right-aligned
-        var numStr = "\(pct)%"
+        // 2. Draw Percentage + Alarm Right-aligned
+        var numStr = gauge.hasQuota ? "\(pct)%" : "—"
         if alarm {
             numStr += " !"
         }
@@ -208,7 +200,44 @@ public final class TouchBarQuotaView: NSView {
             .foregroundColor: ink
         ]
         let numW = (numStr as NSString).size(withAttributes: numAttr).width
-        (numStr as NSString).draw(at: NSPoint(x: x + width - numW, y: textY - 1.0), withAttributes: numAttr)
+        let numX = x + width - numW
+        (numStr as NSString).draw(at: NSPoint(x: numX, y: textY - 1.0), withAttributes: numAttr)
+
+        // 3. Draw Provider Name & Reset Countdown Note (safely constrained so they never collide with percentage)
+        let availableMiddleW = max(0, numX - 6.0 - nameX)
+        if showName && availableMiddleW > 10.0 {
+            let pStyle = NSMutableParagraphStyle()
+            pStyle.lineBreakMode = .byTruncatingTail
+
+            let nameAttr: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: 10, weight: .bold),
+                .foregroundColor: NSColor(white: 1.0, alpha: 0.90),
+                .paragraphStyle: pStyle
+            ]
+
+            let noteAttr: [NSAttributedString.Key: Any] = [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 8, weight: .medium),
+                .foregroundColor: NSColor(white: 1.0, alpha: 0.55)
+            ]
+
+            let fullResetW = (showResetText && gauge.resetText != nil && !gauge.resetText!.isEmpty)
+                ? (gauge.resetText! as NSString).size(withAttributes: noteAttr).width : 0
+
+            let naturalNameW = (gauge.name as NSString).size(withAttributes: nameAttr).width
+
+            // Check if both name and reset countdown fit side-by-side with padding
+            let canFitReset = showResetText && fullResetW > 0 && (naturalNameW + 5.0 + fullResetW <= availableMiddleW)
+            let maxNameW = canFitReset ? (availableMiddleW - fullResetW - 5.0) : availableMiddleW
+
+            let nameRect = NSRect(x: nameX, y: textY, width: maxNameW, height: 14.0)
+            (gauge.name as NSString).draw(with: nameRect, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], attributes: nameAttr)
+
+            if canFitReset, let reset = gauge.resetText {
+                let actualNameW = min(naturalNameW, maxNameW)
+                let resetX = nameX + actualNameW + 4.0
+                (reset as NSString).draw(at: NSPoint(x: resetX, y: textY + 1.0), withAttributes: noteAttr)
+            }
+        }
 
         // 5. Progress Bar Track (100% reference)
         let trackRect = NSRect(x: x, y: barY, width: width, height: barH)
@@ -217,7 +246,7 @@ public final class TouchBarQuotaView: NSView {
         trackPath.fill()
 
         // 6. Filled Bar
-        let fillW = max(0, min(width, width * CGFloat(pct) / 100.0))
+        let fillW = gauge.hasQuota ? max(0, min(width, width * CGFloat(pct) / 100.0)) : 0
         if fillW > 0 {
             let fillRect = NSRect(x: x, y: barY, width: fillW, height: barH)
             let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: 2.0, yRadius: 2.0)
@@ -227,16 +256,21 @@ public final class TouchBarQuotaView: NSView {
     }
 
     private func loadProviderIcon(for providerId: String) -> NSImage? {
-        let pid = providerId.lowercased()
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        let userPath = home.appendingPathComponent(".claudebar/icons/\(pid).png").path
-        if FileManager.default.fileExists(atPath: userPath), let img = NSImage(contentsOfFile: userPath) {
-            return img
+        let assetName = ProviderVisualIdentityLookup.iconAssetName(for: providerId)
+        guard let source = NSImage(named: assetName), source.size.width > 0, source.size.height > 0 else {
+            return nil
         }
-        let assetName = ProviderVisualIdentityLookup.iconAssetName(for: pid)
-        if let img = NSImage(named: assetName) {
-            return img
+        let size = NSSize(width: 14, height: 14)
+        let scale = min(size.width / source.size.width, size.height / source.size.height)
+        let fitted = NSSize(width: source.size.width * scale, height: source.size.height * scale)
+        let icon = NSImage(size: size, flipped: false) { bounds in
+            let rect = NSRect(x: (bounds.width - fitted.width) / 2,
+                              y: (bounds.height - fitted.height) / 2,
+                              width: fitted.width, height: fitted.height)
+            source.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
+            return true
         }
-        return nil
+        icon.isTemplate = false
+        return icon
     }
 }
