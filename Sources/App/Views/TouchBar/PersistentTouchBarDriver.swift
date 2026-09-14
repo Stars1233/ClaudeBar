@@ -153,9 +153,11 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
                     isMultiple: isMultipleQuota,
                     settings: settings
                 )
-                let pct = quota.map { max(0, min(100, Double($0.percentUsed))) } ?? 0.0
+                let pct = quota.map { max(0, min(100, Double($0.displayPercent(mode: settings.usageDisplayMode)))) } ?? 0.0
                 let resetText = quota.flatMap { formatResetText(for: $0) }
-                let status = quota?.status ?? snapshot?.overallStatus ?? .healthy
+                let status = (settings.burnRateWarningEnabled
+                    ? quota?.paceAwareStatus(burnRateThreshold: settings.burnRateThreshold)
+                    : quota?.status) ?? snapshot?.overallStatus ?? .healthy
                 let hasQuota = (quota != nil)
 
                 gauges.append(TouchBarProviderGauge(

@@ -150,7 +150,7 @@ public final class TouchBarQuotaView: NSView {
         let barY: CGFloat  = 3.0
         let barH: CGFloat  = 7.0
 
-        let pct = Int(gauge.percentUsed.rounded())
+        let pct = Int(gauge.percentUsed)
         let alarm = gauge.hasQuota && (pct >= 90)
 
         let ink: NSColor
