@@ -144,7 +144,8 @@ public struct TouchBarActiveProviderBadge: View {
         if let selected = monitor.selectedProvider {
             let name = selected.name
             if let lowest = selected.snapshot?.lowestQuota {
-                let pct = Int(lowest.percentRemaining.rounded())
+                let mode = AppSettings.shared.usageDisplayMode
+                let pct = Int(lowest.displayPercent(mode: mode))
                 return "\(name) \(pct)%"
             }
             return name
@@ -228,7 +229,8 @@ public struct TouchBarProviderItem: View {
 
     private var displayText: String {
         if let lowest = provider.snapshot?.lowestQuota {
-            let pct = Int(lowest.percentRemaining.rounded())
+            let mode = AppSettings.shared.usageDisplayMode
+            let pct = Int(lowest.displayPercent(mode: mode))
             return "\(provider.name) \(pct)%"
         }
         return provider.name

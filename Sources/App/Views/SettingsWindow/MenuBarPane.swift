@@ -197,8 +197,9 @@ private struct MenuBarChoices<Content: View>: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) { content }
-                .padding(.vertical, 2)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 2)
         }
-        .scrollClipDisabled()
+        .clipped()
     }
 }

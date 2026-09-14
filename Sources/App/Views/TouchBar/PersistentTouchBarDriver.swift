@@ -109,57 +109,69 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
             return []
         }
 
-        let providerId = settings.menuBarPercentageProviderId
-        // Find provider configured in Settings > Menu bar
-        guard let provider = monitor.provider(for: providerId) ?? monitor.selectedProvider else {
-            return []
+        let providerIds = settings.menuBarProviderIds
+        guard !providerIds.isEmpty else { return [] }
+
+        var gauges: [TouchBarProviderGauge] = []
+
+        for providerId in providerIds {
+            // Fall back to the globally selected provider only for the primary slot
+            guard let provider = monitor.provider(for: providerId) else { continue }
+            let config = settings.menuBarConfiguration(for: providerId)
+            let snapshot = provider.snapshot
+            let quotas = snapshot?.quotas ?? []
+
+            // Resolve primary quota: match by configured key or fallback to first quota
+            let primaryQuota = quotas.first { $0.quotaType.quotaKey == config.primaryQuotaKey }
+                ?? quotas.first
+
+            // Resolve secondary quota if configured for this provider
+            let secondaryQuota: UsageQuota?
+            if !config.secondaryQuotaKey.isEmpty,
+               config.secondaryQuotaKey != (primaryQuota?.quotaType.quotaKey ?? "") {
+                secondaryQuota = quotas.first { $0.quotaType.quotaKey == config.secondaryQuotaKey }
+            } else {
+                secondaryQuota = nil
+            }
+
+            let items: [UsageQuota?]
+            if let primaryQuota, let secondaryQuota {
+                items = [primaryQuota, secondaryQuota]
+            } else if let primaryQuota {
+                items = [primaryQuota]
+            } else {
+                // Provider exists but has no quota data yet (awaiting probe or unconfigured).
+                // Keep a placeholder so it appears on the Touch Bar.
+                items = [nil]
+            }
+
+            let isMultipleQuota = items.count > 1
+            for quota in items {
+                let (gaugeProviderId, gaugeName) = resolveIdentity(
+                    for: quota,
+                    provider: provider,
+                    isMultiple: isMultipleQuota,
+                    settings: settings
+                )
+                let pct = quota.map { max(0, min(100, Double($0.displayPercent(mode: settings.usageDisplayMode)))) } ?? 0.0
+                let resetText = quota.flatMap { formatResetText(for: $0) }
+                let status = (settings.burnRateWarningEnabled
+                    ? quota?.paceAwareStatus(burnRateThreshold: settings.burnRateThreshold)
+                    : quota?.status) ?? snapshot?.overallStatus ?? .healthy
+                let hasQuota = (quota != nil)
+
+                gauges.append(TouchBarProviderGauge(
+                    providerId: gaugeProviderId,
+                    name: gaugeName,
+                    percentUsed: pct,
+                    resetText: resetText,
+                    status: status,
+                    hasQuota: hasQuota
+                ))
+            }
         }
 
-        let snapshot = provider.snapshot
-        let quotas = snapshot?.quotas ?? []
-
-        // Resolve primary quota: match by configured key or fallback to first quota
-        let primaryQuota = quotas.first { $0.quotaType.quotaKey == settings.menuBarPercentageQuotaKey }
-            ?? quotas.first
-
-        // Resolve secondary quota if configured
-        let secondaryQuota: UsageQuota?
-        if !settings.menuBarSecondaryQuotaKey.isEmpty,
-           settings.menuBarSecondaryQuotaKey != settings.menuBarPercentageQuotaKey {
-            secondaryQuota = quotas.first { $0.quotaType.quotaKey == settings.menuBarSecondaryQuotaKey }
-        } else {
-            secondaryQuota = nil
-        }
-
-        var items: [UsageQuota?] = []
-        if let primaryQuota, let secondaryQuota {
-            items = [primaryQuota, secondaryQuota]
-        } else if let primaryQuota {
-            items = [primaryQuota]
-        } else {
-            items = [nil]
-        }
-
-        let isMultiple = items.count > 1
-        return items.map { quota in
-            let (gaugeProviderId, gaugeName) = resolveIdentity(
-                for: quota,
-                provider: provider,
-                isMultiple: isMultiple,
-                settings: settings
-            )
-            let pct = quota.map { max(0, min(100, Double($0.percentUsed))) } ?? 0.0
-            let resetText = quota.flatMap { formatResetText(for: $0) }
-            let status = quota?.status ?? snapshot?.overallStatus ?? .healthy
-
-            return TouchBarProviderGauge(
-                providerId: gaugeProviderId,
-                name: gaugeName,
-                percentUsed: pct,
-                resetText: resetText,
-                status: status
-            )
-        }
+        return gauges
     }
 
     private func resolveIdentity(
@@ -169,26 +181,18 @@ public final class PersistentTouchBarDriver: NSObject, NSTouchBarDelegate {
         settings: AppSettings
     ) -> (providerId: String, name: String) {
         if provider.id.lowercased() == "antigravity" {
-            // Antigravity is a multi-model provider hosting Claude and Gemini pools
-            let quotaKey = quota?.quotaType.quotaKey ?? settings.menuBarPercentageQuotaKey
-            let title = (quota?.menuBarTitle ?? quota?.compactTitle ?? quota?.quotaType.displayName ?? "").lowercased()
-            let group = (quota?.group ?? "").lowercased()
-            let keyLower = quotaKey.lowercased()
-
-            if keyLower.contains("claude") || title.contains("claude") || group.contains("claude") {
-                let suffix = (isMultiple && keyLower.contains("weekly")) ? " 7d" : ""
-                return ("claude", "Claude\(suffix)")
-            } else if keyLower.contains("gemini") || title.contains("gemini") || group.contains("gemini") {
-                let suffix = (isMultiple && keyLower.contains("weekly")) ? " 7d" : ""
-                return ("gemini", "Gemini\(suffix)")
+            if isMultiple, let quota {
+                let compact = quota.menuBarTitle ?? quota.compactTitle ?? quota.quotaType.displayName
+                if !compact.isEmpty {
+                    return (provider.id, compact)
+                }
             }
-            return ("antigravity", "Antigravity")
+            return (provider.id, "Antigravity")
         }
 
-        // For all other providers (Claude, Codex, Gemini, Grok, etc.)
         let baseName = provider.name
         if isMultiple, let quota {
-            let compact = quota.compactTitle ?? quota.quotaType.shortLabel
+            let compact = quota.menuBarTitle ?? quota.compactTitle ?? quota.quotaType.shortLabel
             if !compact.isEmpty, !baseName.localizedCaseInsensitiveContains(compact) {
                 return (provider.id, "\(baseName) \(compact)")
             }
