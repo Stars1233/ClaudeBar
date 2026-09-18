@@ -12,6 +12,15 @@ enum ModelPricing {
 
     /// Known model pricing (per 1M tokens in USD)
     static let prices: [String: Price] = [
+        // Claude Opus 5 / 4.8 — Opus 5 launched 2026-07-24 at 4.8's price
+        // point ($5/$25, cache write 1.25x, read 0.1x).
+        // Sonnet 5: the planned $3/$15 step-up (2026-09-01) was cancelled on
+        // 2026-08-10; $2/$10 is the permanent standard rate.
+        "claude-opus-5": Price(inputPer1M: 5, outputPer1M: 25, cacheWritePer1M: 6.25, cacheReadPer1M: 0.50),
+        "claude-opus-5-thinking": Price(inputPer1M: 5, outputPer1M: 25, cacheWritePer1M: 6.25, cacheReadPer1M: 0.50),
+        "claude-opus-4-8": Price(inputPer1M: 5, outputPer1M: 25, cacheWritePer1M: 6.25, cacheReadPer1M: 0.50),
+        "claude-sonnet-5": Price(inputPer1M: 2, outputPer1M: 10, cacheWritePer1M: 2.50, cacheReadPer1M: 0.20),
+
         // Claude Opus 4
         "claude-opus-4-20250514": Price(inputPer1M: 15, outputPer1M: 75, cacheWritePer1M: 18.75, cacheReadPer1M: 1.50),
 
