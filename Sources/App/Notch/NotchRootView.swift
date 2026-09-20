@@ -17,7 +17,8 @@ struct NotchRootView: View {
     private var theme: any AppThemeProvider {
         ThemeRegistry.shared.resolveTheme(
             for: AppSettings.shared.themeMode,
-            systemColorScheme: .dark
+            systemColorScheme: .dark,
+            statusColors: AppSettings.shared.statusColorPolicy
         )
     }
 

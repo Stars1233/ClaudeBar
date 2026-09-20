@@ -34,6 +34,7 @@ final class StatusItemLabelDriver {
     private var streamConsumer: Task<Void, Never>?
     private var wakeObserver: NSObjectProtocol?
     private var screenObserver: NSObjectProtocol?
+    private var appearanceObserver: NSKeyValueObservation?
 
     /// Polls for a status item we can actually draw into. See
     /// `startAttachLifecycle` for why MenuBarExtraAccess alone isn't enough.
@@ -84,6 +85,11 @@ final class StatusItemLabelDriver {
         /// content (not read at draw time) so changing the size in Settings
         /// invalidates the observation sync and repaints the label.
         var stackedSize: MenuBarStackedSize = .default
+        /// Carried like `stackedSize` so a Settings change repaints.
+        var statusColors: StatusColorPolicy = .default
+        /// The High Contrast palette is per-appearance and `render` skips
+        /// identical content, so an appearance flip must change the content.
+        var isDarkAppearance: Bool = true
         /// Blink phase for an H:MM countdown's separator colon. Only alternates
         /// while the label actually holds a countdown colon, so a "2d" or "45m"
         /// label keeps comparing equal across ticks and never repaints for the
@@ -154,6 +160,14 @@ final class StatusItemLabelDriver {
                 Task { @MainActor in self?.labelSync?.renderNow() }
             }
         }
+
+        // Nothing observable feeds `LabelContent.isDarkAppearance`; the
+        // button's appearance flips on a system change and, on macOS 26,
+        // when the wallpaper behind the bar changes brightness.
+        appearanceObserver?.invalidate()
+        appearanceObserver = statusItem.button?.observe(\.effectiveAppearance) { [weak self] _, _ in
+            Task { @MainActor in self?.labelSync?.renderNow() }
+        }
     }
 
     /// Defense-in-depth repaint around dropdown open/close (the KVO observer
@@ -209,8 +223,18 @@ final class StatusItemLabelDriver {
             themeModeId: settings.themeMode,
             stacked: settings.menuBarStackedEnabled,
             stackedSize: settings.menuBarStackedSize,
+            statusColors: settings.statusColorPolicy,
+            isDarkAppearance: isDarkAppearance,
             colonVisible: hasCountdownColon ? blinkPhase : true
         )
+    }
+
+    /// Read from the button, not `NSApp`: on macOS 26 the bar is transparent
+    /// and picks light or dark ink from the wallpaper behind it, independent
+    /// of the system appearance setting.
+    private var isDarkAppearance: Bool {
+        let appearance = statusItem?.button?.effectiveAppearance ?? NSApp.effectiveAppearance
+        return appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
     }
 
     /// Bridges a momentarily-missing menu-bar label. The configured quota window
@@ -252,7 +276,7 @@ final class StatusItemLabelDriver {
         if content == lastContent, let lastImage, button.image === lastImage {
             return
         }
-        let image = Self.compose(content, theme: resolvedTheme(for: content.themeModeId))
+        let image = Self.compose(content, theme: resolvedTheme(for: content))
         lastContent = content
         lastImage = image
         button.image = image
@@ -266,10 +290,12 @@ final class StatusItemLabelDriver {
         button.setAccessibilityLabel(tooltip.isEmpty ? "ClaudeBar" : tooltip)
     }
 
-    private func resolvedTheme(for themeModeId: String) -> any AppThemeProvider {
-        let scheme: ColorScheme = NSApp.effectiveAppearance
-            .bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light
-        return ThemeRegistry.shared.resolveTheme(for: themeModeId, systemColorScheme: scheme)
+    private func resolvedTheme(for content: LabelContent) -> any AppThemeProvider {
+        ThemeRegistry.shared.resolveTheme(
+            for: content.themeModeId,
+            systemColorScheme: content.isDarkAppearance ? .dark : .light,
+            statusColors: content.statusColors
+        )
     }
 
     // MARK: - Image Composition
