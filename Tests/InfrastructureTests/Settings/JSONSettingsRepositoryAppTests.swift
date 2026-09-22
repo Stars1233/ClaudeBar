@@ -380,4 +380,48 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo2.menuBarPercentageProviderId() == "codex")
         #expect(repo2.menuBarPercentageQuotaKey() == "model:gpt-5")
     }
+
+    // MARK: - Status Colors
+
+    @Test
+    func `status colors default to no overrides and high contrast off`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        #expect(repo.statusColorOverrides().isEmpty)
+        #expect(repo.highContrastEnabled() == false)
+    }
+
+    @Test
+    func `status color overrides and high contrast survive reload`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        var overrides = StatusColorOverrides.none
+        overrides[.critical] = RGBColorValue(hex: "#B81F1F")
+        overrides[.healthy] = RGBColorValue(hex: "#17703A")
+        repo.setStatusColorOverrides(overrides)
+        repo.setHighContrastEnabled(true)
+
+        let reloaded = JSONSettingsRepository(store: JSONSettingsStore(
+            fileURL: dir.appendingPathComponent("settings.json")))
+        #expect(reloaded.statusColorOverrides() == overrides)
+        #expect(reloaded.statusColorOverrides()[.warning] == nil)
+        #expect(reloaded.statusColorOverrides()[.depleted] == nil)
+        #expect(reloaded.highContrastEnabled() == true)
+    }
+
+    @Test
+    func `clearing all status color overrides removes the key`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        var overrides = StatusColorOverrides.none
+        overrides[.warning] = RGBColorValue(hex: "#8A5A00")
+        repo.setStatusColorOverrides(overrides)
+        repo.setStatusColorOverrides(.none)
+
+        let reloaded = JSONSettingsRepository(store: JSONSettingsStore(
+            fileURL: dir.appendingPathComponent("settings.json")))
+        #expect(reloaded.statusColorOverrides().isEmpty)
+        let raw = try? String(contentsOf: dir.appendingPathComponent("settings.json"), encoding: .utf8)
+        #expect(raw?.contains("statusColorOverrides") == false)
+    }
 }

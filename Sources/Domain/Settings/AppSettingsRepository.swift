@@ -93,6 +93,16 @@ public protocol AppSettingsRepository: Sendable {
     func burnRateThreshold() -> Double
     func setBurnRateThreshold(_ threshold: Double)
 
+    // MARK: - Status Colors
+
+    /// The user's own status colors, overriding the theme per status.
+    func statusColorOverrides() -> StatusColorOverrides
+    func setStatusColorOverrides(_ overrides: StatusColorOverrides)
+
+    /// Whether the built-in appearance-aware High Contrast palette is on.
+    func highContrastEnabled() -> Bool
+    func setHighContrastEnabled(_ enabled: Bool)
+
     // MARK: - Updates
 
     func receiveBetaUpdates() -> Bool

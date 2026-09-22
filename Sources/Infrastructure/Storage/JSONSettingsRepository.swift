@@ -246,6 +246,35 @@ public final class JSONSettingsRepository:
         store.write(value: threshold, key: "app.burnRateThreshold")
     }
 
+    // MARK: - Status Colors
+
+    public func statusColorOverrides() -> StatusColorOverrides {
+        guard let stored: [String: Any] = store.read(key: "app.statusColorOverrides"),
+              let data = try? JSONSerialization.data(withJSONObject: stored),
+              let overrides = try? JSONDecoder().decode(StatusColorOverrides.self, from: data) else {
+            return .none
+        }
+        return overrides
+    }
+
+    public func setStatusColorOverrides(_ overrides: StatusColorOverrides) {
+        if overrides.isEmpty {
+            store.write(value: nil, key: "app.statusColorOverrides")
+            return
+        }
+        guard let data = try? JSONEncoder().encode(overrides),
+              let value = try? JSONSerialization.jsonObject(with: data) else { return }
+        store.write(value: value, key: "app.statusColorOverrides")
+    }
+
+    public func highContrastEnabled() -> Bool {
+        store.read(key: "app.highContrastEnabled") ?? false
+    }
+
+    public func setHighContrastEnabled(_ enabled: Bool) {
+        store.write(value: enabled, key: "app.highContrastEnabled")
+    }
+
     public func receiveBetaUpdates() -> Bool {
         store.read(key: "app.receiveBetaUpdates") ?? false
     }

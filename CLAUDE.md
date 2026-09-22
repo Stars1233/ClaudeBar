@@ -134,7 +134,7 @@ Sources/App/Settings/
 **Key namespacing in settings.json:**
 | Namespace | Examples |
 |-----------|---------|
-| `app.*` | `app.themeMode`, `app.showDailyUsageCards`, `app.backgroundSyncEnabled` |
+| `app.*` | `app.themeMode`, `app.showDailyUsageCards`, `app.backgroundSyncEnabled`, `app.statusColorOverrides`, `app.highContrastEnabled` |
 | `providers.{id}.*` | `providers.claude.isEnabled`, `providers.copilot.isEnabled` |
 | `claude.*` | `claude.probeMode` |
 | `copilot.*` | `copilot.probeMode`, `copilot.authEnvVar` |

@@ -36,7 +36,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var searchKeywords: [String] {
         switch self {
         case .general: ["launch", "login", "overview", "daily usage", "burn rate", "threshold"]
-        case .appearance: ["theme", "dark", "light", "cli", "christmas", "import"]
+        case .appearance: ["theme", "dark", "light", "cli", "christmas", "import", "color", "contrast", "status", "high contrast"]
         case .menuBar: ["percentage", "duration", "quota display", "stacked", "status bar"]
         case .providers: ["claude", "codex", "gemini", "copilot", "zai", "bedrock", "kimi", "minimax", "enable"]
         case .syncAlerts: ["background", "refresh", "interval", "notification"]

@@ -309,6 +309,38 @@ public final class AppSettings {
         }
     }
 
+    // MARK: - Status Color Settings
+
+    /// Per-status user colors; nil defers to High Contrast, then the theme.
+    public var statusColorOverrides: StatusColorOverrides {
+        didSet {
+            repository.setStatusColorOverrides(statusColorOverrides)
+        }
+    }
+
+    /// Whether the built-in appearance-aware palette replaces the theme's status colors (default: false)
+    public var highContrastEnabled: Bool {
+        didSet {
+            repository.setHighContrastEnabled(highContrastEnabled)
+        }
+    }
+
+    /// Reading this inside a view body or a sync's `read` tracks both settings.
+    public var statusColorPolicy: StatusColorPolicy {
+        StatusColorPolicy(overrides: statusColorOverrides, highContrastEnabled: highContrastEnabled)
+    }
+
+    public func setStatusColorOverride(_ color: RGBColorValue?, for status: QuotaStatus) {
+        var updated = statusColorOverrides
+        updated[status] = color
+        statusColorOverrides = updated
+    }
+
+    /// Clears custom colors only; High Contrast is untouched.
+    public func resetStatusColors() {
+        statusColorOverrides = .none
+    }
+
     // MARK: - Update Settings
 
     /// Whether to receive beta updates (default: false)
@@ -354,6 +386,8 @@ public final class AppSettings {
         self.receiveBetaUpdates = repository.receiveBetaUpdates()
         self.burnRateWarningEnabled = repository.burnRateWarningEnabled()
         self.burnRateThreshold = repository.burnRateThreshold()
+        self.statusColorOverrides = repository.statusColorOverrides()
+        self.highContrastEnabled = repository.highContrastEnabled()
         self.showDailyUsageCards = repository.showDailyUsageCards()
         self.notchEnabled = repository.notchEnabled()
         self.touchBarEnabled = repository.touchBarEnabled()
