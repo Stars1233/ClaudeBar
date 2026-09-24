@@ -100,7 +100,7 @@ NotifySettingsRepository (standalone, NOT a provider sub-protocol)
 └── Handles: notifyActivityId(), notifyWidgetId()
 ```
 
-Notify! is a publish **destination**, not a provider: ClaudeBar writes quota state to it rather than reading a quota from it, so it sits beside `HookSettingsRepository` rather than under `ProviderSettingsRepository`. See [docs/features/notify.md](docs/features/notify.md).
+Notify! is a publish **destination**, not a provider: ClaudeBar writes quota state to it rather than reading a quota from it, so it sits beside `HookSettingsRepository` rather than under `ProviderSettingsRepository`. See [docs/features/notify/README.md](docs/features/notify/README.md).
 
 **Which repository a provider takes:** read its initializer in `Sources/Domain/Provider/<Name>/`. Providers with their own config (e.g. Claude, Codex, Kimi, Z.ai, Copilot, Bedrock, MiniMax, DeepSeek, Alibaba, Vercel) take a sub-protocol; the rest take the base `ProviderSettingsRepository`.
 

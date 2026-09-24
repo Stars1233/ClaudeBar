@@ -200,7 +200,7 @@ BetterTouchTool can run shell scripts and format the widget background color and
 
 ### CLI Helper Script (`touchbar_status.py`)
 
-The companion script [`scripts/touchbar_status.py`](../../scripts/touchbar_status.py) parses `~/.claudebar/status.json` for external integrations:
+The companion script [`scripts/touchbar_status.py`](../../../scripts/touchbar_status.py) parses `~/.claudebar/status.json` for external integrations:
 
 | Flag | Description |
 |---|---|

@@ -87,7 +87,7 @@ ClaudeBar features native, system-wide Touch Bar integration for MacBook Pro mod
 - **One-Tap Access**: Tap anywhere on the quota gauges on the Touch Bar to instantly summon the full ClaudeBar dropdown popover (`claudebar://open`).
 
 > [!TIP]
-> For detailed architecture, Touch Bar configuration, and customization details, see the [Full Touch Bar Guide](docs/touchbar/TOUCHBAR_GUIDE.md).
+> For detailed architecture, Touch Bar configuration, and customization details, see the [Full Touch Bar Guide](docs/features/touch-bar/README.md).
 
 
 ## MacBook Notch Live Activity
@@ -101,7 +101,7 @@ ClaudeBar can render Claude Code's session and quota state directly in your MacB
 - **Virtual Notch**: Displays without a physical notch (or external monitors) automatically receive an elegant virtual notch sized to the menu bar.
 
 > [!NOTE]
-> Read the complete documentation at [docs/features/notch-live-activity.md](docs/features/notch-live-activity.md).
+> Read the complete documentation at [docs/features/notch/README.md](docs/features/notch/README.md).
 
 ## Requirements
 
@@ -128,7 +128,7 @@ ClaudeBar can render Claude Code's session and quota state directly in your MacB
   - [Grok Build](https://docs.x.ai) - Tracks xAI credits using CLI OAuth credentials
   - [Command Code](https://commandcode.ai) - Tracks 5-hour, weekly, and monthly credit windows from the same API the `cmd` CLI uses
   - [Vercel](https://vercel.com) - Token-based quota tracking
-  - [Custom Extensions](docs/features/extensions.md) - Drop custom scripts into `~/.claudebar/extensions/`
+  - [Custom Extensions](docs/features/extensions/README.md) - Drop custom scripts into `~/.claudebar/extensions/`
 
 ### Provider Setup Guides
 
@@ -195,7 +195,7 @@ All three surfaces can be turned off separately, and you can choose which quota 
 
 Note that this sends provider names, quota window labels and remaining percentages to a third-party service. The device token is stored in the Keychain, not in `~/.claudebar/settings.json`. A build you compile yourself is ad-hoc signed and the Keychain refuses it, so on those the token falls back to ClaudeBar's app credentials and the pane says so.
 
-Full details: [docs/features/notify.md](docs/features/notify.md).
+Full details: [docs/features/notify/README.md](docs/features/notify/README.md).
 
 ## Installation
 
@@ -315,7 +315,7 @@ Imported themes are saved in `~/.claudebar/themes/` and persist across restarts.
 
 Create your own provider monitoring modules by dropping a manifest and script into `~/.claudebar/extensions/`. Extensions can define quota grids, daily usage cards, and automated HTTP health checks.
 
-See [docs/features/extensions.md](docs/features/extensions.md) for full specification and example implementations.
+See [docs/features/extensions/README.md](docs/features/extensions/README.md) for full specification and example implementations.
 
 ## Contributing
 

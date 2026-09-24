@@ -42,7 +42,7 @@ public struct ClaudeDailyUsageAnalyzer: DailyUsageAnalyzing, Sendable {
         // parallel tool calls, and resumed/branched session files. Collapse duplicates by
         // (message.id, requestId) — keeping the last/most-complete entry — before summing,
         // so cost/token totals match `claude /cost` instead of inflating several-fold.
-        // See docs/plans/2026-06-09-daily-usage-dedup-design.md and issue #207.
+        // See docs/features/daily-usage/design.md and issue #207.
         let allRecords = deduplicateLastWins(parsedRecords)
 
         AppLog.probes.info("DailyUsage: \(parsedRecords.count) raw records, \(allRecords.count) after dedup")

@@ -2,7 +2,7 @@
 
 ClaudeBar renders session and quota state into the MacBook notch — a Dynamic Island for Claude Code, built on the hook stream and `QuotaMonitor` that already exist.
 
-**Mockup:** [`docs/mockups/notch-live-activity.html`](../mockups/notch-live-activity.html)
+**Mockup:** [`docs/mockups/notch-live-activity.html`](../../mockups/notch-live-activity.html)
 
 ---
 
