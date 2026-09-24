@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.4.93] - 2026-09-24
+
 ### Added
 - Custom status colors. Settings → Appearance → Status Colors has a color well for each level (healthy, warning, critical, depleted). A custom color overrides the theme in the menu bar label, the popover, the notch, and Settings. "Reset to defaults" restores the theme. ([#200](https://github.com/tddworks/ClaudeBar/issues/200))
 - High Contrast switch in the same card: a built-in palette that clears 4.5:1 on both light and dark menu bars and follows the bar's appearance. The stock theme greens and ambers measured under 2:1 on a light menu bar. Custom colors win over High Contrast for the levels you set. ([#200](https://github.com/tddworks/ClaudeBar/issues/200))
@@ -1071,7 +1075,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar interface with quota display
 - Automatic refresh every 5 minutes
 
-[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.92...HEAD
+[Unreleased]: https://github.com/tddworks/ClaudeBar/compare/v0.4.93...HEAD
+[0.4.93]: https://github.com/tddworks/ClaudeBar/compare/v0.4.92...v0.4.93
 [0.4.92]: https://github.com/tddworks/ClaudeBar/compare/v0.4.91...v0.4.92
 [0.4.91]: https://github.com/tddworks/ClaudeBar/compare/v0.4.90...v0.4.91
 [0.4.90]: https://github.com/tddworks/ClaudeBar/compare/v0.4.89...v0.4.90
