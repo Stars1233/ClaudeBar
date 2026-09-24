@@ -117,6 +117,33 @@ struct AntigravityCloudCodeFallbackTests {
         #expect(authHeaders.allSatisfy { $0 == "Bearer ya29.valid" })
     }
 
+    /// `pgrep` matching nothing exits with empty output, which the PTY runner reports as
+    /// `RunError.timedOut` (issue #301). That still means "not running", so fall back.
+    @Test
+    func `probe falls back to Cloud Code when pgrep output is empty`() async throws {
+        let executor = MockCLIExecutor()
+        given(executor)
+            .execute(binary: .any, args: .any, input: .any, timeout: .any, workingDirectory: .any, autoResponses: .any)
+            .willProduce { binary, _, _, _, _, _ in
+                if binary.hasSuffix("security") { return CLIResult(output: Self.keychainBlob(), exitCode: 0) }
+                throw InteractiveRunner.RunError.timedOut
+            }
+        let remote = MockNetworkClient()
+        given(remote).request(.any).willProduce { request in
+            let url = request.url!
+            if url.path.hasSuffix("retrieveUserQuotaSummary") {
+                return self.http(200, Self.summaryJSON, url: url)
+            }
+            return self.http(404, "", url: url)
+        }
+
+        let probe = AntigravityUsageProbe(cliExecutor: executor, remoteNetworkClient: remote)
+        let snapshot = try await probe.probe()
+
+        #expect(snapshot.quotas.count == 4)
+        #expect(snapshot.quotas[0].percentRemaining == 90.0)
+    }
+
     @Test
     func `probe falls back to fetchAvailableModels when summary endpoint is missing`() async throws {
         let executor = makeExecutor(process: Self.noProcessOutput, keychain: CLIResult(output: Self.keychainBlob(), exitCode: 0))
