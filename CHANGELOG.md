@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Custom status colors. Settings → Appearance → Status Colors has a color well for each level (healthy, warning, critical, depleted). A custom color overrides the theme in the menu bar label, the popover, the notch, and Settings. "Reset to defaults" restores the theme. ([#200](https://github.com/tddworks/ClaudeBar/issues/200))
 - High Contrast switch in the same card: a built-in palette that clears 4.5:1 on both light and dark menu bars and follows the bar's appearance as it changes. The stock theme greens and ambers measured under 2:1 on a light menu bar. Custom colors win over High Contrast for the levels you set. ([#200](https://github.com/tddworks/ClaudeBar/issues/200))
 
+### Fixed
+- Antigravity now shows your quota with the app closed. With no language server running, the probe reported "Command did not complete within the timeout" on every refresh and never reached the Cloud Code fallback that reads your stored sign-in. ([#301](https://github.com/tddworks/ClaudeBar/issues/301))
+
 ---
 
 ## [0.4.92] - 2026-09-12

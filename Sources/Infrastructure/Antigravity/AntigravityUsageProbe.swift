@@ -205,17 +205,24 @@ public struct AntigravityUsageProbe: UsageProbe {
 
     private func detectProcess() async throws -> ProcessInfo {
         // Use pgrep for more reliable process detection (avoids PTY buffering issues)
-        let result = try await cliExecutor.execute(
-            binary: "/usr/bin/pgrep",
-            args: ["-lf", "language_server"],
-            input: nil,
-            timeout: timeout,
-            workingDirectory: nil,
-            autoResponses: [:]
-        )
+        let output: String
+        do {
+            output = try await cliExecutor.execute(
+                binary: "/usr/bin/pgrep",
+                args: ["-lf", "language_server"],
+                input: nil,
+                timeout: timeout,
+                workingDirectory: nil,
+                autoResponses: [:]
+            ).output
+        } catch InteractiveRunner.RunError.timedOut {
+            // pgrep matching nothing exits with empty output, which the PTY runner
+            // reports as a timeout. That means "not running" (#301).
+            output = ""
+        }
 
         // Handle different line endings
-        let normalizedOutput = result.output
+        let normalizedOutput = output
             .replacingOccurrences(of: "\r\n", with: "\n")
             .replacingOccurrences(of: "\r", with: "\n")
         let lines = normalizedOutput.split(separator: "\n", omittingEmptySubsequences: true)
