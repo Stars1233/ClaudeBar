@@ -211,6 +211,7 @@ struct ClaudeBarApp: App {
             configRepository: AppSettings.shared.extensionConfig
         )
         let extensionProviders = extensionRegistry.loadExtensions(into: monitor)
+        ProviderVisualIdentityLookup.registerExtensionIcons(from: extensionProviders)
         if !extensionProviders.isEmpty {
             AppLog.providers.info("Loaded \(extensionProviders.count) extension provider(s): \(extensionProviders.map(\.name).joined(separator: ", "))")
         }
