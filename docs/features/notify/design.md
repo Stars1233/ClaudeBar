@@ -1,4 +1,10 @@
-# Notify!
+---
+description: Contributor research behind publishing to Notify!. Covers the gateway API and its id namespaces, the payload rules, publish cadence and keep-alive, error recovery, privacy, and the designs that were rejected.
+---
+
+# Notify!: design
+
+User guide: [README.md](README.md).
 
 ClaudeBar already knows every quota worth knowing, and the phone is where the user actually looks. [Notify!](https://getnotifyapp.com) already exists, runs on Mac and iOS and reaches anything else through web push, and has a documented gateway API, so ClaudeBar can put a quota on a Lock Screen and a Home Screen without shipping an iOS app of its own.
 
@@ -15,7 +21,7 @@ Every surface ClaudeBar has is on the Mac, and every one of them needs the Mac a
 | **User notifications** | Transient, and delivered to the Mac. Focus modes swallow them. |
 | **Notch** | The best of the four and still the same machine, the same lid, the same desk. |
 
-The question the app exists to answer is *"can I start another long run?"*, and it gets asked away from the desk as often as at it: in a meeting, on a train, at 7am before opening the laptop. `QuotaAlerter` firing at 95% into a sleeping Mac is a notification nobody reads.
+The question the app exists to answer is *"can I start another long run?"*, and it gets asked away from the desk as often as at it: in a meeting, on a train, at 7am before opening the laptop. `QuotaAlerter` firing a critical-quota notification into a sleeping Mac is a notification nobody reads.
 
 The obvious fix is an iPhone app, and it is enormous out of proportion to the payload. It means an App Store presence and review queue, an APNs push service to run, an account system to pair a Mac with a phone, a widget extension, a Live Activity extension, and a second release train alongside the Sparkle one. All of that to render one percentage.
 
@@ -206,35 +212,9 @@ Two deadlines, both two hours, both measured from the last write, and one heartb
 
 ## Architecture
 
-Notify! is a **destination**, not a provider. `QuotaMonitor` remains the single source of truth per `CLAUDE.md`, and nothing in this feature reads a quota from anywhere: it reads the ones already in memory. See [docs/architecture/ARCHITECTURE.md](../architecture/ARCHITECTURE.md) for the layering this sits inside.
+Notify! is a **destination**, not a provider. `QuotaMonitor` remains the single source of truth per `AGENTS.md`, and nothing in this feature reads a quota from anywhere: it reads the ones already in memory. See [docs/architecture/ARCHITECTURE.md](../../architecture/ARCHITECTURE.md) for the layering this sits inside.
 
-```
-Sources/Domain/Notify/
-├── NotifyLimits.swift              # the gateway's field limits, enforced at construction
-├── NotifyDeviceLink.swift          # device id + token; NotifyDeviceKind; NotifyDeviceInfo
-├── NotifyTile.swift                # NotifyMetric, NotifyTile: the content both tiles carry
-├── NotifyGauge.swift               # the Lock Screen widget's content; progress is the gauge
-├── NotifyPayload.swift             # NotifyQuotaReading, NotifyGaugeSelection, NotifyPayload
-├── NotifyPayloadBuilder.swift      # readings to one tile + a gauge; pure, the whole decision layer
-├── NotifyPublishGate.swift         # whether a payload is worth a request; pure, clock free
-├── NotifyPublishError.swift        # every way a publish fails, and the remedy each implies
-├── NotifyPublishing.swift          # @Mockable protocol; the App layer's only view of the API
-├── NotifySettingsRepository.swift  # NotifyConstants + the settings protocol
-└── NotifyTint.swift                # QuotaStatus.notifyTintHex, NotifySymbol.quota
-
-Sources/Infrastructure/Notify/
-└── NotifyGatewayClient.swift       # the only file that knows HTTP exists
-
-Sources/Infrastructure/Storage/
-└── JSONSettingsRepository.swift    # + NotifySettingsRepository (notify.* keys, token to Keychain)
-
-Sources/App/Notify/
-├── NotifyPublishDriver.swift           # two ObservationRenderSyncs plus a one minute tick
-└── QuotaMonitor+NotifyReadings.swift   # flattens main actor providers into Sendable readings
-
-Sources/App/Views/SettingsWindow/
-└── NotifyPane.swift                # link, test, surface switches, gauge picker, publish now
-```
+Domain holds every decision as pure value types: the device link and its kind, the field limits, the tile and gauge content, the payload builder, the publish gate and the error cases, plus the `@Mockable` `NotifyPublishing` port. Infrastructure has one implementation, `NotifyGatewayClient`. The App layer owns `NotifyPublishDriver`, `QuotaMonitor+NotifyReadings` and `NotifyPane`.
 
 The dependency direction is the usual one. Domain declares `NotifyPublishing` and knows nothing about URLs; `NotifyGatewayClient` in Infrastructure is the implementation and the only place `URLRequest` appears; the App layer owns the driver, because that is where `QuotaMonitor` and `AppSettings` both are.
 
@@ -258,40 +238,9 @@ The device token is the exception and never appears here. It goes to the secure 
 
 Everything that decides anything is a pure value type in Domain, with no clock, no network and no settings lookups of its own. `NotifyPayloadBuilder` takes readings and a selection and returns a payload; `NotifyPublishGate` takes a payload, the last record and a `now` and returns one boolean per surface; `NotifyDeviceLink` and `NotifyLimits` are parsers. `NotifyGatewayClient.failure(status:data:retryAfterHeader:)` is static and takes the raw body, so every status code can be driven through it without a network stub.
 
-`NotifyPublishDriver` is deliberately free of judgement, because there is no App test target: anything decided there would be decided untested. It gathers state, asks the builder and the gate, and performs the I/O the answer implies.
+`NotifyPublishDriver` is deliberately free of judgement. It was written when there was no App test target, so anything decided there would have gone untested; `Tests/AppTests` exists now, but keeping the driver to I/O still keeps the rules in the pure Domain types where they're cheapest to test. It gathers state, asks the builder and the gate, and performs the I/O the answer implies.
 
-Rules under test, no mocks required:
-
-- the worst quota leads, and the tile takes its tint, bar and countdown from that one
-- ordering is deterministic to the last tiebreak, so two payloads from the same readings compare equal
-- at most six metrics reach the tile, and a seventh reading is dropped rather than failing the whole tile
-- labels omit the provider name when every reading is from the same provider, and regain it when a second appears
-- a percentage is remaining: a 42% quota publishes `progress: 42`, never 58
-- a money based quota publishes its formatted balance with no unit, and the tile's bar falls through to the worst quota that has a percentage
-- a gauge selection naming a window that has stopped reporting falls back to the worst quota rather than publishing nothing
-- the Live Activity and the Home Screen tile are one built value, so a payload with both surfaces on carries the identical tile twice and the two can never disagree about the same quota
-- the gate holds a changed tile back inside its minimum interval, and releases it once the interval has passed
-- the gate republishes an unchanged tile after the keep alive interval, and only then
-- the Home Screen tile has its own fifteen minute interval and takes the keep alive too, so an unchanged one is still rewritten before its two hour freshness deadline; the gauge has the interval and no keep alive
-- the record merges the three surfaces one at a time, so a surface the gate held back still remembers what it is actually showing rather than being filed as having sent the payload that was built
-- the gate never writes a surface the payload left nil, because nil means the user switched that surface off
-- the two fields the pane asks for, a bare `id token` pair, and a whole pasted notification URL all yield the same link
-- a token the Keychain refuses is still stored, still round trips, is reported as not secure, and still never reaches `settings.json`
-- an id outside 8 to 32 alphanumeric characters is refused locally, before any request exists
-- `GRP` plus 5 reads as a group, `WB` plus 14 as a browser, `MC` plus 14 as a Mac, `IO` plus 14 and a bare 8 characters as an app device, with the group prefix winning the overlap at eight characters
-- an id in none of those namespaces, of any length, carries all three surfaces, because the rule names what cannot publish rather than what may
-- a Mac and a browser can keep both widgets and cannot show a Live Activity, a group can keep none of the three, and an app device and an id from a namespace that does not exist yet can do everything
-- the two widgets always answer alike for the same id, because the Home Screen rule is the Lock Screen rule rather than a copy of it
-- each reason is present exactly when its own surface is unavailable, so no working control is explained away and no dead one is left unaccounted for
-- a Live Activity aimed at a Mac, a browser or a group fails before a request exists, and so does either widget aimed at a group, each with the sentence that names what to paste instead
-- an over-long label shortens; an empty one is refused; a tint that is not 6 or 8 hex digits is dropped rather than failing the publish
-- a percentage outside 0 to 100 clamps, because a quota can legitimately report a negative remainder
-- each status maps to the one error whose remedy differs: 403 to rejected credentials, 409 to unavailable, 410 to tile gone, 429 to backoff, 502 with `deliveryState: "unknown"` to delivery unconfirmed, and 502 with `not-delivered` to a wait
-- a 503 on the Home Screen route is a switched-off surface rather than a failure: retryable, and carrying its own "ClaudeBar will try again later" sentence when the gateway named none
-- a 409 on the Home Screen route is a rejected payload rather than a Live Activity waiting on the app being opened, because the shared mapping's reading of a 409 belongs to the route it was written for
-- the Home Screen write sends the same content body as the Live Activity write, since both go through the one `tileBody`
-- every field ClaudeBar drives is present in the body on every write, as an explicit null when it has no value, while the fields it never drives stay unmentioned
-- a 429's wait comes from the body's own seconds first, the `Retry-After` header second, and 30 minutes (the ladder's first rung) when neither is present
+The Domain tests (`Tests/DomainTests/Notify/`) and `NotifyGatewayClient` tests pin every rule in this document, including each status-code mapping above.
 
 ---
 

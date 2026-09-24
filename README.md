@@ -1,4 +1,6 @@
-# ClaudeBar
+# <img src="docs/app-icon.png" width="36" height="36" valign="middle" alt=""> ClaudeBar
+
+**Every AI coding quota in your menu bar.**
 
 [![Build](https://github.com/tddworks/ClaudeBar/actions/workflows/build.yml/badge.svg)](https://github.com/tddworks/ClaudeBar/actions/workflows/build.yml)
 [![Tests](https://github.com/tddworks/ClaudeBar/actions/workflows/tests.yml/badge.svg)](https://github.com/tddworks/ClaudeBar/actions/workflows/tests.yml)
@@ -8,387 +10,81 @@
 [![Platform](https://img.shields.io/badge/Platform-macOS%2015-blue.svg)](https://developer.apple.com)
 [![Homebrew](https://img.shields.io/badge/Homebrew-Install-brightgreen.svg)](https://formulae.brew.sh/cask/claudebar)
 
-A macOS menu bar application that monitors AI coding assistant usage quotas in real time. Keep track of your Claude, OpenAI Codex, Google Gemini, GitHub Copilot, Google Antigravity, Cursor, AWS Bedrock, AWS Kiro, Kimi, DeepSeek, Mistral, MiniMax, Alibaba Coding Plan, Z.ai, Amp Code, OpenCode Go, Oh My Pi, Grok Build, Command Code, and Vercel at a glance.
-
-Featuring full **MacBook Touch Bar integration** with persistent, centered multi-provider quota gauges, **MacBook Notch Live Activity**, **Multi-Account Switching**, and Raycast-style **User Extensions**.
+A macOS menu bar app that shows how much of your AI coding quota is left — Claude, Codex, Gemini, Copilot, Cursor and 15 more — with reset countdowns and a notification before you run out.
 
 <table align="center">
   <tr>
-    <td align="center"><img src="docs/screenshots/Screenshot-dark.png" alt="Dark Mode" width="360"/><br/><em>Dark Mode</em></td>
-    <td align="center"><img src="docs/screenshots/Screenshot-light.png" alt="Light Mode" width="360"/><br/><em>Light Mode</em></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="docs/screenshots/Screenshot-cli-dark.png" alt="CLI Theme" width="360"/><br/><em>CLI Theme</em></td>
-    <td align="center"><img src="docs/screenshots/Christmas-theme.png" alt="Christmas Theme" width="360"/><br/><em>Christmas Theme</em></td>
+    <td align="center"><img src="docs/screenshots/Screenshot-dark.png" alt="Dark theme" width="360"/><br/><em>Dark</em></td>
+    <td align="center"><img src="docs/screenshots/Screenshot-light.png" alt="Light theme" width="360"/><br/><em>Light</em></td>
   </tr>
 </table>
 
-### Multi-Account Switching & Multi-Window Quotas
-
-ClaudeBar supports seamless **Multi-Account Switching** for providers that support multiple logins (e.g. personal, work, client accounts). Configure multiple credentials in **Settings > Providers**, and quickly switch between them using the dedicated account selector dropdown.
-
-Each provider displays separate progress bars for multiple quota windows—for example, tracking your **5-hour session quota** and **7-day weekly quota** simultaneously with dedicated countdown timers.
-
----
-
-## Quota Thresholds & Color Coding
-
-Every quota is tracked in real time and color-coded based on remaining capacity:
-
-| Remaining | Status | Color | Description |
-|-----------|--------|-------|-------------|
-| > 50% | Healthy | Blue / Green | Ample quota available |
-| 20-50% | Warning | Yellow / Amber | Approaching usage threshold or accelerated burn rate |
-| < 20% | Critical | Red | Low quota remaining; alerts triggered |
-| 0% | Depleted | Gray | Quota exhausted |
-
-## Sponsors
-
-Some companies support ClaudeBar's open source development through [GitHub Sponsors](https://github.com/sponsors/hanrw). We'd like to give a special mention to the following sponsors:
-
-<table>
-  <tbody>
-    <tr>
-      <td width="30%" align="center">
-        <a href="https://www.testmuai.com/?utm_source=ClaudeBar&utm_medium=opensourcecollab" target="_blank">
-          <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/testmuai/testmuai-dark.svg"/>
-            <img width="220" src="docs/sponsors/testmuai/testmuai-light.svg" alt="testmuai_logo"/>
-          </picture>
-        </a>
-      </td>
-      <td><a href="https://www.testmuai.com/?utm_source=ClaudeBar&utm_medium=opensourcecollab">TestMu AI</a> (formerly LambdaTest) is the world's first full-stack agentic AI quality engineering platform, trusted by 18,000+ enterprises.</td>
-    </tr>
-  </tbody>
-</table>
-
-> **Editorial independence:** Sponsorship does not influence which providers ClaudeBar supports, how they are ordered in the app, or how their quota data is reported.
-
-## Features
-
-- **Multi-Provider Support** - Monitor Claude, Codex, Gemini, GitHub Copilot, Antigravity, Z.ai, Kimi, Kiro, Amp, OpenCode Go, Oh My Pi, Grok, and Command Code quotas in one place
-- **Provider Enable/Disable** - Toggle individual providers on/off from Settings to customize your monitoring
-- **Real-Time Quota Tracking** - View Session, Weekly, and Model-specific usage percentages
-- **Multiple Themes** - Light, Dark, CLI, Christmas, and [imported terminal themes](#import-terminal-theme) (.itermcolors)
-- **Automatic Adaptation** - System theme follows your macOS appearance; Christmas auto-enables during the holiday season
-- **Visual Status Indicators** - Color-coded progress bars (green/yellow/red) show quota health
-- **System Notifications** - Get alerted when quota status changes to warning or critical
-- **Touch Bar Integration** - Persistent MacBook Touch Bar widget with real-time multi-provider gauges, progress bars, and an interactive pixel mascot ([learn more](#touch-bar-integration))
-- **Notify! iPhone Publishing** - Push quota state to your iPhone via [Notify!](https://getnotifyapp.com) on three surfaces: a Lock Screen Live Activity showing up to six quota windows, a Home Screen widget carrying that same content but staying put, and a Lock Screen widget gauge for one chosen quota (off by default, see below)
-- **Auto-Refresh** - Automatically updates quotas at configurable intervals
-- **Keyboard Shortcuts** - Quick access with `⌘D` (Dashboard) and `⌘R` (Refresh)
-
-> [!TIP]
-> You can also enable **Burn Rate Warnings** in **Settings > General** to trigger alerts based on your real-time consumption velocity against remaining time rather than fixed percentage cutoffs.
-
-## Touch Bar Integration
-
-ClaudeBar features native, system-wide Touch Bar integration for MacBook Pro models equipped with an Apple Touch Bar (including M1/M2 and Intel). This runs 100% natively inside ClaudeBar—requiring **zero third-party apps** (no BetterTouchTool or MTMR required) and **no special accessibility permissions**.
-
-### Key Touch Bar Features
-
-- **Always Visible System-Wide (`placement: 0`)**: Uses macOS system-modal function bar presentation. The widget remains persistently visible across all full-screen windows and apps, automatically re-asserting on app switching and system unlock while keeping your system Escape key and Control Strip media/volume controls intact.
-- **Centered, Clean Multi-Provider Quota Gauges**:
-  - Balanced, centered layout across the Touch Bar for single or multi-provider views.
-  - Displays authentic provider logos (Claude, Gemini, Antigravity, GitHub Copilot, Codex, etc.).
-  - Multi-segment provider views matching your menu bar configuration (e.g. `[Logo] Gemini 40% | [Logo] Claude 0%`).
-  - High-precision bold monospaced percentage readout with warning indicator (`!`) when quota is critical (≥ 90%).
-  - Sleek rounded progress bars with 100% track reference and adaptive color coding (healthy blue, warning amber, critical red).
-  - Reset countdown timer (e.g., `2:15`, `35m`, `3d`).
-- **Battery-Friendly & Ultra Lightweight**: Redraws only when quota state updates; consumes 0% idle CPU and zero background animation overhead.
-- **One-Tap Access**: Tap anywhere on the quota gauges on the Touch Bar to instantly summon the full ClaudeBar dropdown popover (`claudebar://open`).
-
-> [!TIP]
-> For detailed architecture, Touch Bar configuration, and customization details, see the [Full Touch Bar Guide](docs/touchbar/TOUCHBAR_GUIDE.md).
-
-
-## MacBook Notch Live Activity
-
-ClaudeBar can render Claude Code's session and quota state directly in your MacBook notch (Settings > General > Notch Live Activity):
-
-- **Idle Mode**: Displays your selected provider's most depleted quota at a glance.
-- **Active Session Mode**: Displays repository name, elapsed time, and the number of active subagents fanned out.
-- **Permission Alert**: Prominently highlights when Claude Code is waiting for permission in terminal.
-- **Hover Popover**: Hovering expands the notch into a full status view with active session list, quota cards, and quick action buttons.
-- **Virtual Notch**: Displays without a physical notch (or external monitors) automatically receive an elegant virtual notch sized to the menu bar.
-
-> [!NOTE]
-> Read the complete documentation at [docs/features/notch-live-activity.md](docs/features/notch-live-activity.md).
-
-## Requirements
-
-- macOS 15+
-- Swift 6.2+
-- Providers and CLI tools you wish to monitor:
-  - [Claude](https://claude.ai/code) - CLI mode (`claude`) or direct OAuth API mode
-  - [Codex](https://github.com/openai/codex) - CLI RPC mode (`codex`) or ChatGPT backend API mode
-  - [Gemini](https://github.com/google-gemini/gemini-cli) - `gemini` CLI
-  - [GitHub Copilot](https://github.com/features/copilot) - Billing API or Internal Copilot API mode
-  - [Antigravity](https://antigravity.google) - Auto-detected when running locally
-  - [Cursor](https://cursor.com) - Auto-detected via local SQLite DB and usage API
-  - [AWS Bedrock](https://aws.amazon.com/bedrock/) - AWS SSO profile or IAM credentials
-  - [AWS Kiro](https://kiro.dev) - `kiro-cli` via `uv tool install kiro-cli`
-  - [Kimi](https://www.kimi.com/code/console) - `kimi` CLI mode (recommended) or API cookie mode
-  - [DeepSeek](https://www.deepseek.com) - API key configured in Settings
-  - [Mistral](https://mistral.ai) - Backed by Vibe session logs
-  - [MiniMax](https://www.minimax.io) - Coding Plan API key (International / China)
-  - [Alibaba Coding Plan](https://bailian.console.aliyun.com) - Model Studio API key or browser cookie
-  - [Z.ai](https://z.ai/subscribe) - Configure Claude Code with GLM Coding Plan endpoint
-  - [Amp Code](https://ampcode.com) - Auto-detected when `amp` CLI is installed
-  - [OpenCode Go](https://opencode.ai/go) - Local SQLite DB or Zen API key
-  - [Oh My Pi](https://omp.sh) - Aggregates account usage via `omp usage --json`
-  - [Grok Build](https://docs.x.ai) - Tracks xAI credits using CLI OAuth credentials
-  - [Command Code](https://commandcode.ai) - Tracks 5-hour, weekly, and monthly credit windows from the same API the `cmd` CLI uses
-  - [Vercel](https://vercel.com) - Token-based quota tracking
-  - [Custom Extensions](docs/features/extensions.md) - Drop custom scripts into `~/.claudebar/extensions/`
-
-### Provider Setup Guides
-
-<details>
-<summary><strong>Kimi Setup</strong></summary>
-
-Kimi supports two probe modes, configurable in **Settings > Kimi Configuration**:
-- **CLI Mode (Recommended)**: Launches interactive `kimi` and executes `/usage`. Requires `uv tool install kimi-cli` or `pip install kimi-cli`. No Full Disk Access required.
-- **API Mode**: Calls Kimi Connect-RPC directly using browser cookie auth. Requires **Full Disk Access** for ClaudeBar in **System Settings > Privacy & Security > Full Disk Access** (or set `KIMI_AUTH_TOKEN`).
-</details>
-
-<details>
-<summary><strong>AWS Kiro Setup</strong></summary>
-
-Kiro monitors AWS Kiro (formerly CodeWhisperer) usage via `kiro-cli`.
-- **Install**: `uv tool install kiro-cli` or `pip install kiro-cli`
-- **Authenticate**: Run `kiro-cli` and complete the login prompt (or use Kiro IDE).
-</details>
-
-<details>
-<summary><strong>AWS Bedrock Setup</strong></summary>
-
-Monitors daily spend, token counts, and per-model breakdowns via CloudWatch.
-- Configure AWS SSO profile or environment variables in **Settings > Bedrock**.
-- Select target inference regions (e.g. `us-east-1`, `us-west-2`).
-</details>
-
-<details>
-<summary><strong>Alibaba Coding Plan Setup</strong></summary>
-
-Monitors 5-hour session, weekly, and monthly quotas on Alibaba Model Studio / Bailian.
-- Choose region: International (`modelstudio.console.alibabacloud.com`) or China Mainland (`bailian.console.aliyun.com`).
-- Authenticate via API key or browser cookie extraction.
-</details>
-
-<details>
-<summary><strong>Cursor Setup</strong></summary>
-
-Automatically detects your active Cursor IDE installation and reads authentication tokens from Cursor's local SQLite database. Displays included requests and on-demand spend.
-</details>
-
-## URL Schemes
-
-ClaudeBar supports the `claudebar://` URL scheme for quick actions from Raycast, Alfred, Touch Bar widgets, or terminal:
-
-| URL Scheme | Action | CLI Example |
-|---|---|---|
-| `claudebar://open` | Toggles the ClaudeBar dropdown popover | `open claudebar://open` |
-| `claudebar://refresh` | Triggers immediate quota refresh for all providers | `open claudebar://refresh` |
-| `claudebar://settings` | Opens the ClaudeBar Settings window | `open claudebar://settings` |
-
-### Notify! Setup
-
-Publishing quota state to your iPhone is optional and off by default. It is configured in **Settings > Notify!**.
-
-1. Get [Notify!](https://getnotifyapp.com). It runs on Mac, on iOS, and on any device through web push.
-2. **For the Live Activity, open Notify! once on the iPhone or iPad you are publishing to.** One cannot be started until that device has registered a push-to-start credential, and only opening the app produces one. Skip this step if you only want the widgets, which are polled rather than pushed, and skip it for a Mac or browser ID, which cannot show a Live Activity at all.
-3. In Notify!, copy your device ID and device token.
-4. Put them in the **Device ID** and **Token** fields in ClaudeBar's Notify! settings pane and press **Save Link**. Pasting a whole notification URL into the Device ID field works too, ClaudeBar splits it across both. **Verify Device** confirms the pair against Notify! and names the phone it belongs to. Then turn **Publish to Notify!** on.
-
-The Live Activity needs an iPhone or iPad ID. Notify! also issues IDs for Macs and browsers, and those keep both widgets perfectly well, but Notify! cannot start a Live Activity on one, so ClaudeBar disables just that switch and says why. A group ID receives notifications but owns no Lock Screen or Home Screen of its own, so it gets none of the three.
-
-All three surfaces can be turned off separately, and you can choose which quota the gauge shows. The Home Screen widget shows the same thing as the Live Activity, and the difference is that it stays: a Live Activity appears while something is happening and then goes away, while the Home Screen widget sits where you put it and always shows the latest state. It needs a recent Notify! app, where you turn it on under **Settings > Home Screen Widgets**, and you place it yourself through iOS's own widget picker. Notify! can also switch the surface off at its own end while it is still rolling out; ClaudeBar treats that as "not yet", pauses just that widget, and carries on publishing the other two.
-
-Note that this sends provider names, quota window labels and remaining percentages to a third-party service. The device token is stored in the Keychain, not in `~/.claudebar/settings.json`. A build you compile yourself is ad-hoc signed and the Keychain refuses it, so on those the token falls back to ClaudeBar's app credentials and the pane says so.
-
-Full details: [docs/features/notify.md](docs/features/notify.md).
-
-## Installation
-
-### Homebrew
-
-Install via [Homebrew](https://brew.sh):
+## Quick Start
 
 ```bash
 brew install --cask claudebar
 ```
 
-### Download (Recommended)
+Or download the signed and notarized DMG from [Releases](https://github.com/tddworks/ClaudeBar/releases/latest). Requires macOS 15+. Launch it, open **Settings → Providers** and turn on the tools you use; each provider's doc says what it needs. Building from source: [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Download the latest release from [GitHub Releases](https://github.com/tddworks/ClaudeBar/releases/latest):
+## Providers
 
-- **DMG**: Open and drag ClaudeBar.app to Applications
-- **ZIP**: Unzip and move ClaudeBar.app to Applications
+| Provider | Tracks | Setup |
+|---|---|---|
+| Claude | 5-hour session and weekly limits, model limits (Opus, Sonnet, Fable), Extra Usage | [docs](docs/providers/claude/README.md) |
+| Codex | 5-hour and weekly rate limits, credits | [docs](docs/providers/codex/README.md) |
+| Gemini | Per-model Code Assist quota (Pro, Flash, Flash Lite) | [docs](docs/providers/gemini/README.md) |
+| Copilot | Monthly AI credits | [docs](docs/providers/copilot/README.md) |
+| Antigravity | Gemini and Claude pools, 5-hour and weekly | [docs](docs/providers/antigravity/README.md) |
+| Cursor | Included monthly usage, on-demand and team credits | [docs](docs/providers/cursor/README.md) |
+| AWS Bedrock | Today's spend and tokens per model, optional daily budget | [docs](docs/providers/bedrock/README.md) |
+| Kiro | Monthly plan credits and bonus credits | [docs](docs/providers/kiro/README.md) |
+| Kimi | 5-hour and weekly limits | [docs](docs/providers/kimi/README.md) |
+| DeepSeek | Account balance (paid and granted) | [docs](docs/providers/deepseek/README.md) |
+| Mistral | Today's Mistral Vibe spend and tokens | [docs](docs/providers/mistral/README.md) |
+| MiniMax | Coding Plan requests per model | [docs](docs/providers/minimax/README.md) |
+| Alibaba | Coding Plan 5-hour, weekly and monthly quota | [docs](docs/providers/alibaba/README.md) |
+| Z.ai | GLM Coding Plan 5-hour, weekly, monthly and MCP usage | [docs](docs/providers/zai/README.md) |
+| Amp Code | Free allowance and credit balance | [docs](docs/providers/ampcode/README.md) |
+| OpenCode Go | 5-hour, weekly and monthly windows | [docs](docs/providers/opencode-go/README.md) |
+| Oh My Pi | Every rate-limit window `omp` reports, per upstream account | [docs](docs/providers/omp/README.md) |
+| Grok | xAI credit allowance per billing period, per product | [docs](docs/providers/grok/README.md) |
+| Command Code | 5-hour and weekly windows, credit balance | [docs](docs/providers/commandcode/README.md) |
+| Vercel Gateway | AI Gateway credit balance | [docs](docs/providers/vercel-gateway/README.md) |
+| Your own | Anything a script can print, via `~/.claudebar/extensions/` | [docs](docs/features/extensions/README.md) |
 
-Both are code-signed and notarized for Gatekeeper.
+## What It Covers
 
-### Build from Source
+| Area | What you can do |
+|---|---|
+| Menu bar | Up to three providers as a percentage and reset countdown, or a status icon → [docs](docs/features/menu-bar/README.md) |
+| Alerts & colors | Healthy, warning, critical and depleted levels, pace-aware colors, custom colors and High Contrast → [docs](docs/features/status-colors/README.md) |
+| Notch | Quota and live Claude Code sessions in the MacBook notch → [docs](docs/features/notch/README.md) |
+| Touch Bar | Quota gauges on a MacBook Pro Touch Bar → [docs](docs/features/touch-bar/README.md) |
+| Notify! | Quota on your iPhone Lock Screen and Home Screen → [docs](docs/features/notify/README.md) |
+| Session hooks | Claude Code Started / Finished notifications → [docs](docs/features/session-hooks/README.md) |
+| Daily usage | Today's cost and tokens next to yesterday's → [docs](docs/features/daily-usage/README.md) |
+| Themes | Dark, Light, CLI, Christmas, or your terminal's `.itermcolors` → [docs](docs/features/themes/README.md) |
+| Extensions | Add any quota source with a manifest and a script → [docs](docs/features/extensions/README.md) |
+| URL schemes | `claudebar://` actions for Raycast, Alfred and scripts → [docs](docs/features/url-schemes/README.md) |
 
-```bash
-git clone https://github.com/tddworks/ClaudeBar.git
-cd ClaudeBar
+Every doc, one line each: [docs index](docs/README.md). Something not working: [troubleshooting](docs/troubleshooting.md).
 
-# Install Tuist (if not installed)
-brew install tuist
+## More
 
-# Install dependencies and build
-tuist install
-tuist build ClaudeBar -C Release
-```
+- [Contributing](CONTRIBUTING.md) — build, test, and where things go
+- [Architecture](docs/architecture/ARCHITECTURE.md) — layers and data flow
+- [Changelog](CHANGELOG.md)
 
-## Usage
+## Sponsors
 
-After building, open the generated Xcode workspace and run the app:
+Apps that use and support ClaudeBar development:
 
-```bash
-tuist generate
-open ClaudeBar.xcworkspace
-```
-
-Then press `Cmd+R` in Xcode to run. The app will appear in your menu bar. Click to view quota details for each provider.
-
-## Development
-
-The project uses [Tuist](https://tuist.io) for dependency management and Xcode project generation.
-
-### Quick Start
-
-```bash
-# Install Tuist (if not installed)
-brew install tuist
-
-# Install dependencies
-tuist install
-
-# Generate Xcode project and open
-tuist generate
-open ClaudeBar.xcworkspace
-```
-
-### Build & Test
-
-```bash
-# Build the project
-tuist build
-
-# Run all tests
-tuist test
-
-# Run tests with coverage
-tuist test --result-bundle-path TestResults.xcresult -- -enableCodeCoverage YES
-
-# Build release configuration
-tuist build ClaudeBar -C Release
-```
-
-### SwiftUI Previews
-
-After opening in Xcode, SwiftUI previews will work with `Cmd+Option+Return`. The project is configured with `ENABLE_DEBUG_DYLIB` for preview support.
-
-## Architecture
-
-> **Full documentation:** [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)
-
-ClaudeBar uses a **layered architecture** with `QuotaMonitor` as the single source of truth:
-
-| Layer | Purpose |
-|-------|---------|
-| **App** | SwiftUI views consuming domain directly (no ViewModel) |
-| **Domain** | Rich models, `QuotaMonitor`, repository protocols |
-| **Infrastructure** | Probes, storage implementations, adapters, drivers |
-
-### Key Design Decisions
-
-- **Single Source of Truth** - `QuotaMonitor` owns all provider state
-- **Repository Pattern** - Settings and credentials abstracted behind injectable protocols (`JSONSettingsRepository`)
-- **Protocol-Based DI** - `@Mockable` protocols enable testability
-- **Chicago School TDD** - Tests verify state changes, not method calls
-- **No ViewModel/AppState** - Views consume domain directly
-
-## Import Terminal Theme
-
-Match ClaudeBar's appearance to your terminal. Import any `.itermcolors` file:
-
-1. Open **Settings** (gear icon)
-2. Click **Import .itermcolors**
-3. Select your file (export from iTerm2: Preferences > Profiles > Colors > Color Presets > Export)
-
-450+ pre-made schemes available at [iTerm2-Color-Schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/schemes).
-
-Imported themes are saved in `~/.claudebar/themes/` and persist across restarts.
-
-## User Extensions
-
-Create your own provider monitoring modules by dropping a manifest and script into `~/.claudebar/extensions/`. Extensions can define quota grids, daily usage cards, and automated HTTP health checks.
-
-See [docs/features/extensions.md](docs/features/extensions.md) for full specification and example implementations.
-
-## Contributing
-
-### Adding a New AI Provider
-
-Use the **add-provider** skill to guide you through adding new providers with TDD:
-
-```
-Tell Claude Code: "I want to add a new provider for [ProviderName]"
-```
-
-The skill guides you through: Parsing Tests → Probe Tests → Implementation → Registration.
-
-See `.claude/skills/add-provider/SKILL.md` for details and `AntigravityUsageProbe` as a reference implementation.
-
-## Dependencies
-
-- [Sparkle](https://sparkle-project.org/) - Auto-update framework
-- [Mockable](https://github.com/Kolos65/Mockable) - Protocol mocking for tests
-- [Tuist](https://tuist.io) - Xcode project generation (for SwiftUI previews)
-
-## Releasing
-
-Releases are automated via GitHub Actions. Push a version tag to create a new release.
-
-**For detailed setup instructions, see [docs/release/RELEASE_SETUP.md](docs/release/RELEASE_SETUP.md).**
-
-### Release Workflow
-
-The workflow uses Tuist to generate the Xcode project:
-
-```
-Tag v1.0.0 → Update Info.plist → tuist generate → xcodebuild → Sign & Notarize → GitHub Release
-```
-
-Version is set in `Sources/App/Info.plist` and flows through to Sparkle auto-updates.
-
-### Quick Start
-
-1. **Configure GitHub Secrets** (see [full guide](docs/release/RELEASE_SETUP.md)):
-
-   | Secret | Description |
-   |--------|-------------|
-   | `APPLE_CERTIFICATE_P12` | Developer ID certificate (base64) |
-   | `APPLE_CERTIFICATE_PASSWORD` | Password for .p12 |
-   | `APP_STORE_CONNECT_API_KEY_P8` | API key (base64) |
-   | `APP_STORE_CONNECT_KEY_ID` | Key ID |
-   | `APP_STORE_CONNECT_ISSUER_ID` | Issuer ID |
-
-2. **Verify your certificate**:
-   ```bash
-   ./scripts/verify-p12.sh /path/to/certificate.p12
-   ```
-
-3. **Create a release**:
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
-
-The workflow will automatically build, sign, notarize, and publish to GitHub Releases.
+<a href="https://appnexus.app">
+  <img src="https://appnexus.app/favicon.ico" width="64" height="64" alt="AppNexus" style="border-radius:14px">
+  <br>
+  <b>AppNexus for App Store Connect</b>
+</a>
 
 ## Contributors
 
@@ -468,15 +164,6 @@ To credit someone, comment on any issue or pull request:
 ```
 @all-contributors please add @username for code, doc
 ```
-
-## Multiple Providers in the Menu Bar
-
-In **Settings → Menu Bar**, enable percentage or duration display and select up
-to three providers. Each selected provider has its own card for choosing a quota,
-an optional secondary quota, and stacked text size. Their existing logos identify
-the readouts, while tooltips retain provider names. All displayed providers refresh
-in the background. Choices are preserved when a provider is removed and added again,
-and existing single-provider settings are retained. Providers awaiting data show `—`.
 
 ## License
 

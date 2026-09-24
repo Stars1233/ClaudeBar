@@ -9,12 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Custom status colors. Settings → Appearance → Status Colors has a color well for each level (healthy, warning, critical, depleted). A custom color overrides the theme in the menu bar label, the popover, the notch, and Settings. "Reset to defaults" restores the theme. ([#200](https://github.com/tddworks/ClaudeBar/issues/200))
-- High Contrast switch in the same card: a built-in palette that clears 4.5:1 on both light and dark menu bars and follows the bar's appearance as it changes. The stock theme greens and ambers measured under 2:1 on a light menu bar. Custom colors win over High Contrast for the levels you set. ([#200](https://github.com/tddworks/ClaudeBar/issues/200))
+- High Contrast switch in the same card: a built-in palette that clears 4.5:1 on both light and dark menu bars and follows the bar's appearance. The stock theme greens and ambers measured under 2:1 on a light menu bar. Custom colors win over High Contrast for the levels you set. ([#200](https://github.com/tddworks/ClaudeBar/issues/200))
 
 ### Fixed
 - Antigravity now shows your quota with the app closed. With no language server running, the probe reported "Command did not complete within the timeout" on every refresh and never reached the Cloud Code fallback that reads your stored sign-in. ([#301](https://github.com/tddworks/ClaudeBar/issues/301))
-- Codex's menu bar countdown now matches the other providers ("2:33", "2d") and ticks down with the clock. The Codex RPC probe used to keep only the formatted "Resets in 4h 42m" text and throw away the reset time, so the menu bar showed a frozen countdown in a different format, and pace-aware status and burn rate couldn't work for Codex. The reset time and window length are now passed through. ([#298](https://github.com/tddworks/ClaudeBar/issues/298))
-- Extension providers now show the SF Symbol their `manifest.json` declares as `icon` in the menu bar, the popover, the Touch Bar and Settings → Menu Bar, instead of a question mark everywhere except their own settings card. A missing or unknown symbol name still falls back to the question mark. ([#302](https://github.com/tddworks/ClaudeBar/issues/302))
+- Codex: the menu bar countdown now ticks and matches the other providers ("2:33", "2d"), and pace-aware colors work for Codex. ([#298](https://github.com/tddworks/ClaudeBar/issues/298))
+- Extensions: providers now show the SF Symbol from their manifest's `icon` in the menu bar, popover, Touch Bar and Settings, instead of a question mark. An unknown symbol still falls back to the question mark. ([#302](https://github.com/tddworks/ClaudeBar/issues/302))
 
 ---
 
