@@ -44,25 +44,13 @@ Every quota is tracked in real time and color-coded based on remaining capacity:
 
 ## Sponsors
 
-Some companies support ClaudeBar's open source development through [GitHub Sponsors](https://github.com/sponsors/hanrw). We'd like to give a special mention to the following sponsors:
+Apps that use and support ClaudeBar development:
 
-<table>
-  <tbody>
-    <tr>
-      <td width="30%" align="center">
-        <a href="https://www.testmuai.com/?utm_source=ClaudeBar&utm_medium=opensourcecollab" target="_blank">
-          <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/testmuai/testmuai-dark.svg"/>
-            <img width="220" src="docs/sponsors/testmuai/testmuai-light.svg" alt="testmuai_logo"/>
-          </picture>
-        </a>
-      </td>
-      <td><a href="https://www.testmuai.com/?utm_source=ClaudeBar&utm_medium=opensourcecollab">TestMu AI</a> (formerly LambdaTest) is the world's first full-stack agentic AI quality engineering platform, trusted by 18,000+ enterprises.</td>
-    </tr>
-  </tbody>
-</table>
-
-> **Editorial independence:** Sponsorship does not influence which providers ClaudeBar supports, how they are ordered in the app, or how their quota data is reported.
+<a href="https://appnexus.app">
+  <img src="https://appnexus.app/favicon.ico" width="64" height="64" alt="AppNexus" style="border-radius:14px">
+  <br>
+  <b>AppNexus for App Store Connect</b>
+</a>
 
 ## Features
 
