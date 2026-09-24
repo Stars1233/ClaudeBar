@@ -4,7 +4,7 @@ description: How ClaudeBar's docs are layered (Skill-style progressive disclosur
 
 # Documentation Design
 
-> Status: **proposed**, 2026-09-24. `scripts/check-docs.py` runs in report-only mode until the migration's last step turns on `--strict`.
+> Status: **adopted**, 2026-09-24. CI fails when `scripts/check-docs.py --strict` reports a problem or the generated `docs/README.md` is stale.
 > Adapted from baguette's documentation design; the differences are called out in [Decisions](#decisions).
 
 ## Goal
@@ -200,7 +200,7 @@ Skills follow the same rule: `.claude/skills/*` carry agent workflows and link t
 
 ## Enforcement
 
-`scripts/check-docs.py`, run in CI by `.github/workflows/docs.yml`. Kept small, because it is code that also has to be maintained. Report-only until migration step 6.
+`scripts/check-docs.py --strict`, run in CI by `.github/workflows/docs.yml`. Kept small, because it is code that also has to be maintained.
 
 | Check | Limit |
 |---|---|
@@ -209,7 +209,7 @@ Skills follow the same rule: `.claude/skills/*` carry agent workflows and link t
 | CHANGELOG bullet length in `[Unreleased]` | ≤300 chars, URLs excluded |
 | CHANGELOG links in `[Unreleased]` | absolute URLs only (Sparkle can't resolve relative ones) |
 | Every provider / feature README has a `description` | required, ≤250 chars |
-| Every provider in `Sources/Domain/Provider/` has `docs/providers/<id>/README.md` | required once step 4 lands |
+| Every provider in `Sources/Domain/Provider/` has `docs/providers/<id>/README.md` | required |
 | Relative links resolve (code fences and inline code skipped) | all `.md` files |
 | Generated `docs/README.md` is current | `gen-docs.py`, then `git diff --exit-code` |
 
@@ -217,9 +217,9 @@ When a doc goes over budget, split it. Don't raise the limit.
 
 ## Migration
 
-Each step is its own PR, and the docs stay valid after each one.
+Done in one PR (#307), one commit per step, and the docs stayed valid after each one.
 
-1. **Hygiene** (this PR): this design; `git mv CLAUDE.md AGENTS.md` and fix its drift (provider count, credential storage, the stale repository table); fix the 7 broken links; README Sponsors in the asc-cli format; `scripts/check-docs.py` in report-only mode.
+1. **Hygiene**: this design; `git mv CLAUDE.md AGENTS.md` and fix its drift (provider count, credential storage, the stale repository table); fix the 7 broken links; README Sponsors in the asc-cli format; `scripts/check-docs.py` in report-only mode.
 2. **Move features**: `git mv` each `docs/features/<x>.md` to `docs/features/<x>/README.md`, `docs/touchbar/` to `docs/features/touch-bar/`, `docs/plans/*` to the owning `design.md`; a script rewrites links and `check-docs.py` proves none broke. Mechanical, no content changes.
 3. **Generation**: `scripts/gen-docs.py` builds `docs/README.md`; add `description` to each doc.
 4. **Providers**: one `docs/providers/<id>/README.md` per provider, starting from the README's setup guides; `design.md` where research exists. Parallelisable per provider.

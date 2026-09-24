@@ -104,11 +104,28 @@ def check_links():
                 report(path, f"broken link: {target}")
 
 
+def check_provider_coverage():
+    for path in glob.glob("Sources/Domain/Provider/*/*Provider.swift"):
+        match = re.search(r'public let id: String = "([^"]+)"', read(path))
+        if match and not os.path.exists(f"docs/providers/{match.group(1)}/README.md"):
+            report(path, f"no docs/providers/{match.group(1)}/README.md")
+
+
+def check_generated():
+    import subprocess
+
+    result = subprocess.run([sys.executable, "scripts/gen-docs.py", "--check"], capture_output=True, text=True)
+    if result.returncode != 0:
+        report("docs/README.md", "stale; run scripts/gen-docs.py")
+
+
 def main():
     strict = "--strict" in sys.argv
     check_line_budgets()
     check_descriptions()
     check_changelog()
+    check_provider_coverage()
+    check_generated()
     check_links()
     for problem in problems:
         print(problem)

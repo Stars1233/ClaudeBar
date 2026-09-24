@@ -1,19 +1,23 @@
 name: Docs
 
 # Checks docs against docs/documentation-design/README.md#enforcement.
-# Report-only until the migration's last step switches it to --strict.
+# Fails on any problem, including a stale generated docs/README.md.
 
 on:
   pull_request:
     paths:
       - '**.md'
       - 'scripts/check-docs.py'
+      - 'scripts/gen-docs.py'
+      - 'Sources/Domain/Provider/**'
       - '.github/workflows/docs.yml'
   push:
     branches: [main]
     paths:
       - '**.md'
       - 'scripts/check-docs.py'
+      - 'scripts/gen-docs.py'
+      - 'Sources/Domain/Provider/**'
 
 permissions:
   contents: read
@@ -23,5 +27,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check docs (report-only)
-        run: python3 scripts/check-docs.py
+      - name: Check docs
+        run: python3 scripts/check-docs.py --strict

@@ -153,7 +153,7 @@ Here's today's README `<details>` block for Kimi after the move:
 
 ````markdown
 ---
-description: Track Kimi Code usage through the interactive kimi CLI or the Kimi web API. Use when setting up Kimi or when it shows "Session expired".
+description: Track Kimi Code usage through the interactive kimi CLI or the Kimi web API. Use when setting up Kimi or when it shows "Authentication required".
 ---
 
 # Kimi
@@ -161,7 +161,7 @@ description: Track Kimi Code usage through the interactive kimi CLI or the Kimi 
 Shows your Kimi Code usage windows and reset times.
 
 ## Setup
-1. `uv tool install kimi-cli` (or `pip install kimi-cli`), then run `kimi` once and sign in.
+1. Install the Kimi Code CLI (`curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash`), then run `kimi` once and sign in.
 2. Settings → Providers → Kimi → turn it on.
 
 ## Probe modes
@@ -174,7 +174,7 @@ Shows your Kimi Code usage windows and reset times.
 - API mode reads the browser's cookie store, which is why macOS asks for **Full Disk Access**. CLI mode needs nothing.
 
 ## Gotchas
-- kimi CLI 0.36 changed the `/usage` layout; ClaudeBar 0.4.92+ reads both.
+- kimi CLI 0.36 changed the `/usage` layout; ClaudeBar reads both.
 
 ## See also
 [design.md](design.md) · [troubleshooting](../../troubleshooting.md#kimi)
