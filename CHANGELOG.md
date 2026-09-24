@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Antigravity now shows your quota with the app closed. With no language server running, the probe reported "Command did not complete within the timeout" on every refresh and never reached the Cloud Code fallback that reads your stored sign-in. ([#301](https://github.com/tddworks/ClaudeBar/issues/301))
+- Codex's menu bar countdown now matches the other providers ("2:33", "2d") and ticks down with the clock. The Codex RPC probe used to keep only the formatted "Resets in 4h 42m" text and throw away the reset time, so the menu bar showed a frozen countdown in a different format, and pace-aware status and burn rate couldn't work for Codex. The reset time and window length are now passed through. ([#298](https://github.com/tddworks/ClaudeBar/issues/298))
 
 ---
 

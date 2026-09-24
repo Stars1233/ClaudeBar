@@ -32,10 +32,16 @@ public struct CodexRateLimitsResponse: Sendable, Equatable {
 public struct CodexRateLimitWindow: Sendable, Equatable {
     public let usedPercent: Double
     public let resetDescription: String?
+    /// When the window resets. Kept alongside the text so the countdown can tick.
+    public let resetsAt: Date?
+    /// Length of the window, when Codex reports it (`windowDurationMins`).
+    public let windowDuration: TimeInterval?
 
-    public init(usedPercent: Double, resetDescription: String?) {
+    public init(usedPercent: Double, resetDescription: String?, resetsAt: Date? = nil, windowDuration: TimeInterval? = nil) {
         self.usedPercent = usedPercent
         self.resetDescription = resetDescription
+        self.resetsAt = resetsAt
+        self.windowDuration = windowDuration
     }
 }
 
@@ -74,7 +80,9 @@ public struct CodexUsageProbe: UsageProbe {
                 percentRemaining: max(0, 100 - primary.usedPercent),
                 quotaType: .session,
                 providerId: "codex",
-                resetText: primary.resetDescription
+                resetsAt: primary.resetsAt,
+                resetText: primary.resetDescription,
+                windowDuration: primary.windowDuration
             ))
         }
 
@@ -83,7 +91,9 @@ public struct CodexUsageProbe: UsageProbe {
                 percentRemaining: max(0, 100 - secondary.usedPercent),
                 quotaType: .weekly,
                 providerId: "codex",
-                resetText: secondary.resetDescription
+                resetsAt: secondary.resetsAt,
+                resetText: secondary.resetDescription,
+                windowDuration: secondary.windowDuration
             ))
         }
 

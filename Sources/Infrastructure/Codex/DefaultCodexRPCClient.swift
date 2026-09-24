@@ -228,13 +228,22 @@ public final class DefaultCodexRPCClient: CodexRPCClient, @unchecked Sendable {
             return nil
         }
 
+        var resetsAt: Date?
         var resetDescription: String?
-        if let resetsAt = dict["resetsAt"] as? Int {
-            let date = Date(timeIntervalSince1970: TimeInterval(resetsAt))
+        if let seconds = dict["resetsAt"] as? Int {
+            let date = Date(timeIntervalSince1970: TimeInterval(seconds))
+            resetsAt = date
             resetDescription = formatResetTime(date)
         }
 
-        return CodexRateLimitWindow(usedPercent: usedPercent, resetDescription: resetDescription)
+        let windowDuration = (dict["windowDurationMins"] as? Int).map { TimeInterval($0) * 60 }
+
+        return CodexRateLimitWindow(
+            usedPercent: usedPercent,
+            resetDescription: resetDescription,
+            resetsAt: resetsAt,
+            windowDuration: windowDuration
+        )
     }
 
     internal func formatResetTime(_ date: Date) -> String {
