@@ -206,7 +206,7 @@ Two deadlines, both two hours, both measured from the last write, and one heartb
 
 ## Architecture
 
-Notify! is a **destination**, not a provider. `QuotaMonitor` remains the single source of truth per `CLAUDE.md`, and nothing in this feature reads a quota from anywhere: it reads the ones already in memory. See [docs/architecture/ARCHITECTURE.md](../architecture/ARCHITECTURE.md) for the layering this sits inside.
+Notify! is a **destination**, not a provider. `QuotaMonitor` remains the single source of truth per `AGENTS.md`, and nothing in this feature reads a quota from anywhere: it reads the ones already in memory. See [docs/architecture/ARCHITECTURE.md](../architecture/ARCHITECTURE.md) for the layering this sits inside.
 
 ```
 Sources/Domain/Notify/

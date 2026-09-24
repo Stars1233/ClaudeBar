@@ -201,7 +201,7 @@ Both reference apps are HUD replacements whose entire premise requires always-on
 
 ## Architecture
 
-The notch is a **view**, not a new source of truth. `QuotaMonitor` and `SessionMonitor` remain authoritative, per the single-source-of-truth rule in `CLAUDE.md`.
+The notch is a **view**, not a new source of truth. `QuotaMonitor` and `SessionMonitor` remain authoritative, per the single-source-of-truth rule in `AGENTS.md`.
 
 ```
 Sources/Domain/Notch/

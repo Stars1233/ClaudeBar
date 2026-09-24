@@ -1,10 +1,10 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for AI coding agents (Claude Code, Codex, Cursor, …) working in this repository. It is the only agent-instructions file; there is no `CLAUDE.md`. How the docs are organised: [docs/documentation-design/](docs/documentation-design/README.md).
 
 ## Project Overview
 
-ClaudeBar is a macOS menu bar application that monitors AI coding assistant usage quotas (Claude, Codex, Gemini, GitHub Copilot, Antigravity, Z.ai, AWS Bedrock, Amp Code, Kimi, OpenCode Go, Oh My Pi, Grok, Command Code). It probes CLI tools and APIs to fetch quota information and displays it in a menu bar interface with system notifications for status changes.
+ClaudeBar is a macOS menu bar application that monitors AI coding assistant usage quotas: 20 built-in providers (one folder each in `Sources/Domain/Provider/`, registered in `ClaudeBarApp.init()`) plus user extensions from `~/.claudebar/extensions/`. It probes CLI tools and APIs to fetch quota information and displays it in a menu bar interface with system notifications for status changes.
 
 ## Build & Test Commands
 
@@ -102,15 +102,7 @@ NotifySettingsRepository (standalone, NOT a provider sub-protocol)
 
 Notify! is a publish **destination**, not a provider: ClaudeBar writes quota state to it rather than reading a quota from it, so it sits beside `HookSettingsRepository` rather than under `ProviderSettingsRepository`. See [docs/features/notify.md](docs/features/notify.md).
 
-**Provider Dependencies:**
-| Provider | Repository Type |
-|----------|----------------|
-| Claude, Codex, Gemini, Antigravity, Amp Code, Kiro, Cursor, OpenCode Go, Oh My Pi, Grok, Command Code | `ProviderSettingsRepository` |
-| Z.ai | `ZaiSettingsRepository` |
-| Copilot | `CopilotSettingsRepository` |
-| Bedrock | `BedrockSettingsRepository` |
-| Kimi | `KimiSettingsRepository` |
-| MiniMax | `MiniMaxSettingsRepository` |
+**Which repository a provider takes:** read its initializer in `Sources/Domain/Provider/<Name>/`. Providers with their own config (e.g. Claude, Codex, Kimi, Z.ai, Copilot, Bedrock, MiniMax, DeepSeek, Alibaba, Vercel) take a sub-protocol; the rest take the base `ProviderSettingsRepository`.
 
 ### Settings Storage
 
@@ -129,7 +121,7 @@ Sources/App/Settings/
 - `JSONSettingsStore` — Thread-safe read/write with dot-notation key paths (e.g., `app.themeMode`, `claude.probeMode`, `providers.claude.isEnabled`)
 - `JSONSettingsRepository` — Single class implementing `AppSettingsRepository` + all provider sub-protocols + `HookSettingsRepository`
 - `AppSettings` — `@Observable` facade for SwiftUI; exposes typed provider accessors (`settings.claude`, `settings.copilot`, etc.)
-- Credentials (GitHub token, MiniMax API key) remain in UserDefaults (Keychain migration planned)
+- Credentials: the Notify! device token goes to the Keychain (`KeychainCredentialRepository`, UserDefaults only as a fallback); the GitHub, MiniMax, DeepSeek and Alibaba tokens are still in the UserDefaults credential store
 
 **Key namespacing in settings.json:**
 | Namespace | Examples |
