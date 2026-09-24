@@ -66,6 +66,8 @@ struct DefaultCodexRPCClientTests {
         #expect(result.planType == "pro")
         #expect(result.primary?.usedPercent == 30)
         #expect(result.secondary?.usedPercent == 50)
+        #expect(result.primary?.resetsAt == Date(timeIntervalSince1970: 1735000000))
+        #expect(result.secondary?.resetsAt == Date(timeIntervalSince1970: 1735500000))
     }
 
     @Test
@@ -180,6 +182,31 @@ struct DefaultCodexRPCClientTests {
 
         #expect(result?.usedPercent == 45.5)
         #expect(result?.resetDescription?.contains("Resets in") == true)
+    }
+
+    @Test
+    func `parseWindow keeps the reset date so the countdown can tick`() {
+        let mockTransport = MockRPCTransport()
+        let client = DefaultCodexRPCClient(transport: mockTransport)
+
+        let window: [String: Any] = ["usedPercent": 10.0, "windowDurationMins": 10080, "resetsAt": 1735000000]
+
+        let result = client.parseWindow(window)
+
+        #expect(result?.resetsAt == Date(timeIntervalSince1970: 1735000000))
+        #expect(result?.windowDuration == TimeInterval(7 * 24 * 3600))
+    }
+
+    @Test
+    func `parseWindow leaves reset date empty when resetsAt missing`() {
+        let mockTransport = MockRPCTransport()
+        let client = DefaultCodexRPCClient(transport: mockTransport)
+
+        let result = client.parseWindow(["usedPercent": 10.0])
+
+        #expect(result?.resetsAt == nil)
+        #expect(result?.resetDescription == nil)
+        #expect(result?.windowDuration == nil)
     }
 
     @Test
