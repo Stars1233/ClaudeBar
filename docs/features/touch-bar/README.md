@@ -23,7 +23,7 @@ One cell per quota, centred on the bar, with a thin divider between cells. Each 
 - a reset countdown (`2:15`, `35m`, `3d`), shown only when the cell is wide enough
 - a bold percentage and a progress bar. `—` means the provider hasn't returned data yet.
 
-The percentage follows the display mode chosen at the top of **Settings → Menu Bar**. The colour depends on that number: blue below 50, amber from 50 to 89, and red with a `!` at 90 or more. See Gotchas.
+The percentage follows the display mode chosen at the top of **Settings → Menu Bar**. The colour follows the quota's status, the same one the popover badge and `status.json` report: blue while healthy, amber for warning, and red with a `!` when critical or depleted. With the burn-rate warning on, the status is pace-aware. See [Status colors](../status-colors/README.md) for the cutoffs.
 
 Tap anywhere on the gauges to open the ClaudeBar popover.
 
@@ -103,7 +103,6 @@ The widgets' tap actions use ClaudeBar's URL schemes (`claudebar://open`, `claud
 
 ## Gotchas
 
-- **Red at 100% remaining.** The colour depends on the number shown, not on how healthy the quota is. In every display mode except **Used** (the default is **Remaining**), a full quota shows red `100% !` and a nearly empty one shows blue. Switch **Settings → Menu Bar** to **Used** to get the expected colours.
 - **Turning the Touch Bar off also stops `status.json`.** BetterTouchTool, MTMR and scripts then read `"enabled": false`, and the helper script's BTT widget hides itself. Keep the switch on even on a Mac without a Touch Bar if something reads the file.
 - **Nothing on the bar.** The gauges hide when no Menu Bar provider is available. Check **Settings → Menu Bar** and the macOS **Touch Bar shows** setting. If another app has taken over the Touch Bar, quit and reopen ClaudeBar.
 - **Private API.** The always-on bar uses undocumented macOS calls, so a macOS update could break it. The popover's buttons and `status.json` don't depend on those calls.

@@ -47,7 +47,7 @@ One gauge per quota, built from the Menu Bar configuration: for each of the up-t
 - **Name:** the provider name, plus the quota's `menuBarTitle` / `compactTitle` / `shortLabel` when the provider contributes two gauges and the name doesn't already contain it. Antigravity uses the pool title alone, without the provider name.
 - **Reset text:** `compactResetTime` first, then a countdown from `resetsAt` (`Nd`, `H:MM`, `Nm`), then `resetText` with the "Resets in" prefix removed.
 - **Percent:** `displayPercent(mode: usageDisplayMode)`, clamped to 0 to 100.
-- **Status:** computed with pace awareness when burn-rate warnings are on. **The view doesn't use it yet.** `TouchBarQuotaView` picks its colour from the displayed percentage (blue below 50, amber 50 to 89, red with `!` at 90 or more). That was right when the number was always "used", but it's inverted in the Remaining and Pace modes. The fix is to colour from `gauge.status`, the way the in-app badge and `status.json` do.
+- **Status:** computed with pace awareness when burn-rate warnings are on. `TouchBarProviderGauge.tone` maps it to the colour tier the view draws (`healthy` blue, `warning` amber, `alarm` red with `!` for critical and depleted, `none` dimmed with no bar). Before that, the view thresholded the displayed percentage instead (blue below 50, amber 50 to 89, red at 90 or more), which was right only in Used mode and inverted in Remaining and Pace: 93% remaining drew red and 18% remaining drew blue.
 
 ### Drawing
 
