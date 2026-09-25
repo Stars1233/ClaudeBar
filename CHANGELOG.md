@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- Touch Bar gauges now colour by the quota's status, like the popover badge and `status.json`. In Remaining and Pace modes the colour was keyed to the displayed number as if it were usage, so 93% remaining drew red with a `!` and 18% remaining drew blue.
+- Touch Bar gauges now colour by their quota's status. In Remaining and Pace modes the colour was keyed to the displayed number as if it were usage, so 93% remaining drew red with a `!` and 18% remaining drew blue.
 
 ---
 
