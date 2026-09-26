@@ -8,10 +8,38 @@ import Infrastructure
 public struct TouchBarProviderGauge: Equatable, Sendable {
     public let providerId: String
     public let name: String
+    /// The number drawn on the gauge. It is whatever the menu bar shows for the
+    /// same quota: percent remaining, percent used, or the pace figure, per the
+    /// display mode. Do not derive a status from it; use `status`.
     public let percentUsed: Double
     public let resetText: String?
+    /// Health of the quota, computed from real usage (pace-aware when enabled).
     public let status: QuotaStatus
     public let hasQuota: Bool
+
+    /// Colour tier for the number and bar.
+    public enum Tone: Equatable, Sendable {
+        /// No quota data yet; drawn dimmed with no bar.
+        case none
+        case healthy
+        case warning
+        /// Critical or depleted; drawn red with a "!" after the number.
+        case alarm
+    }
+
+    /// Which colour the gauge draws in. Follows `status`, never the displayed
+    /// number: in Remaining mode a 93% gauge is healthy and an 18% gauge is an alarm.
+    public var tone: Tone {
+        guard hasQuota else { return .none }
+        switch status {
+        case .healthy: return .healthy
+        case .warning: return .warning
+        case .critical, .depleted: return .alarm
+        }
+    }
+
+    /// True when the gauge should draw the "!" alarm marker.
+    public var isAlarm: Bool { tone == .alarm }
 
     public init(
         providerId: String,
@@ -151,16 +179,20 @@ public final class TouchBarQuotaView: NSView {
         let barH: CGFloat  = 7.0
 
         let pct = Int(gauge.percentUsed)
-        let alarm = gauge.hasQuota && (pct >= 90)
+        let alarm = gauge.isAlarm
 
+        // Colour follows the quota's status, not the displayed number: that
+        // number is percent remaining in Remaining and Pace modes, so
+        // thresholding it painted 93% remaining red and 18% remaining blue.
         let ink: NSColor
-        if !gauge.hasQuota {
+        switch gauge.tone {
+        case .none:
             ink = NSColor(white: 1.0, alpha: 0.60)
-        } else if alarm {
+        case .alarm:
             ink = NSColor(srgbRed: 0.902, green: 0.208, blue: 0.180, alpha: 1.0) // Alert Red
-        } else if pct >= 50 {
+        case .warning:
             ink = NSColor(srgbRed: 0.949, green: 0.706, blue: 0.161, alpha: 1.0) // Warning Amber
-        } else {
+        case .healthy:
             ink = NSColor(srgbRed: 0.173, green: 0.533, blue: 0.945, alpha: 1.0) // Healthy Blue
         }
 
